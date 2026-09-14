@@ -1,0 +1,6 @@
+# L'image n'a besoin que du Dockerfile et du dossier docker/ :
+# le code est monté en volume (voir compose.yaml).
+vendor
+var
+.git
+.phpunit.cache

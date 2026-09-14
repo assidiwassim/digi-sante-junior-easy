@@ -1,0 +1,106 @@
+{% extends 'parent/layout.html.twig' %}
+
+{% block title %}Tableau de bord — {{ enfant.prenom }}{% endblock %}
+
+{% block body %}
+    {# --- Choix de l'enfant suivi ------------------------------------------- #}
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <div>
+                    <div class="stat-libelle">Enfant suivi</div>
+                    <h1 class="fs-3 mb-0">{{ enfant.nomComplet }}</h1>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 ms-auto">
+                    {% for candidat in enfants %}
+                        <a href="{{ path('parent_dashboard', {enfant: candidat.id, periode: periode}) }}"
+                           class="btn btn-sm {{ candidat.id == enfant.id ? 'btn-marine' : 'btn-fantome' }}">
+                            {{ candidat.avatarEmoji }} {{ candidat.prenom }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top">
+                <span class="pastille">{{ enfant.age }} ans</span>
+                <span class="pastille">Limite : {{ enfant.maxMinutesJour|duree }}</span>
+                <a href="{{ path('parent_enfant_modifier', {id: enfant.id}) }}" class="btn btn-fantome btn-sm ms-auto">✏️ Modifier le profil</a>
+            </div>
+        </div>
+    </div>
+
+    {# --- Journal du jour ---------------------------------------------------- #}
+    <div class="card">
+        <div class="card-body">
+            <div class="carte-titre">📔 Journal d'aujourd'hui</div>
+
+            {% if journalDuJour %}
+                {% set niveau = journalDuJour.niveauEcran %}
+                {% set pourcentage = min(100, (journalDuJour.totalEcran / enfant.maxMinutesJour * 100)|round) %}
+
+                <div class="text-center mb-3">
+                    <div class="stat-libelle">Temps d'écran</div>
+                    <div class="stat-valeur fs-1 texte-{{ niveau }}">{{ journalDuJour.totalEcran|duree }}</div>
+                    <div class="small fw-bold texte-doux">Limite fixée : {{ enfant.maxMinutesJour|duree }}</div>
+                </div>
+
+                <div class="progress jauge" role="progressbar" aria-label="Temps d'écran par rapport à la limite"
+                     aria-valuenow="{{ pourcentage }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar niveau-{{ niveau }}" style="width: {{ pourcentage }}%"></div>
+                </div>
+
+                <p class="sous-titre">Douleurs signalées</p>
+                {% for douleur in journalDuJour.douleurs %}
+                    <span class="pastille">{{ douleur.zoneEmoji }} {{ douleur.zoneLabel }} · {{ douleur.intensite }}/5</span>
+                {% else %}
+                    <p class="fw-bold texte-vert mb-0">🌟 Aucune douleur signalée aujourd'hui.</p>
+                {% endfor %}
+
+                <p class="sous-titre">Conseils reçus par {{ enfant.prenom }}</p>
+                <div class="d-grid gap-2">
+                    {% for conseil in conseils %}
+                        <div class="encadre d-flex align-items-start gap-3" style="border-left: 6px solid var(--{{ conseil.couleur }})">
+                            <span class="fs-3 lh-1">{{ conseil.emoji }}</span>
+                            <div>
+                                <div class="fw-extra text-marine">{{ conseil.titre }}</div>
+                                <p class="small texte-doux mb-0">{{ conseil.message }}</p>
+                                {% if conseil.contenu %}
+                                    <span class="pastille mt-2">{{ conseil.contenu.typeEmoji }} {{ conseil.contenu.titre }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="texte-doux mb-0">{{ enfant.prenom }} n'a pas encore rempli son journal aujourd'hui.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# --- Graphique ---------------------------------------------------------- #}
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <div class="carte-titre mb-0">📈 Temps d'écran de {{ enfant.prenom }}</div>
+                <div class="d-flex gap-2 ms-auto">
+                    <a href="{{ path('parent_dashboard', {enfant: enfant.id, periode: 7}) }}" class="btn btn-sm {{ periode == 7 ? 'btn-marine' : 'btn-fantome' }}">7 derniers jours</a>
+                    <a href="{{ path('parent_dashboard', {enfant: enfant.id, periode: 30}) }}" class="btn btn-sm {{ periode == 30 ? 'btn-marine' : 'btn-fantome' }}">30 derniers jours</a>
+                </div>
+            </div>
+
+            <div style="position: relative; height: 280px"><canvas id="graphiqueEcran"></canvas></div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{{ asset('js/graphique-ecran.js') }}"></script>
+    <script>
+        afficherGraphiqueEcran('graphiqueEcran', {{ graphique|json_encode|raw }}, {{ enfant.maxMinutesJour }}, {
+            ecran: "Temps d'écran (min)",
+            limite: 'Limite fixée (min)'
+        });
+    </script>
+{% endblock %}

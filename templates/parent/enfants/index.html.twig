@@ -1,0 +1,56 @@
+{% extends 'parent/layout.html.twig' %}
+
+{% block title %}Mes enfants — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <h1 class="mb-0">Mes enfants</h1>
+        <a href="{{ path('parent_enfant_nouveau') }}" class="btn btn-primary ms-auto">➕ Ajouter un enfant</a>
+    </div>
+
+    <div class="row g-4">
+        {% for enfant in enfants %}
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="avatar-bulle">{{ enfant.avatarEmoji }}</div>
+                            <div>
+                                <h2 class="fs-4 mb-0">{{ enfant.nomComplet }}</h2>
+                                <div class="small texte-doux">
+                                    {{ enfant.age }} ans · identifiant <strong>{{ enfant.compte.username }}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <span class="pastille">⏱️ Limite {{ enfant.maxMinutesJour|duree }}</span>
+                            <span class="pastille">📔 {{ enfant.journalEntrees|length }} journée(s)</span>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
+                            <a href="{{ path('parent_dashboard', {enfant: enfant.id}) }}" class="btn btn-marine btn-sm">📊 Suivi</a>
+                            <a href="{{ path('parent_enfant_modifier', {id: enfant.id}) }}" class="btn btn-fantome btn-sm">✏️ Modifier</a>
+                            {% include '_partials/bouton_supprimer.html.twig' with {
+                                action: path('parent_enfant_supprimer', {id: enfant.id}),
+                                jeton: 'supprimer-enfant-' ~ enfant.id,
+                                confirmation: 'Supprimer définitivement le profil de ' ~ enfant.prenom ~ ' et toutes ses données ?',
+                            } only %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="card text-center">
+                    <div class="card-body py-5">
+                        <div class="display-5">👶</div>
+                        <h2>Aucun profil pour l'instant</h2>
+                        <p class="texte-doux">Créez un profil pour que votre enfant puisse remplir son journal.</p>
+                        <a href="{{ path('parent_enfant_nouveau') }}" class="btn btn-primary">Créer un profil enfant</a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

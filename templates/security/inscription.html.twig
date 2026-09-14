@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Créer un compte parent — Digi-Santé Junior{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block body %}
+    <div class="mx-auto contenu" style="max-width: 560px">
+        <div class="text-center">
+            <a href="{{ path('app_home') }}" class="marque justify-content-center text-decoration-none">
+                <span class="marque-logo">🩺</span>
+                <span class="text-marine">Digi-Santé <span class="text-or">Junior</span></span>
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h1 class="text-center">Créer mon compte parent</h1>
+                <p class="text-center texte-doux mb-4">
+                    Vous pourrez ensuite créer un compte pour chacun de vos enfants.
+                </p>
+
+                {{ form_start(form) }}
+                    {{ form_errors(form) }}
+                    {{ form_row(form.email) }}
+
+                    <div class="row">
+                        <div class="col-sm-6">{{ form_row(form.pays) }}</div>
+                        <div class="col-sm-6">{{ form_row(form.ville) }}</div>
+                    </div>
+
+                    {{ form_row(form.plainPassword.first) }}
+                    {{ form_row(form.plainPassword.second) }}
+
+                    <div class="encadre mb-3">
+                        {{ form_row(form.conditions, {row_attr: {class: 'mb-0'}}) }}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Créer mon compte</button>
+                {{ form_end(form) }}
+
+                <p class="text-center mt-4 mb-0 texte-doux">
+                    Déjà inscrit ? <a href="{{ path('app_login') }}" class="fw-extra">Se connecter</a>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

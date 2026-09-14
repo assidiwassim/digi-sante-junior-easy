@@ -1,0 +1,66 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion parent — Digi-Santé Junior{% endblock %}
+
+{# Pas de barre de navigation sur les pages de connexion #}
+{% block navbar %}{% endblock %}
+
+{% block body %}
+    <div class="mx-auto contenu" style="max-width: 520px">
+        <div class="text-center">
+            <a href="{{ path('app_home') }}" class="marque justify-content-center text-decoration-none">
+                <span class="marque-logo">🩺</span>
+                <span class="text-marine">Digi-Santé <span class="text-or">Junior</span></span>
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h1 class="text-center">Espace parent</h1>
+                <p class="text-center texte-doux mb-4">Connectez-vous avec votre adresse email.</p>
+
+                {% if error %}
+                    <div class="alert alert-danger">
+                        <span>⛔</span>
+                        <span>{{ error.messageKey|trans(error.messageData, 'security') }}</span>
+                    </div>
+                {% endif %}
+
+                {# Ce formulaire est traité par Symfony (form_login dans security.yaml). #}
+                <form method="post" action="{{ path('app_login') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Adresse email</label>
+                        <input type="email" id="username" name="_username" value="{{ last_username }}"
+                               class="form-control" autocomplete="email" placeholder="parent@exemple.fr" required autofocus>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" id="password" name="_password"
+                               class="form-control" autocomplete="current-password" required>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" id="remember_me" name="_remember_me" class="form-check-input">
+                        <label for="remember_me" class="form-check-label fw-semibold">Se souvenir de moi</label>
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+                </form>
+
+                <p class="text-center mt-4 mb-0 texte-doux">
+                    Pas encore de compte ? <a href="{{ path('app_register') }}" class="fw-extra">Créer un compte parent</a>
+                </p>
+            </div>
+        </div>
+
+        <div class="card text-center text-white border-0" style="background: var(--marine)">
+            <div class="card-body">
+                <p class="fw-bold mb-3">Tu es un enfant ?</p>
+                <a href="{{ path('app_enfant_login') }}" class="btn btn-or">🚀 Connexion enfant</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

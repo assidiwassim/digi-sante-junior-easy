@@ -1,0 +1,7 @@
+framework:
+    # Les messages de validation et de sécurité de Symfony s'affichent en français.
+    default_locale: fr
+    translator:
+        default_path: '%kernel.project_dir%/translations'
+        fallbacks:
+            - fr

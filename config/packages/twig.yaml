@@ -1,0 +1,16 @@
+twig:
+    file_name_pattern: '*.twig'
+
+    # Tous les formulaires sont rendus avec les classes Bootstrap 5.
+    # form/avatars.html.twig ajoute la galerie d'avatars du formulaire enfant.
+    form_themes:
+        - 'bootstrap_5_layout.html.twig'
+        - 'form/avatars.html.twig'
+
+    # Dates affichées au fuseau de Paris
+    date:
+        timezone: Europe/Paris
+
+when@test:
+    twig:
+        strict_variables: true

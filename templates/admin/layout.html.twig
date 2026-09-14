@@ -1,0 +1,25 @@
+{# Layout de l'administration : même charte que l'espace parent. #}
+{% extends 'base.html.twig' %}
+
+{% block logo %}🛠️{% endblock %}
+{% block marque_suffixe %}Admin{% endblock %}
+
+{% block menu %}
+    {% set route = app.request.attributes.get('_route') %}
+    <li class="nav-item">
+        <a class="nav-link {{ route starts with 'admin_contenu' ? 'active' }}" href="{{ path('admin_contenus') }}">📚 Contenus</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ route starts with 'admin_parent' ? 'active' }}" href="{{ path('admin_parents') }}">👨‍👩‍👧 Parents</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ route starts with 'admin_enfant' ? 'active' }}" href="{{ path('admin_enfants') }}">🧒 Enfants</a>
+    </li>
+{% endblock %}
+
+{% block menu_utilisateur %}
+    {% include '_partials/menu_utilisateur.html.twig' with {
+        avatar: app.user.email|first|upper,
+        nom: app.user.email|split('@')|first,
+    } only %}
+{% endblock %}

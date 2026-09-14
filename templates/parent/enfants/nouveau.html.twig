@@ -1,0 +1,19 @@
+{% extends 'parent/layout.html.twig' %}
+
+{% block title %}Ajouter un enfant — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <a href="{{ path('parent_enfants') }}" class="fw-bold">← Retour à mes enfants</a>
+
+    <div class="card" style="max-width: 720px">
+        <div class="card-body">
+            <h1>Ajouter un enfant</h1>
+            <p class="texte-doux mb-4">
+                Son compte de connexion est créé en même temps que son profil : l'identifiant est
+                calculé à partir du prénom, et vous choisissez vous-même le mot de passe.
+            </p>
+
+            {% include 'parent/enfants/_formulaire.html.twig' with {form: form, bouton: 'Créer le profil et le compte'} only %}
+        </div>
+    </div>
+{% endblock %}

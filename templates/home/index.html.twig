@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Digi-Santé Junior — le bien-être numérique des 8-14 ans{% endblock %}
+
+{% block menu %}
+    <li class="nav-item"><a class="nav-link" href="{{ path('app_login') }}">Espace parent</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ path('app_enfant_login') }}">Espace enfant</a></li>
+    <li class="nav-item"><a class="nav-link active" href="{{ path('app_register') }}">Créer un compte</a></li>
+{% endblock %}
+
+{% block body %}
+    <section class="row g-4 align-items-center">
+        <div class="col-md-6">
+            <span class="pastille">Pour les 8 à 14 ans</span>
+            <h1 class="mt-3" style="font-size: clamp(2rem, 5vw, 3.1rem)">
+                Mieux vivre avec les écrans, un jour à la fois.
+            </h1>
+            <p class="fs-5 texte-doux lh-base">
+                Digi-Santé Junior aide les enfants à observer leur temps d'écran et les
+                petites douleurs qui vont avec. En quelques clics, ils remplissent leur journal
+                et reçoivent des conseils adaptés. Les parents suivent l'évolution en un
+                coup d'œil.
+            </p>
+
+            <div class="d-flex flex-wrap gap-3 mt-4">
+                <a href="{{ path('app_enfant_login') }}" class="btn btn-primary btn-lg">🚀 Je suis un enfant</a>
+                <a href="{{ path('app_login') }}" class="btn btn-marine btn-lg">👨‍👩‍👧 Je suis un parent</a>
+            </div>
+
+            <p class="mt-3 texte-doux">
+                Pas encore de compte ?
+                <a href="{{ path('app_register') }}" class="fw-extra">Inscrivez-vous gratuitement</a>.
+            </p>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card card-enfant">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <div class="avatar-bulle grand mascotte">🦊</div>
+                        <div>
+                            <h3 class="mb-0">Salut, moi c'est Digi !</h3>
+                            <p class="mb-0 texte-doux">Je t'accompagne chaque jour.</p>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-3">
+                        <div class="encadre d-flex align-items-start gap-3">
+                            <span class="fs-3">📱</span>
+                            <div>
+                                <strong class="text-marine">Tes écrans</strong>
+                                <p class="mb-0 small texte-doux">Combien de temps devant la TV, la tablette, la console…</p>
+                            </div>
+                        </div>
+                        <div class="encadre d-flex align-items-start gap-3">
+                            <span class="fs-3">🧍</span>
+                            <div>
+                                <strong class="text-marine">Ton corps</strong>
+                                <p class="mb-0 small texte-doux">Clique sur le bonhomme là où ça tire un peu.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-3 pt-4">
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body">
+                <div class="fs-2">🎯</div>
+                <h3 class="mt-2">Des conseils sur mesure</h3>
+                <p class="mb-0 texte-doux">Règle du 20-20-20, yoga des yeux, étirements du cou : chaque conseil découle de ce que l'enfant a saisi.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body">
+                <div class="fs-2">📊</div>
+                <h3 class="mt-2">Un suivi clair pour les parents</h3>
+                <p class="mb-0 texte-doux">Courbes sur 7 ou 30 jours, zones de douleur et dépassements de la limite fixée.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body">
+                <div class="fs-2">💛</div>
+                <h3 class="mt-2">Un ton toujours positif</h3>
+                <p class="mb-0 texte-doux">Les conseils encouragent, jamais ils ne culpabilisent : l'objectif est de prendre de bonnes habitudes.</p>
+            </div></div>
+        </div>
+    </section>
+{% endblock %}

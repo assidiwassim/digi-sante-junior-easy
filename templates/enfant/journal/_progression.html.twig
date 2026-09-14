@@ -1,0 +1,29 @@
+{#
+    Barre de progression du journal, commune aux deux étapes.
+    Paramètre : etape (1 ou 2)
+#}
+{% set etapes = {1: {titre: 'Tes écrans', emoji: '📱'}, 2: {titre: 'Ton corps', emoji: '🧍'}} %}
+{% set pourcentage = etape * 50 %}
+
+<div>
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <div>
+            <div class="stat-libelle">Étape {{ etape }} sur 2</div>
+            <h1 class="mb-0">{{ etapes[etape].emoji }} {{ etapes[etape].titre }}</h1>
+        </div>
+        <div class="stat-valeur" style="color: var(--turquoise)">{{ pourcentage }} %</div>
+    </div>
+
+    <div class="progress progression" role="progressbar" aria-label="Progression du journal"
+         aria-valuenow="{{ pourcentage }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" style="width: {{ pourcentage }}%"></div>
+    </div>
+
+    <div class="d-flex gap-3 mt-3">
+        {% for numero, infos in etapes %}
+            <div class="etape-pastille {{ numero == etape ? 'active' : (numero < etape ? 'faite') }}" title="{{ infos.titre }}">
+                {{ numero < etape ? '✓' : infos.emoji }}
+            </div>
+        {% endfor %}
+    </div>
+</div>

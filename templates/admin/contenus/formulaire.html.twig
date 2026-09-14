@@ -1,0 +1,27 @@
+{# Page commune à l'ajout et à la modification d'un contenu. #}
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ titrePage }} — Administration{% endblock %}
+
+{% block body %}
+    <a href="{{ path('admin_contenus') }}" class="fw-bold">← Retour aux contenus</a>
+
+    <div class="card" style="max-width: 760px">
+        <div class="card-body">
+            <h1 class="fs-3">{{ titrePage }}</h1>
+
+            {{ form_start(form) }}
+                {{ form_errors(form) }}
+                <div class="row">
+                    <div class="col-sm-6">{{ form_row(form.type) }}</div>
+                    <div class="col-sm-6">{{ form_row(form.declencheur) }}</div>
+                </div>
+                {{ form_row(form.titre) }}
+                {{ form_row(form.contenu) }}
+                {{ form_row(form.url) }}
+
+                <button type="submit" class="btn btn-primary">{{ bouton }}</button>
+            {{ form_end(form) }}
+        </div>
+    </div>
+{% endblock %}

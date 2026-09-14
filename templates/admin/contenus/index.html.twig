@@ -1,0 +1,54 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Contenus — Administration{% endblock %}
+
+{% block body %}
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <h1 class="mb-0">Contenus bien-être</h1>
+            <p class="mb-0 texte-doux">{{ contenus|length }} contenu(s) dans la bibliothèque.</p>
+        </div>
+        <a href="{{ path('admin_contenu_nouveau') }}" class="btn btn-primary ms-auto">➕ Nouveau contenu</a>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Titre</th>
+                        <th>Règle déclenchée</th>
+                        <th>Ajouté le</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contenu in contenus %}
+                        <tr>
+                            <td><span class="pastille">{{ contenu.typeEmoji }} {{ contenu.typeLabel }}</span></td>
+                            <td>
+                                <strong>{{ contenu.titre }}</strong>
+                                {% if contenu.url %}<span title="Contient un lien">🔗</span>{% endif %}
+                            </td>
+                            <td>{{ contenu.declencheurLabel ?? '—' }}</td>
+                            <td>{{ contenu.createdAt|date('d/m/Y') }}</td>
+                            <td class="text-end text-nowrap">
+                                <a href="{{ path('admin_contenu_modifier', {id: contenu.id}) }}" class="btn btn-fantome btn-sm">✏️ Modifier</a>
+                                {% include '_partials/bouton_supprimer.html.twig' with {
+                                    action: path('admin_contenu_supprimer', {id: contenu.id}),
+                                    jeton: 'supprimer-contenu-' ~ contenu.id,
+                                    confirmation: 'Supprimer définitivement le contenu « ' ~ contenu.titre ~ ' » ?',
+                                } only %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center texte-doux py-5">📭 La bibliothèque est vide.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

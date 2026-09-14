@@ -1,0 +1,14 @@
+{#
+    Bouton « Supprimer » : un petit formulaire POST protégé par un jeton CSRF,
+    avec une confirmation du navigateur.
+
+    Paramètres :
+      action        URL qui traite la suppression
+      jeton         identifiant du jeton CSRF (le même que dans le contrôleur)
+      confirmation  question posée avant de supprimer
+#}
+<form method="post" action="{{ action }}" class="d-inline"
+      onsubmit="return confirm('{{ confirmation|e('js') }}');">
+    <input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+    <button type="submit" class="btn btn-supprimer btn-sm">🗑️ Supprimer</button>
+</form>

@@ -1,0 +1,12 @@
+# Protection CSRF classique, adossée à la session.
+#
+# La variante « stateless » proposée par défaut depuis Symfony 7.2 s'appuie sur
+# du JavaScript ou sur les en-têtes Origin/Referer. La version classique est
+# plus simple à comprendre et fonctionne pour tout formulaire, avec ou sans JS.
+framework:
+    csrf_protection:
+        enabled: true
+
+    form:
+        csrf_protection:
+            enabled: true

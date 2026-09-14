@@ -1,0 +1,26 @@
+{#
+    Affichage personnalisé du champ « avatar » du formulaire EnfantType.
+
+    Le nom du bloc suit la règle de Symfony : _<nom du formulaire>_<nom du champ>_widget.
+    Au lieu d'une liste de boutons radio, on affiche une grille de vignettes :
+    l'emoji en grand et le nom en dessous. Le bouton radio est caché par le CSS,
+    un clic sur la vignette (le <label>) le coche.
+#}
+{% block _enfant_avatar_widget %}
+    <div class="galerie-avatars" role="radiogroup">
+        {% for choix in form %}
+            <input type="radio"
+                   id="{{ choix.vars.id }}"
+                   name="{{ choix.vars.full_name }}"
+                   value="{{ choix.vars.value }}"
+                   {{ choix.vars.checked ? 'checked' }}>
+            <label for="{{ choix.vars.id }}" class="avatar-vignette"
+                   style="--avatar-couleur: {{ choix.vars.attr['data-couleur'] }}">
+                <span class="avatar-vignette-emoji">{{ choix.vars.attr['data-emoji'] }}</span>
+                <span class="avatar-vignette-nom">{{ choix.vars.label }}</span>
+            </label>
+            {# On a écrit la balise nous-mêmes : on le signale à Symfony. #}
+            {% do choix.setRendered %}
+        {% endfor %}
+    </div>
+{% endblock %}

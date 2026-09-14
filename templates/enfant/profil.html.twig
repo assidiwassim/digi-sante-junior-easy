@@ -1,0 +1,82 @@
+{% extends 'enfant/layout.html.twig' %}
+
+{% block title %}Mon profil — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="avatar-bulle grand">{{ enfant.avatarEmoji }}</div>
+        <div>
+            <h1 class="mb-0">Mon profil</h1>
+            <p class="mb-0 texte-doux fs-5">Salut {{ enfant.prenom }} ! Voici tes informations.</p>
+        </div>
+    </div>
+
+    <div class="row g-4 align-items-start">
+        {# --- Carte d'identité ---------------------------------------------- #}
+        <div class="col-lg-6">
+            <div class="card card-enfant">
+                <div class="card-body">
+                    <h2>🪪 Ma carte</h2>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Mon avatar</span>
+                            <span class="profil-valeur">{{ enfant.avatarEmoji }} {{ enfant.avatarNom }}</span>
+                        </div>
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Mon prénom</span>
+                            <span class="profil-valeur">{{ enfant.prenom }}</span>
+                        </div>
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Mon identifiant</span>
+                            <span class="profil-valeur"><code>{{ enfant.compte.username }}</code></span>
+                        </div>
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Mon âge</span>
+                            <span class="profil-valeur">{{ enfant.age }} ans</span>
+                        </div>
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Ma limite d'écran</span>
+                            <span class="profil-valeur">{{ enfant.maxMinutesJour|duree }} par jour</span>
+                        </div>
+                    </div>
+
+                    <div class="encadre text-center mt-4">
+                        <div class="fs-3">📔</div>
+                        <div class="stat-valeur">{{ enfant.journalEntrees|length }}</div>
+                        <div class="stat-libelle">journées remplies</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# --- Mot de passe ---------------------------------------------------- #}
+        <div class="col-lg-6">
+            <div class="card card-enfant">
+                <div class="card-body">
+                    <h2>🔐 Mon mot de passe</h2>
+                    <p class="texte-doux fw-bold">
+                        Tu peux choisir un nouveau mot de passe quand tu veux. C'est ton secret :
+                        ne le donne à personne, sauf à tes parents.
+                    </p>
+
+                    <div class="encadre fw-bold text-marine small mb-3">
+                        💡 Une astuce : deux mots que tu aimes et un chiffre, par exemple
+                        <em>chat-fusee7</em>. Au moins 6 caractères !
+                    </div>
+
+                    {{ form_start(form) }}
+                        {{ form_errors(form) }}
+                        {{ form_row(form.plainPassword.first, {label: 'Ton nouveau mot de passe'}) }}
+                        {{ form_row(form.plainPassword.second, {label: 'Écris-le une deuxième fois'}) }}
+                        <button type="submit" class="btn btn-primary btn-lg w-100">✨ Enregistrer mon nouveau mot de passe</button>
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <a href="{{ path('enfant_accueil') }}" class="btn btn-fantome">🏠 Retour à l'accueil</a>
+    </div>
+{% endblock %}

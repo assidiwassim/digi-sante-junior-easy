@@ -1,0 +1,84 @@
+{#
+    Gabarit principal : toutes les pages l'étendent avec {% extends 'base.html.twig' %}.
+
+    Blocs que les pages et les layouts peuvent remplacer :
+      title             titre de l'onglet
+      body_class        classe CSS de <body> (ex. fond coloré de l'espace enfant)
+      navbar            toute la barre de navigation (vide sur les pages de connexion)
+      logo              emoji dans le carré du logo
+      marque_suffixe    mot affiché après « Digi-Santé »
+      menu              liens de navigation (<li class="nav-item">…)
+      menu_utilisateur  menu déroulant « avatar + nom »
+      body              contenu de la page
+      javascripts       scripts propres à la page
+#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Digi-Santé Junior{% endblock %}</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+
+    {# Polices : Baloo 2 (titres) et Nunito (texte) #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+{% block navbar %}
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-digi">
+        <div class="container py-2">
+            <a class="navbar-brand marque" href="{{ path('app_home') }}">
+                <span class="marque-logo">{% block logo %}🩺{% endblock %}</span>
+                <span>Digi-Santé <span class="marque-suffixe">{% block marque_suffixe %}Junior{% endblock %}</span></span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal"
+                    aria-controls="menuPrincipal" aria-expanded="false" aria-label="Afficher le menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="menuPrincipal">
+                <ul class="navbar-nav ms-auto gap-1 align-items-lg-center my-2 my-lg-0">
+                    {% block menu %}{% endblock %}
+                </ul>
+                <div class="ms-lg-3">
+                    {% block menu_utilisateur %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </nav>
+{% endblock %}
+
+{# Messages flash (« Votre profil a été mis à jour », …) #}
+{% set messagesFlash = app.flashes %}
+{% if messagesFlash is not empty %}
+    <div class="container pt-3">
+        {% for type, messages in messagesFlash %}
+            {% for message in messages %}
+                <div class="alert alert-{{ type }} mb-2" role="alert">
+                    <span>{{ type == 'success' ? '✅' : 'ℹ️' }}</span>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+{% endif %}
+
+<main class="container py-4 contenu">
+    {% block body %}{% endblock %}
+</main>
+
+<footer class="text-center small py-4 texte-doux">
+    Digi-Santé Junior — projet pédagogique de suivi du bien-être numérique.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block javascripts %}{% endblock %}
+</body>
+</html>

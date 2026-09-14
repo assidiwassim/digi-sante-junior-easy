@@ -1,0 +1,17 @@
+{% extends 'parent/layout.html.twig' %}
+
+{% block title %}Tableau de bord — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <div class="card text-center">
+        <div class="card-body py-5">
+            <div class="display-4">👶</div>
+            <h1>Bienvenue sur Digi-Santé Junior</h1>
+            <p class="texte-doux mx-auto mb-4" style="max-width: 520px">
+                Vous n'avez pas encore ajouté d'enfant. Créez un premier profil : son identifiant
+                de connexion sera calculé à partir de son prénom, et vous choisirez son mot de passe.
+            </p>
+            <a href="{{ path('parent_enfant_nouveau') }}" class="btn btn-primary btn-lg">➕ Ajouter mon enfant</a>
+        </div>
+    </div>
+{% endblock %}

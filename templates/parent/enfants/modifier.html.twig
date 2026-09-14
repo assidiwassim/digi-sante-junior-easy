@@ -1,0 +1,48 @@
+{% extends 'parent/layout.html.twig' %}
+
+{% block title %}Modifier {{ enfant.prenom }} — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <a href="{{ path('parent_enfants') }}" class="fw-bold">← Retour à mes enfants</a>
+
+    <div class="row g-4 align-items-start">
+        {# --- Profil et limite d'écran ------------------------------------- #}
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="avatar-bulle">{{ enfant.avatarEmoji }}</div>
+                        <div>
+                            <h1 class="fs-3 mb-0">Modifier le profil</h1>
+                            <p class="mb-0 texte-doux">
+                                Identifiant de connexion : <strong>{{ enfant.compte.username }}</strong>
+                            </p>
+                        </div>
+                    </div>
+
+                    {% include 'parent/enfants/_formulaire.html.twig' with {form: form, bouton: 'Enregistrer les modifications'} only %}
+                </div>
+            </div>
+        </div>
+
+        {# --- Mot de passe --------------------------------------------------- #}
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-body">
+                    <div class="carte-titre">🔐 Mot de passe de connexion</div>
+                    <p class="form-text mt-0">
+                        Choisissez le nouveau mot de passe et communiquez-le à votre enfant.
+                        Il pourra en choisir un autre depuis son profil.
+                    </p>
+
+                    {{ form_start(formMotDePasse) }}
+                        {{ form_errors(formMotDePasse) }}
+                        {{ form_row(formMotDePasse.plainPassword.first) }}
+                        {{ form_row(formMotDePasse.plainPassword.second) }}
+                        <button type="submit" class="btn btn-primary">Modifier le mot de passe</button>
+                    {{ form_end(formMotDePasse) }}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

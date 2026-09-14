@@ -1,0 +1,48 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Parents — Administration{% endblock %}
+
+{% block body %}
+    <div>
+        <h1 class="mb-0">Parents</h1>
+        <p class="mb-0 texte-doux">{{ parents|length }} compte(s) parent.</p>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Localisation</th>
+                        <th>Enfants</th>
+                        <th>Inscrit le</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for parent in parents %}
+                        <tr>
+                            <td><strong>{{ parent.email }}</strong></td>
+                            <td>{{ [parent.ville, parent.pays]|filter(v => v)|join(', ')|default('—') }}</td>
+                            <td><span class="pastille">🧒 {{ parent.enfants|length }}</span></td>
+                            <td>{{ parent.createdAt|date('d/m/Y') }}</td>
+                            <td class="text-end text-nowrap">
+                                <a href="{{ path('admin_parent_voir', {id: parent.id}) }}" class="btn btn-fantome btn-sm">👁️ Voir</a>
+                                {% include '_partials/bouton_supprimer.html.twig' with {
+                                    action: path('admin_parent_supprimer', {id: parent.id}),
+                                    jeton: 'supprimer-parent-' ~ parent.id,
+                                    confirmation: 'Supprimer le compte ' ~ parent.email ~ ', ses enfants et toutes leurs données ? Cette action est définitive.',
+                                } only %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center texte-doux py-5">Aucun compte parent.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'enfant/layout.html.twig' %}
+
+{% block title %}Bravo {{ enfant.prenom }} ! — Mon journal{% endblock %}
+
+{% block body %}
+    {# --- Félicitations et récapitulatif ------------------------------------ #}
+    <div class="card card-enfant text-center">
+        <div class="card-body">
+            <div class="display-4 mascotte">🎉</div>
+            <h1>Bravo {{ enfant.prenom }} !</h1>
+            <p class="fw-bold fs-5 texte-doux mx-auto" style="max-width: 520px">
+                Ton journal du {{ journal.date|date('d/m/Y') }} est enregistré. Voici mes conseils pour toi.
+            </p>
+
+            <div class="encadre mt-4">
+                <div class="fs-3">📱</div>
+                <div class="stat-valeur">{{ journal.totalEcran|duree }}</div>
+                <div class="stat-libelle">d'écran</div>
+
+                {% if journal.douleurs is not empty %}
+                    <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+                        {% for douleur in journal.douleurs %}
+                            <span class="pastille">{{ douleur.zoneEmoji }} {{ douleur.zoneLabel }} · {{ douleur.intensite }}/5</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="mt-3 fw-extra texte-vert">🌟 Tu n'avais mal nulle part</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# --- Conseils ---------------------------------------------------------- #}
+    {% for conseil in conseils %}
+        <div class="card card-enfant" style="border-left: 8px solid var(--{{ conseil.couleur }})">
+            <div class="card-body d-flex align-items-start gap-3">
+                <div class="display-6">{{ conseil.emoji }}</div>
+
+                <div class="flex-fill">
+                    <h2 class="fs-4 mb-1">{{ conseil.titre }}</h2>
+                    <p class="fw-bold texte-doux mb-0">{{ conseil.message }}</p>
+
+                    {% if conseil.contenu %}
+                        <div class="encadre mt-3">
+                            <span class="pastille">{{ conseil.contenu.typeEmoji }} {{ conseil.contenu.typeLabel }}</span>
+                            <h3 class="fs-6 mt-2 mb-1">{{ conseil.contenu.titre }}</h3>
+                            <p class="small texte-doux texte-multiligne mb-0">{{ conseil.contenu.contenu }}</p>
+                            {% if conseil.contenu.url %}
+                                <a href="{{ conseil.contenu.url }}" target="_blank" rel="noopener" class="btn btn-or btn-sm mt-3">▶️ Voir la vidéo</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+
+    <div class="d-flex flex-wrap gap-3 justify-content-center">
+        <a href="{{ path('enfant_accueil') }}" class="btn btn-primary btn-lg">🏠 Retour à l'accueil</a>
+        <a href="{{ path('enfant_bibliotheque') }}" class="btn btn-fantome btn-lg">📚 Découvrir d'autres conseils</a>
+    </div>
+{% endblock %}

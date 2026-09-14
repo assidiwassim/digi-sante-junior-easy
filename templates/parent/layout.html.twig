@@ -1,0 +1,23 @@
+{# Layout de l'espace parent : sobre, orienté suivi. #}
+{% extends 'base.html.twig' %}
+
+{% block logo %}🩺{% endblock %}
+
+{% block menu %}
+    {% set route = app.request.attributes.get('_route') %}
+    <li class="nav-item">
+        <a class="nav-link {{ route == 'parent_dashboard' ? 'active' }}" href="{{ path('parent_dashboard') }}">Tableau de bord</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ route starts with 'parent_enfant' ? 'active' }}" href="{{ path('parent_enfants') }}">Mes enfants</a>
+    </li>
+{% endblock %}
+
+{% block menu_utilisateur %}
+    {# Le parent n'a pas de nom : on affiche le début de son email. #}
+    {% include '_partials/menu_utilisateur.html.twig' with {
+        avatar: app.user.email|first|upper,
+        nom: app.user.email|split('@')|first,
+        route_profil: 'parent_profil',
+    } only %}
+{% endblock %}

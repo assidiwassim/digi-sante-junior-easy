@@ -1,0 +1,72 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ parent.email }} — Administration{% endblock %}
+
+{% block body %}
+    <a href="{{ path('admin_parents') }}" class="fw-bold">← Retour aux parents</a>
+
+    <div class="row g-4 align-items-start">
+        {# --- Compte --------------------------------------------------------- #}
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="avatar-bulle">{{ parent.email|first|upper }}</div>
+                        <div class="text-break">
+                            <div class="stat-libelle">Compte parent</div>
+                            <h1 class="fs-4 mb-0">{{ parent.email }}</h1>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Ville</span>
+                            <span class="profil-valeur">{{ parent.ville|default('—') }}</span>
+                        </div>
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Pays</span>
+                            <span class="profil-valeur">{{ parent.pays|default('—') }}</span>
+                        </div>
+                        <div class="profil-ligne">
+                            <span class="profil-cle">Inscrit le</span>
+                            <span class="profil-valeur">{{ parent.createdAt|date('d/m/Y') }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top">
+                        {% include '_partials/bouton_supprimer.html.twig' with {
+                            action: path('admin_parent_supprimer', {id: parent.id}),
+                            jeton: 'supprimer-parent-' ~ parent.id,
+                            confirmation: 'Supprimer le compte ' ~ parent.email ~ ', ses enfants et toutes leurs données ? Cette action est définitive.',
+                        } only %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# --- Enfants -------------------------------------------------------- #}
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-body">
+                    <div class="carte-titre">🧒 Enfants ({{ parent.enfants|length }})</div>
+
+                    <div class="list-group">
+                        {% for enfant in parent.enfants %}
+                            <a href="{{ path('admin_enfant_voir', {id: enfant.id}) }}"
+                               class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                                <span class="avatar-bulle petit">{{ enfant.avatarEmoji }}</span>
+                                <span class="flex-fill">
+                                    <strong>{{ enfant.nomComplet }}</strong>
+                                    <span class="d-block small texte-doux">{{ enfant.age }} ans · {{ enfant.compte.username }}</span>
+                                </span>
+                                <span class="pastille">⏱️ {{ enfant.maxMinutesJour|duree }}</span>
+                            </a>
+                        {% else %}
+                            <p class="texte-doux mb-0">Ce parent n'a encore créé aucun profil enfant.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{# Layout de l'espace enfant : fond coloré, gros boutons, menu ludique. #}
+{% extends 'base.html.twig' %}
+
+{% block body_class %}enfant-body{% endblock %}
+
+{% block logo %}🚀{% endblock %}
+
+{% block menu %}
+    {% set route = app.request.attributes.get('_route') %}
+    <li class="nav-item">
+        <a class="nav-link {{ route == 'enfant_accueil' ? 'active' }}" href="{{ path('enfant_accueil') }}">🏠 Accueil</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ route starts with 'enfant_journal' ? 'active' }}" href="{{ path('enfant_journal') }}">📔 Mon journal</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ route == 'enfant_bibliotheque' ? 'active' }}" href="{{ path('enfant_bibliotheque') }}">📚 Découvrir</a>
+    </li>
+{% endblock %}
+
+{% block menu_utilisateur %}
+    {% include '_partials/menu_utilisateur.html.twig' with {
+        avatar: app.user.profilEnfant.avatarEmoji,
+        nom: app.user.profilEnfant.prenom,
+        route_profil: 'enfant_profil',
+    } only %}
+{% endblock %}

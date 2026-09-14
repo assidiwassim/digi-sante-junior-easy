@@ -1,0 +1,176 @@
+{% extends 'enfant/layout.html.twig' %}
+
+{% block title %}Mon journal — Mon corps{% endblock %}
+
+{% block body %}
+    {% include 'enfant/journal/_progression.html.twig' with {etape: 2} %}
+
+    <div class="card card-enfant">
+        <div class="card-body">
+            <p class="fw-bold texte-doux fs-6">
+                Est-ce que quelque chose te fait mal aujourd'hui ?
+                <strong>Clique sur la zone</strong> du bonhomme, puis dis-moi si ça fait très mal.
+                Si tout va bien, passe simplement à la suite !
+            </p>
+
+            <div class="row g-4 align-items-start mt-1">
+                <div class="col-md-6">
+                    <div class="encadre">
+                        {#
+                            Schéma du corps. Chaque zone cliquable porte un attribut
+                            data-zone dont la valeur est une clé de DouleurZone::ZONES.
+                        #}
+                        <svg class="schema-corporel" viewBox="0 0 260 460" role="img" aria-label="Schéma du corps : clique sur la zone où tu as mal">
+                            {# Silhouette (non cliquable) #}
+                            <g fill="#f1f7f7" stroke="#c3dcdb" stroke-width="2">
+                                <ellipse cx="130" cy="58" rx="40" ry="46"/>
+                                <rect x="118" y="100" width="24" height="26" rx="10"/>
+                                <path d="M86 130 h88 a16 16 0 0 1 16 16 v92 a12 12 0 0 1-12 12 H82 a12 12 0 0 1-12-12 v-92 a16 16 0 0 1 16-16 z"/>
+                                <path d="M70 146 l-26 18 -12 78 a10 10 0 0 0 18 8 l16-62 z"/>
+                                <path d="M190 146 l26 18 12 78 a10 10 0 0 1-18 8 l-16-62 z"/>
+                                <path d="M92 250 h34 l-4 148 a12 12 0 0 1-24 0 z"/>
+                                <path d="M134 250 h34 l-6 148 a12 12 0 0 1-24 0 z"/>
+                            </g>
+
+                            {# Zones cliquables #}
+                            <ellipse data-zone="yeux" cx="115" cy="60" rx="11" ry="8"/>
+                            <ellipse data-zone="yeux" cx="145" cy="60" rx="11" ry="8"/>
+                            <rect data-zone="cou" x="114" y="98" width="32" height="30" rx="12"/>
+                            <ellipse data-zone="epaule" cx="80" cy="145" rx="22" ry="16"/>
+                            <ellipse data-zone="epaule" cx="180" cy="145" rx="22" ry="16"/>
+                            <rect data-zone="dos" x="94" y="164" width="72" height="70" rx="16"/>
+                            <ellipse data-zone="poignet" cx="40" cy="246" rx="14" ry="12"/>
+                            <ellipse data-zone="poignet" cx="220" cy="246" rx="14" ry="12"/>
+                            <ellipse data-zone="main" cx="36" cy="274" rx="16" ry="18"/>
+                            <ellipse data-zone="main" cx="224" cy="274" rx="16" ry="18"/>
+
+                            {# Étiquettes #}
+                            <g font-family="Nunito, sans-serif" font-size="11" font-weight="700" fill="#5b6b85">
+                                <text x="196" y="64">Yeux</text>
+                                <text x="8" y="116">Cou</text>
+                                <text x="8" y="150">Épaules</text>
+                                <text x="196" y="200">Dos</text>
+                                <text x="196" y="252">Poignets</text>
+                                <text x="8" y="282">Doigts</text>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h3>Ce que tu as signalé</h3>
+                    <div id="listeDouleurs" class="d-grid gap-2"></div>
+                    <p id="aucuneDouleur" class="fw-bold texte-doux">Rien pour le moment — tant mieux ! 🎉</p>
+
+                    <div class="small fw-bold texte-doux mt-3 p-3 rounded-4 border border-2" style="border-style: dashed !important">
+                        💡 Astuce : clique sur une zone déjà colorée pour changer la note ou l'enlever.
+                    </div>
+                </div>
+            </div>
+
+            {{ form_start(form) }}
+                {{ form_errors(form) }}
+                {# Champ caché rempli par le script : {"cou": 3, "yeux": 2} #}
+                {{ form_widget(form.douleurs) }}
+
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-4">
+                    <a href="{{ path('enfant_journal_etape1') }}" class="btn btn-fantome">← Retour</a>
+                    <button type="submit" class="btn btn-primary btn-lg ms-auto">🎉 Terminer mon journal</button>
+                </div>
+            {{ form_end(form) }}
+        </div>
+    </div>
+
+    {# --- Fenêtre (modale Bootstrap) pour choisir l'intensité --------------- #}
+    <div class="modal fade" id="modaleDouleur" tabindex="-1" aria-labelledby="modaleDouleurTitre" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body p-4 text-center">
+                    <h2 id="modaleDouleurTitre">Ça fait mal comment ?</h2>
+                    <p class="fw-bold texte-doux">1 = un tout petit peu, 5 = très très mal</p>
+
+                    <div class="echelle-douleur">
+                        {% for intensite in 1..5 %}
+                            <button type="button" data-intensite="{{ intensite }}">{{ intensite }}</button>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="button" class="btn btn-fantome flex-fill" data-bs-dismiss="modal">Annuler</button>
+                        <button type="button" class="btn btn-supprimer flex-fill" id="boutonEnlever">Enlever</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        // Libellés des zones, venant de DouleurZone::ZONES : {"yeux": {"label": "Yeux", "emoji": "👀"}, …}
+        const zones = {{ zones|json_encode|raw }};
+
+        // Douleurs choisies : {"cou": 3, "yeux": 2}
+        const douleurs = {};
+
+        const champCache = document.getElementById('{{ form.douleurs.vars.id }}');
+        const modale = new bootstrap.Modal(document.getElementById('modaleDouleur'));
+        let zoneEnCours = null;
+
+        // Recopie les douleurs dans le champ caché, colorie le schéma et met à jour la liste.
+        function afficherDouleurs() {
+            champCache.value = JSON.stringify(douleurs);
+
+            document.querySelectorAll('.schema-corporel [data-zone]').forEach(function (forme) {
+                const intensite = douleurs[forme.dataset.zone];
+                forme.setAttribute('class', intensite ? 'intensite-' + intensite : '');
+            });
+
+            const liste = document.getElementById('listeDouleurs');
+            liste.innerHTML = '';
+            Object.keys(douleurs).forEach(function (zone) {
+                const ligne = document.createElement('div');
+                ligne.className = 'card shadow-none';
+                ligne.innerHTML =
+                    '<div class="card-body d-flex align-items-center gap-2 py-2 fw-extra text-marine">' +
+                    '<span class="fs-4"></span><span class="flex-fill"></span><span class="pastille"></span>' +
+                    '</div>';
+                const parties = ligne.querySelectorAll('span');
+                parties[0].textContent = zones[zone].emoji;
+                parties[1].textContent = zones[zone].label;
+                parties[2].textContent = douleurs[zone] + '/5';
+                liste.appendChild(ligne);
+            });
+
+            document.getElementById('aucuneDouleur').hidden = Object.keys(douleurs).length > 0;
+        }
+
+        // Clic sur une zone du corps : on ouvre la fenêtre de choix
+        document.querySelectorAll('.schema-corporel [data-zone]').forEach(function (forme) {
+            forme.addEventListener('click', function () {
+                zoneEnCours = forme.dataset.zone;
+                document.getElementById('modaleDouleurTitre').textContent =
+                    zones[zoneEnCours].emoji + ' ' + zones[zoneEnCours].label + ' — ça fait mal comment ?';
+                modale.show();
+            });
+        });
+
+        // Clic sur 1, 2, 3, 4 ou 5
+        document.querySelectorAll('[data-intensite]').forEach(function (bouton) {
+            bouton.addEventListener('click', function () {
+                douleurs[zoneEnCours] = parseInt(bouton.dataset.intensite, 10);
+                afficherDouleurs();
+                modale.hide();
+            });
+        });
+
+        // Clic sur « Enlever »
+        document.getElementById('boutonEnlever').addEventListener('click', function () {
+            delete douleurs[zoneEnCours];
+            afficherDouleurs();
+            modale.hide();
+        });
+
+        afficherDouleurs();
+    </script>
+{% endblock %}

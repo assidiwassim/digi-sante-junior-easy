@@ -1,0 +1,98 @@
+{% extends 'enfant/layout.html.twig' %}
+
+{% block title %}Mon journal — Mes écrans{% endblock %}
+
+{% block body %}
+    {% include 'enfant/journal/_progression.html.twig' with {etape: 1} %}
+
+    <div class="card card-enfant">
+        <div class="card-body">
+            <p class="fw-bold texte-doux fs-6">
+                Combien de temps as-tu passé devant chaque écran aujourd'hui ? Fais glisser les curseurs !
+            </p>
+
+            {# Total mis à jour en direct par le script en bas de page #}
+            <div class="encadre text-center my-4 p-4">
+                <div class="stat-libelle">Total de la journée</div>
+                <div id="total" class="gros-chiffre texte-vert">0 min</div>
+                <div class="progress jauge mt-3" role="progressbar" aria-label="Total par rapport à ta limite">
+                    <div id="totalJauge" class="progress-bar niveau-vert" style="width: 0%"></div>
+                </div>
+                <div id="totalMessage" class="mt-2 fw-extra texte-doux">Bouge les curseurs pour commencer 👇</div>
+            </div>
+
+            {{ form_start(form, {attr: {id: 'formEcrans'}}) }}
+                {{ form_errors(form) }}
+
+                <div class="row g-3">
+                    {# Un bloc par écran (le champ caché _token est rendu par form_end) #}
+                    {% for champ in form|filter(champ => champ.vars.name != '_token') %}
+                        <div class="col-sm-6">
+                            <div class="card h-100 shadow-none">
+                                <div class="card-body">
+                                    {{ form_label(champ, null, {label_attr: {class: 'fs-6'}}) }}
+                                    {{ form_widget(champ) }}
+                                    <div class="text-end fw-extra" style="color: var(--turquoise)">
+                                        <span data-minutes-de="{{ champ.vars.id }}">0</span> min
+                                    </div>
+                                    {{ form_errors(champ) }}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-4">
+                    <a href="{{ path('enfant_accueil') }}" class="btn btn-fantome">← Annuler</a>
+                    <button type="submit" class="btn btn-primary btn-lg ms-auto">Suivant : mon corps →</button>
+                </div>
+            {{ form_end(form) }}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        // Additionne les curseurs et colore la jauge :
+        // vert (moins de 2 h), orange (2 à 4 h), rouge (plus de 4 h).
+        const curseurs = document.querySelectorAll('#formEcrans input[type=range]');
+        const limite = {{ enfant.maxMinutesJour }};
+
+        function formaterDuree(minutes) {
+            const heures = Math.floor(minutes / 60);
+            const reste = minutes % 60;
+            if (heures === 0) return reste + ' min';
+            return reste === 0 ? heures + ' h' : heures + ' h ' + String(reste).padStart(2, '0');
+        }
+
+        function mettreAJourTotal() {
+            let total = 0;
+            curseurs.forEach(function (curseur) {
+                const minutes = parseInt(curseur.value, 10) || 0;
+                total += minutes;
+                document.querySelector('[data-minutes-de="' + curseur.id + '"]').textContent = minutes;
+            });
+
+            let niveau = 'vert';
+            let message = 'Bien joué, tu gères ! 🌱';
+            if (total > 240) {
+                niveau = 'rouge';
+                message = 'Ça fait beaucoup d’écran aujourd’hui 🔴';
+            } else if (total >= 120) {
+                niveau = 'orange';
+                message = 'Attention, tu approches de la limite 🧡';
+            }
+
+            document.getElementById('total').textContent = formaterDuree(total);
+            document.getElementById('total').className = 'gros-chiffre texte-' + niveau;
+            document.getElementById('totalJauge').className = 'progress-bar niveau-' + niveau;
+            document.getElementById('totalJauge').style.width = Math.min(100, Math.round(total / limite * 100)) + '%';
+            document.getElementById('totalMessage').textContent = message;
+        }
+
+        curseurs.forEach(function (curseur) {
+            curseur.addEventListener('input', mettreAJourTotal);
+        });
+        mettreAJourTotal();
+    </script>
+{% endblock %}

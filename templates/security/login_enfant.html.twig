@@ -1,0 +1,53 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion enfant — Digi-Santé Junior{% endblock %}
+{% block body_class %}enfant-body{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block body %}
+    <div class="mx-auto contenu" style="max-width: 560px">
+        <div class="text-center">
+            <div class="avatar-bulle grand mascotte mx-auto mb-3">🦊</div>
+            <h1 class="mb-1" style="font-size: 2.2rem">Coucou, c'est toi ?</h1>
+            <p class="texte-doux fs-5">Écris ton identifiant et ton mot de passe.</p>
+        </div>
+
+        <div class="card card-enfant">
+            <div class="card-body">
+                {% if error %}
+                    <div class="alert alert-danger">
+                        <span>🙈</span>
+                        <span>Oups ! L'identifiant ou le mot de passe n'est pas le bon. Essaie encore.</span>
+                    </div>
+                {% endif %}
+
+                {# Même adresse d'envoi que la connexion parent : /login #}
+                <form method="post" action="{{ path('app_login') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label fs-5">👤 Mon identifiant</label>
+                        <input type="text" id="username" name="_username" value="{{ last_username }}"
+                               class="form-control form-control-lg text-center" autocomplete="username"
+                               placeholder="par exemple : lea" required autofocus>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label fs-5">🔑 Mon mot de passe</label>
+                        <input type="password" id="password" name="_password"
+                               class="form-control form-control-lg text-center" autocomplete="current-password" required>
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                    {# En cas d'erreur, Symfony revient sur CETTE page (et pas sur /login).
+                       Il faut un chemin (« /connexion-enfant »), pas un nom de route. #}
+                    <input type="hidden" name="_failure_path" value="{{ path('app_enfant_login') }}">
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-2">C'est parti ! 🚀</button>
+                </form>
+            </div>
+        </div>
+
+        <p class="text-center fw-bold">
+            <a href="{{ path('app_login') }}">Je suis un parent →</a>
+        </p>
+    </div>
+{% endblock %}

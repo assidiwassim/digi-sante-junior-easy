@@ -1,0 +1,54 @@
+{% extends 'enfant/layout.html.twig' %}
+
+{% block title %}Découvrir — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="avatar-bulle grand mascotte">📚</div>
+        <div>
+            <h1 class="mb-0">Ma bibliothèque</h1>
+            <p class="mb-0 texte-doux fs-5">Des fiches, des vidéos, des quiz et des exercices rien que pour toi.</p>
+        </div>
+    </div>
+
+    {% for type, contenus in groupes %}
+        {% set premier = contenus|first %}
+        <section>
+            <h2 class="d-flex align-items-center gap-2">
+                <span>{{ premier.typeEmoji }}</span>
+                {{ premier.typeLabel }}{{ contenus|length > 1 ? 's' }}
+                <span class="pastille">{{ contenus|length }}</span>
+            </h2>
+
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                {% for contenu in contenus %}
+                    <div class="col">
+                        <article class="card card-enfant h-100">
+                            <div class="card-body">
+                                <h3 class="fs-5">{{ contenu.titre }}</h3>
+
+                                {% if contenu.declencheurLabel %}
+                                    <span class="pastille mb-2">{{ contenu.declencheurLabel }}</span>
+                                {% endif %}
+
+                                <p class="texte-doux small texte-multiligne mb-0">{{ contenu.contenu }}</p>
+
+                                {% if contenu.url %}
+                                    <a href="{{ contenu.url }}" target="_blank" rel="noopener" class="btn btn-or btn-sm mt-3">▶️ Ouvrir le lien</a>
+                                {% endif %}
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% else %}
+        <div class="card card-enfant text-center">
+            <div class="card-body py-5">
+                <div class="display-5">📭</div>
+                <h2>La bibliothèque est vide pour l'instant</h2>
+                <p class="texte-doux mb-0">Reviens bientôt !</p>
+            </div>
+        </div>
+    {% endfor %}
+{% endblock %}

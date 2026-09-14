@@ -1,0 +1,65 @@
+{#
+    Formulaire du profil enfant, partagé par les pages « Ajouter » et « Modifier ».
+    Paramètres : form (EnfantType), bouton (texte du bouton)
+#}
+{{ form_start(form) }}
+    {{ form_errors(form) }}
+
+    <div class="row">
+        <div class="col-sm-6">{{ form_row(form.prenom) }}</div>
+        <div class="col-sm-6">{{ form_row(form.nom) }}</div>
+    </div>
+
+    {{ form_row(form.dateNaissance) }}
+
+    <div class="mb-3">
+        {{ form_label(form.avatar) }}
+        <p class="form-text mt-0">Choisis la mascotte qui te ressemble le plus.</p>
+        {{ form_widget(form.avatar) }}
+        {{ form_errors(form.avatar) }}
+    </div>
+
+    {# Limite d'écran : curseur + durée lisible sous le curseur #}
+    <div class="mb-3">
+        {{ form_label(form.maxMinutesJour) }}
+        {{ form_widget(form.maxMinutesJour) }}
+        {{ form_errors(form.maxMinutesJour) }}
+        <div class="text-center">
+            <span class="stat-valeur" id="limiteAffichee"></span>
+            <div class="stat-libelle">par jour</div>
+        </div>
+    </div>
+
+    <div class="encadre small fw-semibold texte-doux mb-3">
+        💡 Repère : l'OMS recommande de limiter le temps d'écran récréatif à environ
+        2 heures par jour pour les 8-14 ans, et au moins 60 minutes d'activité physique.
+    </div>
+
+    {# Le mot de passe n'existe que dans le formulaire de création #}
+    {% if form.motDePasse is defined %}
+        <div class="encadre border border-2 mb-3" style="border-style: dashed !important">
+            {{ form_row(form.motDePasse, {row_attr: {class: 'mb-0'}}) }}
+        </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">{{ bouton }}</button>
+{{ form_end(form) }}
+
+<script>
+    // Affiche la limite choisie en « 2 h 30 » sous le curseur.
+    const curseurLimite = document.getElementById('{{ form.maxMinutesJour.vars.id }}');
+
+    function afficherLimite() {
+        const minutes = parseInt(curseurLimite.value, 10) || 0;
+        const heures = Math.floor(minutes / 60);
+        const reste = minutes % 60;
+        let texte = reste + ' min';
+        if (heures > 0) {
+            texte = reste === 0 ? heures + ' h' : heures + ' h ' + String(reste).padStart(2, '0');
+        }
+        document.getElementById('limiteAffichee').textContent = texte;
+    }
+
+    curseurLimite.addEventListener('input', afficherLimite);
+    afficherLimite();
+</script>

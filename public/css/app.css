@@ -1,0 +1,562 @@
+/* ==========================================================================
+   Digi-Santé Junior Easy — charte graphique
+   --------------------------------------------------------------------------
+   Bootstrap 5 fournit la mise en page et les composants (navbar, cartes,
+   boutons, formulaires, alertes, tableaux, modale).
+   Ce fichier ne fait que deux choses :
+     1. adapter Bootstrap aux couleurs et aux formes de Digi-Santé ;
+     2. ajouter les quelques éléments propres au projet (jauge, schéma du
+        corps, galerie d'avatars…).
+   ========================================================================== */
+
+/* --- 1. Palette ---------------------------------------------------------- */
+:root {
+    --marine: #1f3864;
+    --turquoise: #0e7c7b;
+    --turquoise-clair: #14a3a1;
+    --or: #c99a2e;
+    --or-clair: #e5b955;
+    --fond: #e7f3f2;
+    --bordure: #d6e6e5;
+    --texte: #16233d;
+    --texte-doux: #5b6b85;
+
+    --vert: #16a34a;
+    --vert-doux: #dcfce7;
+    --orange: #ea580c;
+    --orange-doux: #ffedd5;
+    --rouge: #dc2626;
+    --rouge-doux: #fee2e2;
+
+    --ombre: 0 10px 30px -12px rgba(31, 56, 100, 0.28);
+    --ombre-forte: 0 18px 45px -18px rgba(31, 56, 100, 0.45);
+
+    /* Variables de Bootstrap remplacées par celles du projet.
+       --bs-body-bg n'est PAS modifiée : Bootstrap l'utilise aussi pour le fond
+       des cartes, champs, tableaux et menus, qui doivent rester blancs. */
+    --bs-body-font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    --bs-body-color: var(--texte);
+    --bs-link-color: var(--turquoise);
+    --bs-link-color-rgb: 14, 124, 123;
+    --bs-link-hover-color: var(--turquoise-clair);
+    --bs-link-hover-color-rgb: 20, 163, 161;
+    --bs-border-color: var(--bordure);
+    --bs-secondary-color: var(--texte-doux);
+}
+
+body { background-color: var(--fond); }
+
+h1, h2, h3, h4 {
+    font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+    font-weight: 600;
+    color: var(--marine);
+    line-height: 1.15;
+}
+
+h1 { font-size: clamp(1.8rem, 4vw, 2.3rem); }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.1rem; font-weight: 700; }
+
+/* Liens sans soulignement, sauf au survol */
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+a.btn:hover, .nav-link:hover, .dropdown-item:hover, .list-group-item:hover, .marque:hover { text-decoration: none; }
+
+.texte-doux { color: var(--texte-doux); font-weight: 600; }
+.text-marine { color: var(--marine); }
+.text-or { color: var(--or); }
+.fw-extra { font-weight: 800; }
+
+/* Garde les retours à la ligne saisis dans les contenus */
+.texte-multiligne { white-space: pre-line; line-height: 1.55; }
+
+/* Largeur maximale du contenu, comme la version de référence */
+@media (min-width: 1200px) {
+    .container { max-width: 1180px; }
+}
+
+/* Espace régulier entre les blocs de premier niveau de chaque page */
+.contenu > * + * { margin-top: 1.25rem; }
+
+/* --- 2. Barre de navigation --------------------------------------------- */
+.navbar-digi {
+    background: var(--marine);
+    box-shadow: var(--ombre);
+}
+
+.marque {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #fff !important;
+}
+
+.marque-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--turquoise), var(--or));
+    display: grid;
+    place-items: center;
+    font-size: 1.2rem;
+}
+
+.marque-suffixe { color: var(--or-clair); }
+
+.navbar-digi .nav-link {
+    color: rgba(255, 255, 255, 0.86);
+    font-weight: 700;
+    padding: 8px 14px !important;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.navbar-digi .nav-link:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.navbar-digi .nav-link.active { background: var(--turquoise); color: #fff; }
+
+/* Bouton du menu utilisateur (avatar + nom) */
+.btn.menu-utilisateur {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 14px 5px 5px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-weight: 800;
+}
+
+.menu-utilisateur:hover,
+.menu-utilisateur:focus,
+.menu-utilisateur.show { background: rgba(255, 255, 255, 0.22); color: #fff; border-color: rgba(255, 255, 255, 0.45); }
+
+.menu-utilisateur-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    color: var(--marine);
+    font-size: 1.15rem;
+}
+
+.dropdown-menu {
+    border-radius: 18px;
+    border-color: var(--bordure);
+    box-shadow: var(--ombre-forte);
+    padding: 8px;
+}
+
+.dropdown-item {
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 800;
+    color: var(--marine);
+}
+
+.dropdown-item:hover { background: var(--fond); color: var(--marine); }
+.dropdown-item.text-danger:hover { background: var(--rouge-doux); }
+
+/* --- 3. Boutons ---------------------------------------------------------- */
+.btn {
+    border-radius: 999px;
+    font-weight: 800;
+    padding: 10px 20px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn:hover { transform: translateY(-1px); box-shadow: var(--ombre); }
+
+.btn-primary {
+    --bs-btn-bg: var(--turquoise);
+    --bs-btn-border-color: var(--turquoise);
+    --bs-btn-hover-bg: var(--turquoise-clair);
+    --bs-btn-hover-border-color: var(--turquoise-clair);
+    --bs-btn-active-bg: var(--turquoise);
+    --bs-btn-active-border-color: var(--turquoise);
+}
+
+.btn-marine {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--marine);
+    --bs-btn-border-color: var(--marine);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #2a4a80;
+    --bs-btn-hover-border-color: #2a4a80;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--marine);
+}
+
+.btn-or {
+    --bs-btn-color: #3a2c05;
+    --bs-btn-bg: var(--or);
+    --bs-btn-border-color: var(--or);
+    --bs-btn-hover-color: #3a2c05;
+    --bs-btn-hover-bg: var(--or-clair);
+    --bs-btn-hover-border-color: var(--or-clair);
+}
+
+/* Bouton blanc à bordure claire (actions secondaires) */
+.btn-fantome {
+    --bs-btn-color: var(--marine);
+    --bs-btn-bg: #fff;
+    --bs-btn-border-color: var(--bordure);
+    --bs-btn-hover-color: var(--marine);
+    --bs-btn-hover-bg: #fff;
+    --bs-btn-hover-border-color: var(--turquoise-clair);
+    --bs-btn-active-bg: var(--fond);
+    border-width: 2px;
+}
+
+/* Bouton de suppression, en rouge doux */
+.btn-supprimer {
+    --bs-btn-color: var(--rouge);
+    --bs-btn-bg: var(--rouge-doux);
+    --bs-btn-border-color: #fca5a5;
+    --bs-btn-hover-color: var(--rouge);
+    --bs-btn-hover-bg: #fecaca;
+    --bs-btn-hover-border-color: #f87171;
+    border-width: 2px;
+}
+
+.btn-sm { padding: 6px 13px; font-size: 0.85rem; }
+.btn-lg { padding: 16px 32px; font-size: 1.15rem; border-radius: 22px; }
+
+/* --- 4. Cartes ------------------------------------------------------------ */
+.card {
+    border-radius: 18px;
+    border-color: var(--bordure);
+    box-shadow: var(--ombre);
+}
+
+.card-body { padding: 22px; }
+
+/* Grande carte blanche de l'espace enfant */
+.card-enfant {
+    border-radius: 26px;
+    border: 3px solid #fff;
+    box-shadow: var(--ombre-forte);
+}
+
+.card-enfant > .card-body { padding: 28px; }
+
+.carte-titre {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--marine);
+    margin-bottom: 1rem;
+}
+
+.sous-titre { margin: 1.25rem 0 0.5rem; font-weight: 800; color: var(--marine); }
+
+/* Encadré sur fond turquoise très clair */
+.encadre {
+    background: var(--fond);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+@media (max-width: 575px) {
+    .card-body, .card-enfant > .card-body { padding: 18px; }
+    .btn-lg { width: 100%; }
+}
+
+/* --- 5. Formulaires ------------------------------------------------------- */
+/* .col-form-label : libellé des groupes de choix (ex. la galerie d'avatars) */
+.form-label, .col-form-label { font-weight: 700; color: var(--marine); }
+
+.form-control,
+.form-select {
+    border: 2px solid var(--bordure);
+    border-radius: 14px;
+    padding: 11px 14px;
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: var(--turquoise);
+    box-shadow: 0 0 0 4px rgba(14, 124, 123, 0.15);
+}
+
+.form-check-input:checked { background-color: var(--turquoise); border-color: var(--turquoise); }
+.form-text { font-weight: 600; color: var(--texte-doux); }
+.invalid-feedback { font-weight: 700; }
+
+/* Curseurs (temps d'écran, limite) */
+.form-range { height: 2.2rem; }
+
+.form-range::-webkit-slider-runnable-track {
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--turquoise), var(--or));
+}
+
+.form-range::-moz-range-track {
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--turquoise), var(--or));
+}
+
+.form-range::-webkit-slider-thumb {
+    width: 30px;
+    height: 30px;
+    margin-top: -9px;
+    background: #fff;
+    border: 4px solid var(--marine);
+    box-shadow: var(--ombre);
+}
+
+.form-range::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    background: #fff;
+    border: 4px solid var(--marine);
+}
+
+/* --- 6. Messages (alertes Bootstrap) ------------------------------------- */
+.alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border: none;
+    border-left: 6px solid;
+    border-radius: 18px;
+    font-weight: 700;
+    box-shadow: var(--ombre);
+}
+
+.alert-success { background: var(--vert-doux); color: #14532d; border-color: var(--vert); }
+.alert-warning { background: var(--orange-doux); color: #7c2d12; border-color: var(--orange); }
+.alert-danger { background: var(--rouge-doux); color: #7f1d1d; border-color: var(--rouge); }
+.alert-info { background: #dbeafe; color: #1e3a8a; border-color: #2563eb; }
+
+/* --- 7. Pastilles, statistiques, tableaux -------------------------------- */
+.pastille {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    background: var(--fond);
+    color: var(--turquoise);
+    border: 1px solid var(--bordure);
+}
+
+.stat-libelle {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--texte-doux);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.stat-valeur {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--marine);
+    line-height: 1.1;
+}
+
+.gros-chiffre {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    line-height: 1;
+    font-size: clamp(2.6rem, 10vw, 4.5rem);
+}
+
+.texte-vert { color: var(--vert); }
+.texte-orange { color: var(--orange); }
+.texte-rouge { color: var(--rouge); }
+
+/* Tableau posé bord à bord dans une carte */
+.card .table { margin-bottom: 0; --bs-table-hover-bg: #f6fbfb; }
+.table > :not(caption) > * > * { padding: 12px 16px; }
+
+.table thead th {
+    background: var(--fond);
+    color: var(--texte-doux);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.card > .table-responsive { border-radius: 18px; }
+
+/* Ligne « clé : valeur » des fiches profil */
+.profil-ligne {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--fond);
+    border-radius: 14px;
+}
+
+.profil-cle { font-size: 0.85rem; font-weight: 700; color: var(--texte-doux); }
+.profil-valeur { font-weight: 800; color: var(--marine); }
+
+/* --- 8. Jauges et progression (sur la base .progress de Bootstrap) ------- */
+.jauge { height: 22px; border-radius: 999px; background: #e2e8f0; }
+.jauge .progress-bar { border-radius: 999px; }
+
+.niveau-vert { background: linear-gradient(90deg, #22c55e, var(--vert)); }
+.niveau-orange { background: linear-gradient(90deg, #fb923c, var(--orange)); }
+.niveau-rouge { background: linear-gradient(90deg, #f87171, var(--rouge)); }
+
+.progression { height: 14px; border-radius: 999px; background: #fff; }
+.progression .progress-bar { background: linear-gradient(90deg, var(--turquoise), var(--or)); }
+
+.etape-pastille {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 1.25rem;
+    background: #fff;
+    border: 3px solid var(--bordure);
+}
+
+.etape-pastille.active { background: var(--turquoise); border-color: var(--turquoise); color: #fff; }
+.etape-pastille.faite { background: var(--vert-doux); border-color: var(--vert); }
+
+/* --- 9. Espace enfant ----------------------------------------------------- */
+.enfant-body {
+    background:
+        radial-gradient(1200px 500px at 10% -10%, #d6f2f1 0%, transparent 60%),
+        radial-gradient(900px 420px at 100% 0%, #fdf1d6 0%, transparent 55%),
+        var(--fond);
+    min-height: 100vh;
+}
+
+.avatar-bulle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    font-size: 2rem;
+    background: #fff;
+    box-shadow: var(--ombre);
+}
+
+.avatar-bulle.grand { width: 96px; height: 96px; font-size: 3rem; }
+.avatar-bulle.petit { width: 44px; height: 44px; font-size: 1.4rem; }
+
+.mascotte { animation: flotte 3.5s ease-in-out infinite; }
+
+@keyframes flotte {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+/* Galerie d'avatars (voir templates/form/avatars.html.twig) */
+.galerie-avatars {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 12px;
+}
+
+.galerie-avatars input[type='radio'] { position: absolute; opacity: 0; pointer-events: none; }
+
+.avatar-vignette {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 8px 12px;
+    border: 3px solid var(--bordure);
+    border-radius: 18px;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.avatar-vignette:hover { border-color: var(--turquoise-clair); transform: translateY(-2px); }
+
+.avatar-vignette-emoji {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 2rem;
+    background: color-mix(in srgb, var(--avatar-couleur) 16%, #fff);
+    border: 2px solid color-mix(in srgb, var(--avatar-couleur) 35%, #fff);
+}
+
+.avatar-vignette-nom { font-size: 0.74rem; font-weight: 800; color: var(--texte-doux); }
+
+.galerie-avatars input:checked + .avatar-vignette { border-color: var(--turquoise); background: var(--fond); }
+.galerie-avatars input:checked + .avatar-vignette .avatar-vignette-emoji {
+    background: color-mix(in srgb, var(--avatar-couleur) 26%, #fff);
+    border-color: var(--avatar-couleur);
+}
+.galerie-avatars input:checked + .avatar-vignette .avatar-vignette-nom { color: var(--marine); }
+.galerie-avatars input:focus-visible + .avatar-vignette { outline: 3px solid var(--turquoise); outline-offset: 2px; }
+
+.galerie-avatars input:checked + .avatar-vignette::after {
+    content: '✓';
+    position: absolute;
+    top: 6px;
+    right: 9px;
+    font-weight: 800;
+    color: var(--turquoise);
+}
+
+/* Schéma corporel (étape 2 du journal) */
+.schema-corporel { display: block; width: 100%; max-width: 320px; height: auto; margin: 0 auto; }
+
+.schema-corporel [data-zone] {
+    fill: #cfe6e5;
+    stroke: var(--marine);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: fill 0.18s ease;
+}
+
+.schema-corporel [data-zone]:hover { fill: var(--or-clair); }
+.schema-corporel .intensite-1 { fill: #fde68a; }
+.schema-corporel .intensite-2 { fill: #fcd34d; }
+.schema-corporel .intensite-3 { fill: #fb923c; }
+.schema-corporel .intensite-4 { fill: #f87171; }
+.schema-corporel .intensite-5 { fill: #dc2626; }
+
+/* Boutons 1 à 5 de la fenêtre « ça fait mal comment ? » */
+.echelle-douleur { display: flex; justify-content: center; gap: 8px; }
+
+.echelle-douleur button {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    border: 3px solid var(--bordure);
+    background: #fff;
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+
+.echelle-douleur button:hover { border-color: var(--turquoise); transform: translateY(-3px); }
+
+.modal-content { border: none; border-radius: 26px; box-shadow: var(--ombre-forte); }
+
+@media (prefers-reduced-motion: reduce) {
+    .mascotte { animation: none; }
+}

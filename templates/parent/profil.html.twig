@@ -1,0 +1,43 @@
+{% extends 'parent/layout.html.twig' %}
+
+{% block title %}Mon profil — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <h1>Mon profil</h1>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="carte-titre">✏️ Mes informations</div>
+
+                    {{ form_start(form) }}
+                        {{ form_errors(form) }}
+                        {{ form_row(form.email) }}
+                        <div class="row">
+                            <div class="col-sm-6">{{ form_row(form.pays) }}</div>
+                            <div class="col-sm-6">{{ form_row(form.ville) }}</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="carte-titre">🔐 Changer mon mot de passe</div>
+                    <p class="small texte-doux">Compte créé le {{ app.user.createdAt|date('d/m/Y') }}.</p>
+
+                    {{ form_start(formMotDePasse) }}
+                        {{ form_errors(formMotDePasse) }}
+                        {{ form_row(formMotDePasse.plainPassword.first) }}
+                        {{ form_row(formMotDePasse.plainPassword.second) }}
+                        <button type="submit" class="btn btn-primary">Modifier le mot de passe</button>
+                    {{ form_end(formMotDePasse) }}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

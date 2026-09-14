@@ -1,0 +1,21 @@
+{#
+    Menu déroulant de la barre de navigation (dropdown Bootstrap).
+
+    Paramètres :
+      avatar        emoji ou initiale affiché dans la pastille
+      nom           texte à côté de la pastille
+      route_profil  route de la page profil (facultatif)
+#}
+<div class="dropdown">
+    <button class="btn menu-utilisateur dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="menu-utilisateur-avatar">{{ avatar }}</span>
+        <span>{{ nom }}</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        {% if route_profil is defined %}
+            <li><a class="dropdown-item" href="{{ path(route_profil) }}">🪪 Mon profil</a></li>
+            <li><hr class="dropdown-divider"></li>
+        {% endif %}
+        <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}">👋 Déconnexion</a></li>
+    </ul>
+</div>
