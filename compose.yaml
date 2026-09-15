@@ -1,21 +1,22 @@
-# Digi-Santé Junior Easy — environnement de développement
+# Digi-Santé Junior — environnement de développement
 #
-#   docker compose up -d --build     démarre l'application et MySQL
+#   docker compose up -d --build     démarre l'application, MySQL et phpMyAdmin
 #   http://localhost:8081            l'application
+#   http://localhost:8082            phpMyAdmin (consultation de la base)
 #   127.0.0.1:3308                   MySQL, depuis la machine hôte
 
-name: digisante-easy
+name: digisante-junior
 
 services:
   app:
     build: .
-    container_name: digisante_easy_app
+    container_name: digisante_junior_app
     depends_on:
       database:
         condition: service_healthy
     environment:
       # Dans le réseau Docker, MySQL s'appelle `database` (nom du service).
-      DATABASE_URL: 'mysql://digisante:digisante@database:3306/digisante_easy?serverVersion=8.0.36&charset=utf8mb4'
+      DATABASE_URL: 'mysql://digisante:digisante@database:3306/digisante_junior?serverVersion=8.0.36&charset=utf8mb4'
     ports:
       - '8081:80'
     volumes:
@@ -23,10 +24,10 @@ services:
 
   database:
     image: mysql:8.0.36
-    container_name: digisante_easy_db
+    container_name: digisante_junior_db
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: digisante_easy
+      MYSQL_DATABASE: digisante_junior
       MYSQL_USER: digisante
       MYSQL_PASSWORD: digisante
       # Même fuseau que PHP : CURDATE() et « today » désignent le même jour.
@@ -41,6 +42,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+
+  # Interface web pour consulter la base, sur http://localhost:8082.
+  # PMA_USER et PMA_PASSWORD étant fournis, phpMyAdmin se connecte tout seul :
+  # aucun écran de connexion. Outil de développement uniquement.
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: digisante_junior_phpmyadmin
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: digisante
+      PMA_PASSWORD: digisante
+      # Fuseau de l'affichage des dates, comme PHP et MySQL.
+      TZ: Europe/Paris
+    ports:
+      - '8082:80'
 
 volumes:
   db_data:

@@ -1,4 +1,4 @@
-# Digi-Santé Junior Easy
+# Digi-Santé Junior
 
 Application web de suivi du **bien-être numérique des enfants de 8 à 14 ans**.
 
@@ -8,11 +8,10 @@ Application web de suivi du **bien-être numérique des enfants de 8 à 14 ans**
 - Le **parent** crée les comptes de ses enfants, fixe une limite d'écran et suit
   l'évolution sur un tableau de bord avec graphique.
 - L'**administrateur** gère la bibliothèque de contenus (fiches, vidéos, quiz…)
-  et peut consulter ou supprimer les comptes.
+  et peut consulter ou supprimer les comptes parents.
 
-Cette version « Easy » reprend le design et les fonctionnalités de
-`digi-sante-junior`, avec un code volontairement simple, pensé pour un
-développeur qui débute avec Symfony.
+Le code est volontairement simple, pensé pour un développeur qui débute avec
+Symfony.
 
 ---
 
@@ -45,7 +44,7 @@ développeur qui débute avec Symfony.
 | Graphiques | Chart.js (CDN) |
 | Sécurité | Symfony Security (connexion, rôles, voter, CSRF) |
 | Tests | PHPUnit |
-| Environnement | Docker : FrankenPHP (PHP + serveur web) et MySQL |
+| Environnement | Docker : FrankenPHP (PHP + serveur web), MySQL et phpMyAdmin |
 
 Il n'y a **ni Node.js, ni npm, ni étape de compilation** : Bootstrap et
 Chart.js sont chargés depuis un CDN.
@@ -69,7 +68,7 @@ Composer et MySQL tournent dans les conteneurs.
 Depuis le dossier du projet :
 
 ```bash
-# 1. Construire et démarrer les conteneurs (PHP + MySQL)
+# 1. Construire et démarrer les conteneurs (PHP + MySQL + phpMyAdmin)
 docker compose up -d --build
 
 # 2. Installer les dépendances PHP
@@ -91,7 +90,8 @@ Ouvrez ensuite **<http://localhost:8081>**.
 | Service | Adresse |
 |---|---|
 | Application | <http://localhost:8081> |
-| MySQL (depuis votre machine, ex. DBeaver) | hôte `127.0.0.1`, port `3308`, utilisateur `digisante`, mot de passe `digisante`, base `digisante_easy` |
+| phpMyAdmin (voir la base dans le navigateur) | <http://localhost:8082> — la connexion est déjà configurée, il n'y a rien à saisir |
+| MySQL (depuis votre machine, ex. DBeaver) | hôte `127.0.0.1`, port `3308`, utilisateur `digisante`, mot de passe `digisante`, base `digisante_junior` |
 
 Pour arrêter : `docker compose stop`. Les données MySQL sont conservées dans un
 volume Docker ; `docker compose down -v` les efface définitivement.
@@ -141,7 +141,7 @@ DATABASE_URL="mysql://UTILISATEUR:MOT_DE_PASSE@HÔTE:PORT/NOM_DE_LA_BASE?serverV
   par exemple :
 
   ```dotenv
-  DATABASE_URL="mysql://root:monmotdepasse@127.0.0.1:3306/digisante_easy?serverVersion=8.0.36&charset=utf8mb4"
+  DATABASE_URL="mysql://root:monmotdepasse@127.0.0.1:3306/digisante_junior?serverVersion=8.0.36&charset=utf8mb4"
   ```
 
 Ne mettez jamais de vrai mot de passe dans `.env` : ce fichier est partagé.
@@ -194,7 +194,7 @@ l'utilisateur connecté…
 
 ## 8. Tests
 
-Les tests utilisent une base séparée, `digisante_easy_test`, remplie avec les
+Les tests utilisent une base séparée, `digisante_junior_test`, remplie avec les
 données de démonstration. Chaque test s'exécute dans une transaction annulée à
 la fin (bundle DAMA) : la base de test reste toujours identique.
 
@@ -227,7 +227,7 @@ docker compose exec app php bin/phpunit
 ## 9. Structure du projet
 
 ```text
-digi-sante-junior-easy/
+.                            (racine du projet)
 ├── compose.yaml, Dockerfile, docker/   environnement Docker
 ├── config/                  configuration Symfony (security.yaml, twig.yaml…)
 ├── migrations/              historique des modifications de la base
@@ -237,7 +237,7 @@ digi-sante-junior-easy/
 │   └── js/graphique-ecran.js  graphique Chart.js partagé
 ├── src/
 │   ├── Controller/          reçoit la requête, appelle Doctrine, affiche un gabarit
-│   │   ├── Admin/           contenus, parents, enfants
+│   │   ├── Admin/           contenus, parents
 │   │   ├── Enfant/          accueil, bibliothèque, profil, journal
 │   │   └── Parent/          tableau de bord, enfants, profil
 │   ├── DataFixtures/        données de démonstration
@@ -304,7 +304,7 @@ ContenuBienEtre (bibliothèque, indépendante)
 |---|---|
 | Page blanche ou erreur `vendor/autoload.php` | `docker compose exec app composer install` |
 | `Connection refused` / `Unknown database` | MySQL démarre encore : attendez quelques secondes, puis relancez `doctrine:database:create` |
-| Le port 8081 ou 3308 est déjà utilisé | changez le port de gauche dans `compose.yaml` (ex. `'8082:80'`) |
+| Le port 8081, 8082 ou 3308 est déjà utilisé | changez le port de gauche dans `compose.yaml` (ex. `'8090:80'`) |
 | Les modifications CSS ne s'affichent pas | rechargez sans cache (Ctrl+Maj+R / Cmd+Maj+R) |
-| Les tests échouent avec `Unknown database digisante_easy_test` | lancez les 3 commandes de préparation de la section [Tests](#8-tests) |
-| Erreur sur les droits de `digisante_easy_test` | le volume MySQL a été créé avant `docker/mysql/init.sql` : `docker compose down -v` puis réinstallez |
+| Les tests échouent avec `Unknown database digisante_junior_test` | lancez les 3 commandes de préparation de la section [Tests](#8-tests) |
+| Erreur sur les droits de `digisante_junior_test` | le volume MySQL a été créé avant `docker/mysql/init.sql` : `docker compose down -v` puis réinstallez |

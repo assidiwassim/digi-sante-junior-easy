@@ -81,6 +81,31 @@ class SecuriteTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
+    /**
+     * L'espace admin ne gère plus les enfants : ils dépendent de leur parent.
+     * Ses anciennes adresses ne doivent plus répondre.
+     */
+    public function testLAdminNAPlusDeSectionEnfants(): void
+    {
+        $client = static::createClient();
+        $users = static::getContainer()->get(UserRepository::class);
+        $client->loginUser($users->findOneBy(['email' => 'admin@digisante.local']));
+
+        $enfant = $users->findOneBy(['username' => 'lea'])->getProfilEnfant();
+
+        foreach (['/admin/enfants', '/admin/enfants/'.$enfant->getId()] as $url) {
+            $client->request('GET', $url);
+            $this->assertResponseStatusCodeSame(404, $url.' ne doit plus exister');
+        }
+
+        $client->request('POST', '/admin/enfants/'.$enfant->getId().'/supprimer');
+        $this->assertResponseStatusCodeSame(404);
+
+        // Le menu de l'administration ne propose plus « Enfants ».
+        $crawler = $client->request('GET', '/admin/contenus');
+        $this->assertCount(0, $crawler->filter('.navbar a:contains("Enfants")'));
+    }
+
     public function testInscriptionDUnParent(): void
     {
         $client = static::createClient();

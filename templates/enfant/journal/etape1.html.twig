@@ -57,6 +57,8 @@
         // vert (moins de 2 h), orange (2 à 4 h), rouge (plus de 4 h).
         const curseurs = document.querySelectorAll('#formEcrans input[type=range]');
         const limite = {{ enfant.maxMinutesJour }};
+        // Même plafond que la validation côté serveur (JournalEcransType).
+        const totalMax = {{ constant('App\\Form\\JournalEcransType::TOTAL_MAX') }};
 
         function formaterDuree(minutes) {
             const heures = Math.floor(minutes / 60);
@@ -75,7 +77,10 @@
 
             let niveau = 'vert';
             let message = 'Bien joué, tu gères ! 🌱';
-            if (total > 240) {
+            if (total > totalMax) {
+                niveau = 'rouge';
+                message = 'Plus de ' + formaterDuree(totalMax) + ' en une journée, c’est impossible : revois tes curseurs 🤔';
+            } else if (total > 240) {
                 niveau = 'rouge';
                 message = 'Ça fait beaucoup d’écran aujourd’hui 🔴';
             } else if (total >= 120) {

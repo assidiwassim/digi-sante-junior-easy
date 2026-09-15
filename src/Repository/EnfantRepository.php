@@ -31,21 +31,4 @@ class EnfantRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
-
-    /**
-     * Tous les enfants, avec leur parent et leur compte (administration).
-     *
-     * @return Enfant[]
-     */
-    public function findAllAvecParent(): array
-    {
-        return $this->createQueryBuilder('e')
-            ->addSelect('p', 'c')
-            ->join('e.parent', 'p')
-            ->join('e.compte', 'c')
-            ->orderBy('e.prenom')
-            ->addOrderBy('e.nom')
-            ->getQuery()
-            ->getResult();
-    }
 }

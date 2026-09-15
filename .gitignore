@@ -14,7 +14,7 @@
 /.phpunit.cache/
 ###< phpunit/phpunit ###
 
-###> digi-sante-junior-easy ###
+###> digi-sante-junior ###
 # Aide à l autocomplétion, régénérée par Symfony à chaque vidage de cache
 /config/reference.php
-###< digi-sante-junior-easy ###
+###< digi-sante-junior ###

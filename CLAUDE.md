@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Règles de développement de **Digi-Santé Junior Easy**, pour Claude Code et pour
+Règles de développement de **Digi-Santé Junior**, pour Claude Code et pour
 tout développeur qui reprend le projet.
 
 > Le code, les commentaires, les routes et les messages sont **en français**,
@@ -11,15 +11,14 @@ tout développeur qui reprend le projet.
 
 ## 1. Le projet
 
-Application Symfony de suivi du bien-être numérique des 8-14 ans. Réécriture
-**simplifiée** du projet `../digi-sante-junior`, qui sert uniquement de
-**référence visuelle et fonctionnelle** : ne jamais modifier ce dossier.
+Application Symfony de suivi du bien-être numérique des 8-14 ans, écrite de
+manière **volontairement simple** pour rester lisible par un débutant.
 
 Trois rôles, sans hiérarchie (un admin n'est ni parent ni enfant) :
 
 | Rôle | Espace | Connexion |
 |---|---|---|
-| `ROLE_ADMIN` | `/admin` : contenus (CRUD), parents et enfants (liste, fiche, suppression) | email sur `/login` |
+| `ROLE_ADMIN` | `/admin` : contenus (CRUD), parents (liste, fiche, suppression) | email sur `/login` |
 | `ROLE_PARENT` | `/parent` : tableau de bord, enfants (CRUD + limite d'écran), profil | email sur `/login` |
 | `ROLE_CHILD` | `/enfant` : accueil, journal en 2 étapes, conseils, bibliothèque, profil | identifiant sur `/connexion-enfant` |
 
@@ -35,7 +34,8 @@ notifications, badges, suivi du sport, du sommeil ou de l'humeur, API.
 - Aucun bundler, aucun Node.js, pas d'AssetMapper : les fichiers de `public/`
   sont servis tels quels (d'où l'absence de dossier `assets/`)
 - PHPUnit 12 + `dama/doctrine-test-bundle`
-- Docker : un conteneur `app` (FrankenPHP) et un conteneur `database` (MySQL)
+- Docker : un conteneur `app` (FrankenPHP), un conteneur `database` (MySQL) et
+  un conteneur `phpmyadmin` (consultation de la base, développement uniquement)
 
 ## 3. Commandes
 
@@ -51,10 +51,8 @@ make                                              # liste des raccourcis
 | URL / service | Valeur |
 |---|---|
 | Application | <http://localhost:8081> |
-| MySQL (hôte) | `127.0.0.1:3308`, `digisante` / `digisante`, base `digisante_easy` |
-
-Ports différents de la référence (8080 / 3307) : les deux projets peuvent tourner
-en même temps.
+| phpMyAdmin | <http://localhost:8082> (connecté d'office, sans mot de passe à saisir) |
+| MySQL (hôte) | `127.0.0.1:3308`, `digisante` / `digisante`, base `digisante_junior` |
 
 Comptes : `admin@digisante.local` / `admin123`, `parent@digisante.local` et
 `sofia@digisante.local` / `parent123`, enfants `lea` `tom` `noah` `ines` / `enfant123`.
@@ -140,8 +138,8 @@ templates/
   Insérer du texte avec `textContent`, jamais une donnée dans `innerHTML`.
 - Données PHP vers JS : `{{ variable|json_encode|raw }}` (tableaux de nombres
   ou constantes, jamais une saisie brute d'utilisateur).
-- **Préserver le design** de la référence : couleurs, polices (Baloo 2 pour les
-  titres, Nunito pour le texte), boutons en pilule, cartes arrondies à ombre douce.
+- **Préserver le design** : couleurs, polices (Baloo 2 pour les titres, Nunito
+  pour le texte), boutons en pilule, cartes arrondies à ombre douce.
 
 ## 7. Doctrine, base de données et migrations
 
@@ -183,6 +181,9 @@ templates/
 - Messages en français, rédigés pour l'utilisateur (tutoiement côté enfant).
 - Un curseur (`RangeType`) envoie une chaîne : pour un champ mappé sur un `int`,
   ajouter un `CallbackTransformer` (voir `EnfantType`).
+- Règle portant sur **plusieurs champs à la fois** (total des curseurs d'écran) :
+  `Assert\Callback` dans l'option `constraints` du formulaire (voir
+  `JournalEcransType`). L'erreur s'affiche avec `form_errors(form)`.
 - Formulaire lié à l'utilisateur connecté (profil parent) : après une saisie
   invalide, `$entityManager->refresh($user)`, sinon il est déconnecté.
 
@@ -191,7 +192,7 @@ templates/
 - Chaque fonctionnalité ou correction importante est couverte par un test dans
   `tests/` (`WebTestCase` pour un parcours, `KernelTestCase` pour un service,
   `TestCase` pour une classe pure).
-- La base de test (`digisante_easy_test`) contient les fixtures ; DAMA annule
+- La base de test (`digisante_junior_test`) contient les fixtures ; DAMA annule
   chaque test. Un test peut donc supprimer ou créer des données librement.
 - Préférer `$client->loginUser()` pour se connecter, sauf pour tester la connexion.
 - Avant de terminer une tâche :
@@ -212,6 +213,7 @@ make tests     # PHPUnit (échoue aussi sur les dépréciations)
 | `_failure_path` | Doit être un **chemin** (`path('app_enfant_login')`), pas un nom de route. |
 | Champs en trop | Un formulaire Symfony refuse les champs inconnus (« ne doit pas contenir de champs supplémentaires ») : le nom des champs HTML doit correspondre au `*Type`. |
 | Galerie d'avatars | Le thème Bootstrap entoure chaque radio d'un `div.form-check` : `form/avatars.html.twig` écrit les `<input>` lui-même puis appelle `setRendered`. |
+| `RangeType` sans valeur | Le navigateur place le curseur **au milieu** de la plage, pas à zéro. Donner une valeur de départ (option `data` de `JournalEcransType`). |
 | Recettes Flex | `extra.symfony.docker` vaut `false` dans composer.json pour qu'un `composer require` n'écrase pas `compose.yaml`. |
 | Droits MySQL des tests | `docker/mysql/init.sql` ne s'exécute qu'à la création du volume. |
 
@@ -224,12 +226,14 @@ Ajouter une ligne à chaque changement d'architecture ou choix structurant.
 
 | Date | Décision | Raison |
 |---|---|---|
-| 2026-09-14 | Réécriture from scratch de `digi-sante-junior` dans un dossier séparé, la référence restant en lecture seule. | Obtenir une base simple et maintenable par un débutant, sans risque pour l'original. |
-| 2026-09-14 | Symfony 7.4 LTS + PHP 8.4 + MySQL 8, Docker (FrankenPHP + MySQL) sur les ports 8081/3308. | Même socle que la référence ; aucun outil à installer sur la machine ; cohabitation avec la référence. |
+| 2026-09-14 | Écriture from scratch du projet, avec le moins de classes possible. | Obtenir une base simple et maintenable par un débutant. |
+| 2026-09-14 | Symfony 7.4 LTS + PHP 8.4 + MySQL 8, Docker (FrankenPHP + MySQL) sur les ports 8081/3308. | Socle stable et à jour ; aucun outil à installer sur la machine. |
 | 2026-09-14 | Tailwind remplacé par **Bootstrap 5.3 (CDN)** + un `app.css` de charte ; pas de build front. | Demande explicite ; composants prêts à l'emploi (navbar, dropdown, modal) qui remplacent le JS maison. |
 | 2026-09-14 | Enums PHP → constantes d'entité ; `AvatarProvider`, `CompteEnfantManager`, `LoginSuccessHandler`, DTO de recommandation et `DataTransformer` supprimés. | Moins de classes : la logique tient dans l'entité, le contrôleur ou une cascade Doctrine ; la redirection par rôle est faite par `HomeController`. |
 | 2026-09-14 | Un seul service métier, `ConseilService`, qui renvoie des tableaux simples. | Code partagé par l'espace enfant et le tableau de bord parent. |
 | 2026-09-14 | Journal : étape 1 gardée en session sous forme de tableau (plus d'entité détachée). | Plus simple à lire et à sérialiser ; rien n'est écrit en base avant la fin. |
 | 2026-09-14 | Page « Modifier un enfant » : la limite d'écran rejoint le formulaire du profil (2 formulaires au lieu de 3). | Même formulaire à la création et à la modification, un seul partiel Twig. |
 | 2026-09-14 | Compte enfant obligatoire (`Enfant::compte` non nullable). | Chaque profil est créé avec son compte : plus de cas « profil sans compte » à gérer. |
-| 2026-09-14 | Ajout de tests PHPUnit (DAMA) et d'un fuseau `Europe/Paris` pour MySQL. | La référence n'avait pas de tests ; éviter le décalage de jour entre PHP et MySQL. |
+| 2026-09-14 | Ajout de tests PHPUnit (DAMA) et d'un fuseau `Europe/Paris` pour MySQL. | Couvrir les parcours principaux ; éviter le décalage de jour entre PHP et MySQL. |
+| 2026-09-15 | `ContenuBienEtre::DECLENCHEURS` réduit aux 3 règles réellement appliquées ; conseil 20-20-20 dès 2 h (≥) ; total du journal plafonné à 16 h. | Ne plus proposer des règles sans effet ; aligner le conseil sur le passage de la jauge à l'orange ; empêcher un total impossible (6 curseurs × 6 h). |
+| 2026-09-15 | Section « Enfants » retirée de l'administration (`Admin\EnfantController`, ses gabarits, `findAllAvecParent()` et `findDerniers()`). | Les profils enfants relèvent de leur parent ; l'admin les voit encore, en lecture seule, sur la fiche du parent. |

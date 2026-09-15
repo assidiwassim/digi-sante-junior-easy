@@ -17,7 +17,7 @@ doctrine:
 when@test:
     doctrine:
         dbal:
-            # Les tests utilisent une base séparée : digisante_easy_test
+            # Les tests utilisent une base séparée : digisante_junior_test
             dbname_suffix: '_test%env(default::TEST_TOKEN)%'
 
 when@prod:

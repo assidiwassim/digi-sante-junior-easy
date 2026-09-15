@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Digi-Santé Junior Easy — charte graphique
+   Digi-Santé Junior — charte graphique
    --------------------------------------------------------------------------
    Bootstrap 5 fournit la mise en page et les composants (navbar, cartes,
    boutons, formulaires, alertes, tableaux, modale).
@@ -70,7 +70,7 @@ a.btn:hover, .nav-link:hover, .dropdown-item:hover, .list-group-item:hover, .mar
 /* Garde les retours à la ligne saisis dans les contenus */
 .texte-multiligne { white-space: pre-line; line-height: 1.55; }
 
-/* Largeur maximale du contenu, comme la version de référence */
+/* Largeur maximale du contenu */
 @media (min-width: 1200px) {
     .container { max-width: 1180px; }
 }

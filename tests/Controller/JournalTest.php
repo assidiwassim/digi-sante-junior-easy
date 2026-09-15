@@ -66,6 +66,59 @@ class JournalTest extends WebTestCase
         $this->assertResponseRedirects('/enfant/journal/conseils');
     }
 
+    /** Sans valeur, un curseur se placerait au milieu : ils doivent tous partir de zéro. */
+    public function testLesCurseursDemarrentAZero(): void
+    {
+        $client = static::createClient();
+        $tom = static::getContainer()->get(UserRepository::class)->findOneBy(['username' => 'tom']);
+        $client->loginUser($tom);
+
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->remove(static::getContainer()->get(JournalEntreeRepository::class)->findAujourdhui($tom->getProfilEnfant()));
+        $entityManager->flush();
+
+        $crawler = $client->request('GET', '/enfant/journal/etape/1');
+
+        $curseurs = $crawler->filter('input[type="range"]');
+        $this->assertCount(6, $curseurs);
+
+        foreach ($curseurs as $curseur) {
+            $this->assertSame('0', $curseur->getAttribute('value'));
+        }
+    }
+
+    /** Une journée ne peut pas contenir plus de 16 h d'écran, tous écrans confondus. */
+    public function testLeTotalDeLaJourneeEstPlafonne(): void
+    {
+        $client = static::createClient();
+        $tom = static::getContainer()->get(UserRepository::class)->findOneBy(['username' => 'tom']);
+        $client->loginUser($tom);
+
+        $journalRepository = static::getContainer()->get(JournalEntreeRepository::class);
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->remove($journalRepository->findAujourdhui($tom->getProfilEnfant()));
+        $entityManager->flush();
+
+        $client->request('GET', '/enfant/journal/etape/1');
+
+        // 3 × 6 h = 18 h : au-dessus du plafond de 16 h.
+        $client->submitForm('Suivant : mon corps →', [
+            'journal_ecrans[ecranTv]' => '360',
+            'journal_ecrans[ecranOrdinateur]' => '360',
+            'journal_ecrans[ecranSmartphone]' => '360',
+            'journal_ecrans[ecranTablette]' => '0',
+            'journal_ecrans[ecranConsole]' => '0',
+            'journal_ecrans[ecranAutre]' => '0',
+        ]);
+
+        // On reste sur l'étape 1, avec le message d'erreur, et rien n'est enregistré.
+        // (422 : la réponse renvoyée par Symfony pour un formulaire invalide.)
+        $this->assertResponseStatusCodeSame(422);
+        $this->assertSelectorTextContains('body', 'c\'est impossible en une journée');
+        $entityManager->clear();
+        $this->assertNull($journalRepository->findAujourdhui($tom->getProfilEnfant()));
+    }
+
     public function testLEtape2NecessiteLEtape1(): void
     {
         $client = static::createClient();

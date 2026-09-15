@@ -27,22 +27,6 @@ class JournalEntreeRepository extends ServiceEntityRepository
     }
 
     /**
-     * Derniers journaux d'un enfant, du plus récent au plus ancien.
-     *
-     * @return JournalEntree[]
-     */
-    public function findDerniers(Enfant $enfant, int $nombre): array
-    {
-        return $this->createQueryBuilder('j')
-            ->where('j.enfant = :enfant')
-            ->setParameter('enfant', $enfant)
-            ->orderBy('j.date', \SortDirection::Descending)
-            ->setMaxResults($nombre)
-            ->getQuery()
-            ->getResult();
-    }
-
-    /**
      * Données du graphique « temps d'écran » : un point par jour sur la période.
      * Un jour sans journal vaut 0 minute.
      *

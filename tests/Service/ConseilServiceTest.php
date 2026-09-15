@@ -2,6 +2,7 @@
 
 namespace App\Tests\Service;
 
+use App\Entity\ContenuBienEtre;
 use App\Entity\DouleurZone;
 use App\Entity\Enfant;
 use App\Entity\JournalEntree;
@@ -34,6 +35,21 @@ class ConseilServiceTest extends KernelTestCase
         $this->assertSame('La règle du 20-20-20', $conseils[0]['contenu']->getTitre());
     }
 
+    /** À 2 h pile, la jauge passe à l'orange : le conseil doit suivre. */
+    public function testDeuxHeuresPileDonnentDejaLe202020(): void
+    {
+        $conseils = $this->getConseils(ecranTv: 120, limite: 180);
+
+        $this->assertSame(['Repose tes yeux avec le 20-20-20'], array_column($conseils, 'titre'));
+    }
+
+    public function testMoinsDeDeuxHeuresNeDonnePasLe202020(): void
+    {
+        $conseils = $this->getConseils(ecranTv: 105, limite: 180);
+
+        $this->assertSame(['Super journée !'], array_column($conseils, 'titre'));
+    }
+
     public function testLimiteDepasseeRemplaceLe202020(): void
     {
         // 150 min : plus de 2 h ET au-dessus de la limite de 90 min -> un seul conseil
@@ -48,6 +64,36 @@ class ConseilServiceTest extends KernelTestCase
     {
         $this->assertSame([], $this->titresContenant('Détends', $this->getConseils(douleurs: ['cou' => 2])));
         $this->assertCount(1, $this->titresContenant('Détends', $this->getConseils(douleurs: ['epaule' => 3])));
+    }
+
+    /**
+     * Garde-fou : la liste proposée à l'administrateur ne doit contenir que des
+     * règles réellement appliquées, sinon les contenus rattachés ne seraient
+     * jamais proposés à un enfant.
+     */
+    public function testChaqueDeclencheurProposeEstUtiliseParLeMoteur(): void
+    {
+        $utilises = [];
+
+        foreach ([
+            $this->getConseils(ecranTv: 150, limite: 180),
+            $this->getConseils(douleurs: ['cou' => 4]),
+            $this->getConseils(douleurs: ['yeux' => 2]),
+        ] as $conseils) {
+            foreach ($conseils as $conseil) {
+                if (null !== $conseil['contenu']) {
+                    $utilises[] = $conseil['contenu']->getDeclencheur();
+                }
+            }
+        }
+
+        $utilises = array_values(array_unique($utilises));
+        sort($utilises);
+
+        $proposes = array_keys(ContenuBienEtre::DECLENCHEURS);
+        sort($proposes);
+
+        $this->assertSame($proposes, $utilises);
     }
 
     public function testDouleurAuxYeuxDonneLeYogaDesYeux(): void

@@ -23,7 +23,12 @@ class ContenuBienEtre
         'exercice' => ['label' => 'Exercice', 'emoji' => '🤸'],
     ];
 
-    /** Règles du moteur de conseils auxquelles un contenu peut être rattaché. */
+    /**
+     * Règles du moteur de conseils auxquelles un contenu peut être rattaché.
+     * Cette liste ne contient que des règles réellement appliquées par
+     * ConseilService : un contenu sans déclencheur reste visible dans la
+     * bibliothèque.
+     */
     public const DECLENCHEUR_20_20_20 = '20-20-20';
     public const DECLENCHEUR_ETIREMENT = 'etirement_cervical';
     public const DECLENCHEUR_YOGA_YEUX = 'yoga_yeux';
@@ -32,9 +37,6 @@ class ContenuBienEtre
         self::DECLENCHEUR_20_20_20 => 'Règle du 20-20-20',
         self::DECLENCHEUR_ETIREMENT => 'Étirements du cou',
         self::DECLENCHEUR_YOGA_YEUX => 'Yoga des yeux',
-        'defi_sport' => 'Défi sport',
-        'sommeil' => 'Sommeil',
-        'posture' => 'Posture',
     ];
 
     #[ORM\Id]
@@ -56,7 +58,13 @@ class ContenuBienEtre
     private ?string $contenu = null;
 
     #[ORM\Column(length: 500, nullable: true)]
-    #[Assert\Url(message: 'Merci de saisir une URL valide.', requireTld: true)]
+    // tldMessage : sans lui, une adresse sans domaine (« exemple ») afficherait
+    // le message technique de Symfony sur le « domaine de premier niveau ».
+    #[Assert\Url(
+        message: 'Merci de saisir une URL valide.',
+        requireTld: true,
+        tldMessage: 'Merci de saisir une URL valide, par exemple https://exemple.fr.',
+    )]
     #[Assert\Length(max: 500)]
     private ?string $url = null;
 

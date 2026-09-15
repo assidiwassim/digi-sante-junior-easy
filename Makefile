@@ -1,4 +1,4 @@
-# Digi-Santé Junior Easy — raccourcis
+# Digi-Santé Junior — raccourcis
 #
 # Chaque commande est écrite en clair : vous pouvez aussi la copier et la
 # lancer vous-même. Tapez `make` pour voir la liste.
@@ -19,6 +19,7 @@ install: ## Première installation : conteneurs, dépendances, base, données de
 	$(CONSOLE) doctrine:fixtures:load --no-interaction
 	@echo ""
 	@echo "  Application prête : http://localhost:8081"
+	@echo "  phpMyAdmin        : http://localhost:8082"
 
 start: ## Démarre les conteneurs
 	docker compose up -d

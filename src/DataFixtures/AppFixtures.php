@@ -222,7 +222,7 @@ class AppFixtures extends Fixture
                 ."4. Abdominaux\n5. Montées sur une marche\n6. Squats\n7. Gainage sur les coudes\n\n"
                 .'Aucun matériel nécessaire : juste toi et un peu de place !',
                 'https://www.youtube.com/results?search_query=defi+7+minutes+enfant+sport',
-                'defi_sport',
+                null,
             ],
             [
                 'fiche',
@@ -233,7 +233,7 @@ class AppFixtures extends Fixture
                 ."• Lis quelques pages ou écoute une histoire à la place.\n"
                 .'• Couche-toi à peu près à la même heure chaque soir, même le week-end.',
                 null,
-                'sommeil',
+                null,
             ],
             [
                 'fiche',
@@ -244,7 +244,7 @@ class AppFixtures extends Fixture
                 ."• Laisse une distance d'environ un bras entre tes yeux et l'écran.\n"
                 .'• Évite de jouer allongé ou avec la tête penchée : c\'est ce qui fait mal au cou.',
                 null,
-                'posture',
+                null,
             ],
             [
                 'fiche',
@@ -341,7 +341,7 @@ class AppFixtures extends Fixture
                 ."• 20 secondes à regarder par la fenêtre\n\n"
                 .'Une minute suffit à relancer la machine !',
                 null,
-                'posture',
+                null,
             ],
         ];
 

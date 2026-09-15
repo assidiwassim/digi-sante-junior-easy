@@ -14,7 +14,7 @@ final class Version20260914214709 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Schéma initial de Digi-Santé Junior Easy';
+        return 'Schéma initial de Digi-Santé Junior';
     }
 
     public function up(Schema $schema): void

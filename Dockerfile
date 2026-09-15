@@ -1,4 +1,4 @@
-# Digi-Santé Junior Easy — image de développement
+# Digi-Santé Junior — image de développement
 #
 # FrankenPHP = PHP 8.4 + serveur web (Caddy) dans un seul conteneur.
 # La configuration par défaut de l'image sert déjà le dossier `public/`

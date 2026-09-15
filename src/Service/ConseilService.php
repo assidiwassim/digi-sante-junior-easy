@@ -13,7 +13,7 @@ use App\Twig\DureeExtension;
  * parent : c'est la seule raison pour laquelle ce code vit dans un service.
  *
  * Règles :
- *  1. temps d'écran > 2 h             -> règle du 20-20-20
+ *  1. temps d'écran ≥ 2 h             -> règle du 20-20-20
  *  2. temps d'écran > limite parent   -> conseil de pause (remplace la règle 1)
  *  3. douleur au cou ou aux épaules ≥ 3 -> étirements
  *  4. douleur aux yeux                -> yoga des yeux
@@ -26,6 +26,10 @@ use App\Twig\DureeExtension;
  */
 class ConseilService
 {
+    /**
+     * Seuil du conseil 20-20-20, atteint dès 2 h d'écran : c'est aussi le
+     * moment où la jauge passe à l'orange (JournalEntree::niveauPourMinutes).
+     */
     private const SEUIL_ECRAN_MINUTES = 120;
     private const SEUIL_DOULEUR = 3;
 
@@ -53,7 +57,7 @@ class ConseilService
                 'couleur' => 'orange',
                 'contenu' => $this->contenuRepository->findPremierPourDeclencheur('20-20-20'),
             ];
-        } elseif ($total > self::SEUIL_ECRAN_MINUTES) {
+        } elseif ($total >= self::SEUIL_ECRAN_MINUTES) {
             $conseils[] = [
                 'titre' => 'Repose tes yeux avec le 20-20-20',
                 'message' => sprintf(
