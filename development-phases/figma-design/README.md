@@ -1,178 +1,311 @@
-# Générer le design Figma depuis le site
+# Générer le design Figma depuis le site — guide pas à pas
 
-Guide pas à pas pour transformer l'application **Digi-Santé Junior** en design
-Figma éditable, avec le plugin **html.to.design** et son extension navigateur.
+Ce guide explique comment transformer l'application **Digi-Santé Junior**, qui
+tourne **sur votre ordinateur**, en maquette Figma.
 
-Le résultat n'est pas une capture d'écran : ce sont de **vrais calques Figma**
-(frames, textes, autolayout, vecteurs), retravaillables par un designer.
+Aucune connaissance de Figma n'est nécessaire : tout est expliqué, clic par
+clic.
 
-| | |
-|---|---|
-| Site à capturer | <https://digisante.150.lebondeveloppeur.net> |
-| Comptes de démonstration | voir [`../../test-prod.txt`](../../test-prod.txt) |
-| Écrans à capturer | [`ecrans-a-capturer.md`](./ecrans-a-capturer.md) |
-| Organisation du fichier Figma | [`organisation-figma.md`](./organisation-figma.md) |
+**Ce que vous obtiendrez** : pas des captures d'écran, mais de **vrais calques
+Figma**. Chaque titre reste un texte modifiable, chaque bouton reste une forme
+qu'on peut déplacer et recolorer.
 
 ---
 
-## Pourquoi l'extension navigateur, et pas seulement l'URL
+## Le vocabulaire, en trois lignes
 
-Le plugin sait importer une page depuis son URL. Mais **il la récupère depuis
-ses propres serveurs** : il ne peut pas se connecter à votre application.
+Trois mots reviennent sans arrêt dans Figma. Les voici une fois pour toutes.
 
-Sur les 22 écrans du projet, **4 seulement sont publics**. Les espaces enfant,
-parent et administrateur sont derrière une authentification : un import par URL
-n'y verrait que la page de connexion.
+| Mot | Ce que c'est |
+|---|---|
+| **Plugin** | un petit logiciel qui s'ajoute **dans** Figma pour lui donner une fonction en plus. Ici : importer des pages web. |
+| **Extension** | la même idée, mais **dans votre navigateur** Chrome. Ici : photographier la page que vous regardez. |
+| **Frame** | un cadre dans Figma, qui contient une page ou un écran. C'est l'équivalent d'une « page » de maquette. |
 
-L'**extension navigateur** capture l'onglet **que vous avez sous les yeux**,
-avec votre session ouverte. C'est le seul moyen d'obtenir les écrans connectés.
+---
 
-```text
-Import par URL          →  4 écrans publics
-Extension navigateur    →  les 22 écrans, connexion comprise   ← la bonne méthode
+## Avant de commencer
+
+Il vous faut quatre choses :
+
+1. **Un compte Figma gratuit** — <https://figma.com>, bouton *Sign up*. Le plan
+   gratuit suffit.
+2. **Le navigateur Google Chrome** (ou Edge, ou Brave : ce sont les mêmes
+   dessous).
+3. **Le projet démarré sur votre ordinateur**. Dans un terminal, à la racine du
+   projet :
+
+   ```bash
+   make start
+   ```
+
+   Puis ouvrez <http://localhost:8081> dans Chrome. Si la page d'accueil de
+   Digi-Santé Junior s'affiche, vous êtes prêt.
+
+4. **Des données à afficher** dans l'application — c'est l'étape suivante.
+
+---
+
+## Étape 1 — Préparer les données à photographier
+
+Une page vide donne une maquette vide. Il faut donc que l'application contienne
+des enfants, des journaux et des contenus **avant** de commencer.
+
+Deux possibilités. Choisissez-en une.
+
+### Option A — Les données de démonstration (le plus rapide)
+
+```bash
+make fixtures
 ```
 
----
+Vous obtenez tout de suite : 1 administrateur, 2 parents, 4 enfants, plusieurs
+semaines de journaux et une quinzaine de contenus.
 
-## Étape 1 — Installer le plugin dans Figma
+Les comptes à utiliser :
 
-1. Ouvrir Figma (application de bureau ou navigateur) et créer un fichier de
-   design vide.
-2. Menu **Resources** (icône en forme de grille dans la barre d'outils) →
-   onglet **Plugins** → rechercher **`html.to.design`**.
-3. Le plugin recherché est celui de **‹div›RIOTS**, intitulé
-   « html.to.design — Import websites… ». Cliquer sur **Run** / **Ouvrir**.
-4. Le panneau du plugin s'ouvre, avec ses onglets :
-   **Web · Extension · File · Editor · MCP · API**.
+| Rôle | Page de connexion | Identifiant | Mot de passe |
+|---|---|---|---|
+| Administrateur | `/login` | `admin@digisante.local` | `admin123` |
+| Parent | `/login` | `parent@digisante.local` | `parent123` |
+| Enfant | `/connexion-enfant` | `lea` | `enfant123` |
 
-> Le site officiel <https://html.to.design> renvoie vers la fiche du plugin et
-> vers l'extension : c'est le point d'entrée le plus sûr si la recherche dans
-> Figma ne donne rien.
+⚠️ `make fixtures` **efface** le contenu de la base avant de la remplir. Si vous
+avez créé des données à la main, elles disparaîtront.
 
-Pour le retrouver ensuite : clic droit dans le fichier →
-**Plugins → html.to.design**, ou le raccourci **⌥⌘P** (macOS) /
-**Ctrl+Alt+P** (Windows) qui relance le dernier plugin utilisé.
+### Option B — Vos propres données (plus long, plus formateur)
 
----
+Si vous préférez maîtriser ce qui s'affiche dans la maquette :
 
-## Étape 2 — Installer l'extension dans le navigateur
+1. Ouvrez <http://localhost:8081/inscription> et créez un compte parent.
+2. Connectez-vous, puis **Mes enfants → Ajouter un enfant**. Notez bien
+   l'identifiant que l'application génère (par exemple `lea`) et le mot de passe
+   que vous avez choisi.
+3. Déconnectez-vous, allez sur <http://localhost:8081/connexion-enfant> et
+   connectez-vous avec cet enfant.
+4. Remplissez un journal (temps d'écran, puis douleurs).
 
-1. Ouvrir le **Chrome Web Store** et rechercher **`html.to.design`**
-   (éditeur ‹div›RIOTS). Le lien direct figure aussi sur
-   <https://html.to.design>, section *Extension*.
-2. **Ajouter à Chrome**, puis épingler l'icône dans la barre d'outils : vous
-   allez vous en servir une vingtaine de fois.
-3. L'extension fonctionne sur les navigateurs Chromium (Chrome, Edge, Brave).
+En moins de dix minutes, vous avez de quoi photographier la plupart des écrans.
+Il vous manquera seulement l'historique de plusieurs semaines : les graphiques
+seront donc presque vides.
 
----
-
-## Étape 3 — Relier l'extension au plugin
-
-1. Dans Figma, panneau du plugin → onglet **Extension**.
-2. Vous y voyez la liste des captures faites depuis le navigateur. Elle est
-   vide au départ, c'est normal.
-3. Activer **Auto-import new captures** si vous voulez que chaque capture
-   arrive automatiquement dans le fichier Figma. Sinon, vous importerez au cas
-   par cas avec le bouton ⬇ de chaque ligne.
-
-Les deux logiciels communiquent par votre compte : la capture faite dans Chrome
-apparaît dans le panneau Figma en quelques secondes.
+> **Conseil** : pour une maquette qui a l'air vivante, prenez l'option A. Les
+> journaux des semaines passées remplissent les courbes.
 
 ---
 
-## Étape 4 — Régler les viewports avant de capturer
+## Étape 2 — Installer le plugin dans Figma
 
-Dans la fenêtre de l'extension (icône dans la barre d'outils de Chrome) :
+1. Allez sur <https://figma.com> et connectez-vous.
+2. Créez un fichier de design vide : bouton **+ Design file** (ou
+   *Nouveau fichier*).
+3. Dans la barre d'outils en bas de l'écran, cliquez sur l'icône
+   **Resources** (une grille de petits carrés), puis sur l'onglet **Plugins**.
+4. Tapez **`html.to.design`** dans la recherche.
+5. Choisissez celui de l'éditeur **‹div›RIOTS**, intitulé
+   *html.to.design — Import websites…*, puis cliquez sur **Run**.
 
-| Réglage | Valeur conseillée pour ce projet | Pourquoi |
+**Ce que vous devez voir** : un panneau s'ouvre par-dessus votre fichier, avec
+une rangée d'onglets : **Web · Extension · File · Editor · MCP · API**.
+
+> Si la recherche ne donne rien, passez par le site officiel
+> <https://html.to.design> : il renvoie vers la fiche du plugin.
+
+**Pour le rouvrir plus tard** : clic droit dans le fichier →
+**Plugins → html.to.design**.
+
+---
+
+## Étape 3 — Installer l'extension dans Chrome
+
+### Pourquoi une extension en plus du plugin ?
+
+C'est le point à comprendre, tout le reste en découle.
+
+Le plugin sait importer une page **depuis son adresse** (onglet *Web*). Mais il
+va la chercher **depuis les serveurs de html.to.design**, quelque part sur
+Internet. Or :
+
+- votre application tourne sur **`localhost`**, c'est-à-dire **votre
+  ordinateur**. Personne d'autre ne peut y accéder. L'onglet *Web* ne
+  fonctionnera donc **jamais** pour votre projet ;
+- et même en ligne, la plupart des pages demandent d'**être connecté**. Un
+  serveur extérieur ne connaît pas votre mot de passe.
+
+L'**extension**, elle, photographie **la page que vous avez sous les yeux**,
+dans votre navigateur, avec votre session ouverte. C'est la seule méthode qui
+marche ici.
+
+```text
+Onglet « Web » du plugin  →  ✗ ne voit pas localhost
+Extension Chrome          →  ✓ photographie votre écran, connexion comprise
+```
+
+### L'installation
+
+1. Ouvrez le **Chrome Web Store** : <https://chromewebstore.google.com>
+2. Recherchez **`html.to.design`** (éditeur **‹div›RIOTS**). Le lien direct est
+   aussi sur <https://html.to.design>, section *Extension*.
+3. Cliquez sur **Ajouter à Chrome**, puis **Ajouter l'extension**.
+4. Cliquez sur l'icône pièce de puzzle 🧩 en haut à droite de Chrome, puis sur
+   l'épingle 📌 à côté de html.to.design : son icône reste maintenant visible.
+
+**Ce que vous devez voir** : une nouvelle icône dans la barre d'outils de
+Chrome, en haut à droite.
+
+---
+
+## Étape 4 — Relier l'extension et Figma
+
+1. Dans Figma, dans le panneau du plugin, cliquez sur l'onglet **Extension**.
+2. Vous voyez une liste vide : c'est là que vos photos apparaîtront.
+3. Laissez cette fenêtre ouverte pendant tout le travail.
+
+L'interrupteur **Auto-import new captures** :
+
+- **activé** : chaque photo arrive automatiquement dans Figma ;
+- **désactivé** : vous choisissez quoi importer, avec le bouton ⬇ de chaque
+  ligne.
+
+Pour commencer, **laissez-le désactivé** : vous garderez le contrôle, et vous
+éviterez de gaspiller vos imports gratuits (voir l'encadré à l'étape 6).
+
+---
+
+## Étape 5 — Régler la largeur avant de photographier
+
+Cliquez sur l'icône de l'extension dans Chrome. Une fenêtre s'ouvre, avec deux
+colonnes : **Viewports** et **Themes**.
+
+**Viewport** veut simplement dire **largeur d'écran**. Un site ne s'affiche pas
+pareil sur un ordinateur et sur un téléphone : vous photographiez donc les deux.
+
+Pour ce projet :
+
+| Case | Cochée ? | Pourquoi |
 |---|---|---|
-| **Browser (1512px)** | coché | reprend la largeur réelle de votre fenêtre |
-| **1440 px** | coché | largeur de référence des maquettes bureau |
-| **390 px** | coché pour les écrans clés | la grille Bootstrap réorganise tout sur mobile |
-| **1920 / 1024 / 768** | décochés | trois largeurs suffisent, chaque largeur coûte du temps et du quota |
+| **Browser (1512px)** | ✅ | la largeur réelle de votre fenêtre |
+| **1440 px** | ✅ | la largeur de référence des maquettes sur ordinateur |
+| **390 px** | ✅ pour les écrans importants | la version téléphone : le menu se replie, les cartes s'empilent |
+| 1920 / 1024 / 768 | ❌ | inutiles ici, et chaque largeur prend du temps |
 | **Themes** | *Browser theme* seul | l'application n'a pas de mode sombre |
 
-⚠️ **Quota du plan gratuit** : l'extension affiche
-« Sign in to ‹div›RIOTS ONE for 10 free imports/mo ». **10 imports par mois**.
-Avec 22 écrans et 2 largeurs, vous êtes très au-dessus. Deux conséquences :
+---
 
-- capturez **dans l'ordre de priorité** indiqué dans
-  [`ecrans-a-capturer.md`](./ecrans-a-capturer.md) — les 5 écrans P1 d'abord ;
-- vérifiez votre compteur après le premier import, pour savoir si une capture
-  multi-viewports consomme un crédit ou plusieurs.
+## Étape 6 — Photographier une page
+
+1. Dans Chrome, ouvrez <http://localhost:8081> et **connectez-vous** avec le
+   compte correspondant à l'écran voulu (voir
+   [`ecrans-a-capturer.md`](./ecrans-a-capturer.md)).
+2. Allez sur la page à photographier.
+3. **Mettez la page dans l'état voulu** : ouvrez la fenêtre qui doit être
+   visible, provoquez le message d'erreur que vous voulez montrer… L'extension
+   photographie ce qui est affiché **à cet instant précis**.
+4. Appuyez sur **⌥⇧E** (Mac) ou **Alt+Maj+E** (Windows). Vous pouvez aussi
+   cliquer sur l'icône de l'extension puis sur le bouton bleu
+   **Capture Current Page**.
+
+Le bouton jaune **Capture Selection** (**⌥⇧D**) photographie **une zone** que
+vous dessinez à la souris. Très pratique pour ne récupérer qu'un bouton ou une
+carte, sans toute la page.
+
+**Ce que vous devez voir** : quelques secondes plus tard, une vignette apparaît
+dans l'onglet *Extension* du plugin, côté Figma.
+
+### La barre noire de Symfony
+
+En local, l'application est en mode développement : une **barre noire** s'affiche
+en bas de chaque page. Elle sera photographiée avec le reste.
+
+Deux solutions, au choix :
+
+- cherchez la petite croix **✕** à droite de cette barre et cliquez dessus pour
+  la masquer avant de photographier ;
+- ou photographiez sans vous en occuper, puis **supprimez son calque dans
+  Figma** : il arrive tout en bas de la liste des calques, appuyez sur
+  *Supprimer*.
+
+### Deux détails qui font gagner du temps
+
+- **Fermez la fenêtre de l'extension** avant d'appuyer sur ⌥⇧E : ce qui recouvre
+  la page finit parfois sur la photo.
+- **Attendez une ou deux secondes** sur les pages à graphique (accueil enfant,
+  tableau de bord parent) : le graphique s'anime, et une photo trop rapide le
+  capture à moitié dessiné.
 
 ---
 
-## Étape 5 — Capturer les pages
+## Étape 7 — Importer la photo dans Figma
 
-1. Dans Chrome, ouvrir <https://digisante.150.lebondeveloppeur.net> et
-   **se connecter** avec le compte correspondant à l'écran visé
-   (voir la colonne « Compte » de la liste des écrans).
-2. Aller sur la page à capturer et **la mettre dans l'état voulu** : dérouler
-   un menu, ouvrir une modale, provoquer un message d'erreur… L'extension
-   capture ce qui est affiché à l'instant T.
-3. Lancer la capture :
-   - **Capture Current Page** — toute la page (raccourci **⌥⇧E**) ;
-   - **Capture Selection** — une zone choisie à la souris (**⌥⇧D**), utile pour
-     n'extraire qu'un composant (une carte, la jauge, la barre de navigation).
-4. Attendre la vignette dans la liste des captures.
+1. Retournez dans Figma, onglet **Extension** du plugin.
+2. Cliquez sur le bouton ⬇ à droite de la photo voulue.
+3. Patientez : l'import prend quelques secondes.
 
-**Conseils de capture pour ce projet**
+**Ce que vous devez voir** : un grand cadre (une *frame*) apparaît dans votre
+fichier, et la liste des calques à gauche se remplit de noms comme `Main`,
+`Container`, `Heading`, `Form`, `Input`, `Label`.
 
-- Fermez la fenêtre du plugin et les panneaux qui recouvrent la page avant de
-  déclencher : ce qui masque la page se retrouve parfois dans le rendu.
-- Laissez le **graphique Chart.js** finir de s'animer (1 à 2 secondes) avant de
-  capturer, sinon il apparaît à moitié dessiné.
-- Pour les états d'erreur, soumettez réellement le formulaire fautif : la page
-  revient avec ses messages, c'est cet état-là qu'il faut capturer.
+4. **Renommez la frame tout de suite.** Double-cliquez sur son nom dans la liste
+   de gauche et écrivez par exemple :
 
----
+   ```text
+   03 · Enfant · Accueil · 1440
+   ```
 
-## Étape 6 — Importer dans Figma
+   Sans cela, vous vous retrouverez avec quinze frames appelées
+   `http://localhost:8081` et vous ne saurez plus laquelle est laquelle.
 
-1. Revenir dans Figma, panneau du plugin, onglet **Extension**.
-2. Cliquer sur ⬇ à droite de la capture voulue (ou ne rien faire si
-   *Auto-import* est actif).
-3. Le contenu arrive sous forme de frame, avec une arborescence de calques
-   nommés (`Main`, `Container`, `Heading`, `Form`, `Input`, `Label`…).
-4. **Renommer la frame immédiatement** — par exemple
-   `05 · Enfant · Accueil · 1440` — sinon vous vous retrouverez avec quinze
-   frames appelées `https://digisante.150…`.
-
-Passez ensuite à [`organisation-figma.md`](./organisation-figma.md) : sans
-rangement ni design system, l'import n'est qu'un tas de calques.
+> 💡 **Imports gratuits.** L'extension affiche
+> « Sign in to ‹div›RIOTS ONE for 10 free imports/mo » : **10 imports par
+> mois** avec un compte gratuit. Le projet compte 22 écrans : commencez donc
+> par les **5 écrans prioritaires** de la liste. Après votre premier import,
+> regardez votre compteur : vous saurez si une photo en plusieurs largeurs
+> consomme un crédit ou plusieurs.
 
 ---
 
-## Ce que l'import rend mal, et quoi faire
+## Ça ne marche pas ?
 
-| Élément | Résultat | Solution |
+| Problème | Cause probable | Solution |
 |---|---|---|
-| **Graphiques Chart.js** (accueil enfant, tableau de bord parent) | image matricielle : c'est un `<canvas>`, il n'y a pas de vecteur à récupérer | redessiner dans Figma si le designer doit le retravailler, sinon garder l'image comme référence |
-| **Schéma corporel** (journal, étape 2) | vectoriel éditable — c'est du SVG inline | rien à faire, c'est le meilleur élément de l'import |
-| **Emojis** (avatars, menus, zones du corps) | texte système, rendu variable selon la machine | les transformer en composants Figma si le design doit être stable |
-| **Modale d'intensité** | capturée seulement si elle est **ouverte** à l'écran | ouvrir la modale avant de déclencher la capture |
-| **Polices** | Baloo 2 et Nunito sont des Google Fonts | disponibles nativement dans Figma, rien à installer |
+| La page ne s'ouvre pas sur `localhost:8081` | l'application n'est pas démarrée | `make start`, puis réessayez |
+| Les pages sont vides, sans enfant ni contenu | pas de données en base | revenez à l'étape 1 |
+| Rien n'apparaît dans l'onglet *Extension* de Figma | l'extension et Figma ne sont pas sur le même compte | reconnectez-vous des deux côtés, puis rechargez la page Figma |
+| L'extension ne réagit pas au raccourci | le raccourci est pris par un autre logiciel | cliquez sur l'icône de l'extension et utilisez le bouton bleu |
+| L'extension refuse de photographier la page | elle n'a pas l'autorisation sur ce site | clic droit sur son icône → *Ce site peut lire et modifier…* → **Autoriser** |
+| Une barre noire apparaît en bas de la maquette | la barre de debug Symfony | voir l'encadré de l'étape 6 |
+| Le graphique est une image, impossible à modifier | c'est normal, voir ci-dessous | — |
 
-Un point en votre faveur : le site est en environnement de **production**, donc
-**sans la barre de debug Symfony**. Vos captures sont propres, sans bandeau noir
-en bas de page.
+---
+
+## Ce que l'import rend bien, et moins bien
+
+| Élément | Résultat | Quoi faire |
+|---|---|---|
+| Textes, boutons, cartes, formulaires | ✅ calques modifiables | rien, c'est l'objectif |
+| **Schéma du corps** (journal, étape 2) | ✅ dessin vectoriel modifiable | rien — c'est le plus bel import du projet |
+| **Graphiques** (accueil enfant, tableau de bord) | ⚠️ image figée | les redessiner dans Figma si le designer doit y toucher |
+| **Emojis** (avatars, menus) | ⚠️ leur dessin change d'un ordinateur à l'autre | les remplacer par des images si la maquette doit être stable |
+| **Fenêtre d'intensité** (journal, étape 2) | photographiée **seulement si elle est ouverte** | ouvrez-la avant d'appuyer sur ⌥⇧E |
+| Polices Baloo 2 et Nunito | ✅ disponibles dans Figma | rien, ce sont des Google Fonts |
 
 ---
 
 ## Récapitulatif
 
 ```text
-1. Plugin html.to.design installé dans Figma
-2. Extension html.to.design installée dans Chrome
-3. Onglet « Extension » du plugin ouvert (auto-import au choix)
-4. Viewports réglés : 1512 + 1440, et 390 pour les écrans clés
-5. Connexion au site avec le bon compte, page mise dans le bon état
-6. ⌥⇧E pour capturer
-7. ⬇ dans Figma pour importer, puis renommer la frame
-8. Ranger et construire le design system
+1. make start          → l'application tourne sur localhost:8081
+2. make fixtures       → des données à afficher
+3. Plugin html.to.design installé dans Figma
+4. Extension html.to.design installée dans Chrome
+5. Onglet « Extension » du plugin ouvert dans Figma
+6. Largeurs réglées : 1512 + 1440, et 390 pour les écrans importants
+7. Connexion au site, page mise dans le bon état
+8. ⌥⇧E pour photographier
+9. ⬇ dans Figma pour importer, puis renommer la frame
+10. Ranger le fichier et construire le design system
 ```
 
-➡️ Liste des écrans : [`ecrans-a-capturer.md`](./ecrans-a-capturer.md)
-➡️ Rangement et design system : [`organisation-figma.md`](./organisation-figma.md)
-➡️ Retour au parcours : [`../README.md`](../README.md)
+➡️ Quels écrans photographier : [`ecrans-a-capturer.md`](./ecrans-a-capturer.md)
+➡️ Comment ranger le fichier Figma : [`organisation-figma.md`](./organisation-figma.md)
+➡️ Retour au parcours de développement : [`../README.md`](../README.md)

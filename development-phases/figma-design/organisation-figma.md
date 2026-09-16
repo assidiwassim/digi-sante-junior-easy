@@ -1,138 +1,180 @@
-# Organiser le fichier Figma
+# Ranger le fichier Figma
 
-Un import brut donne un empilement de calques exploitable, mais illisible. Ce
-document décrit comment le ranger et en tirer un vrai design system, à partir
-des valeurs réelles du projet.
+Une fois vos écrans importés, vous avez un tas de cadres posés côte à côte. Ce
+document explique comment en faire un fichier propre, utilisable par un
+designer.
 
----
-
-## 1. Structure du fichier
-
-Créez **cinq pages** dans le fichier Figma (panneau de gauche, `+` à côté de
-*Pages*) :
-
-```text
-📄 00 · Design system     couleurs, textes, composants
-📄 01 · Public            accueil, connexion parent, connexion enfant, inscription
-📄 02 · Enfant            accueil, journal (2 étapes), conseils, bibliothèque, profil
-📄 03 · Parent            tableau de bord, mes enfants, formulaires, profil
-📄 04 · Admin             contenus, parents
-📄 99 · Imports bruts     zone de dépôt, jamais retouchée
-```
-
-**La page « Imports bruts » est importante** : les captures y arrivent, vous
-dupliquez ce dont vous avez besoin vers les pages propres. Vous gardez ainsi
-toujours l'original sous la main, et vous pouvez réimporter sans écraser votre
-travail.
-
-Dans chaque page, disposez les frames **en colonnes par parcours** et en lignes
-par largeur :
-
-```text
-          1440 px              390 px
-Accueil   [frame]              [frame]
-Étape 1   [frame]              [frame]
-Étape 2   [frame]              [frame]
-```
+À lire **après** avoir importé vos 5 premiers écrans.
 
 ---
 
-## 2. Variables de couleur
+## Le vocabulaire Figma, en quatre mots
 
-Panneau **Variables** → créer une collection `Digi-Santé`, avec ces valeurs —
-ce sont exactement celles de `public/css/app.css` :
-
-| Nom de la variable | Valeur | Usage dans l'application |
+| Mot | Ce que c'est | Où ça se trouve |
 |---|---|---|
-| `marine` | `#1F3864` | barre de navigation, titres, bouton principal |
-| `turquoise` | `#0E7C7B` | liens, accents, courbe du graphique |
-| `turquoise-clair` | `#14A3A1` | survol des liens |
-| `or` | `#C99A2E` | boutons secondaires (vidéos, liens externes) |
-| `or-clair` | `#E5B955` | survol |
-| `fond` | `#E7F3F2` | fond de page |
-| `bordure` | `#D6E6E5` | contours de cartes et de champs |
-| `texte` | `#16233D` | texte courant |
-| `texte-doux` | `#5B6B85` | texte secondaire |
-| `vert` / `vert-doux` | `#16A34A` / `#DCFCE7` | niveau « raisonnable » (< 2 h) |
-| `orange` / `orange-doux` | `#EA580C` / `#FFEDD5` | niveau « élevé » (2 à 4 h) |
-| `rouge` / `rouge-doux` | `#DC2626` / `#FEE2E2` | niveau « excessif » (> 4 h) |
-
-⚠️ Le fond des **cartes, champs, tableaux et menus** reste **blanc** : dans
-l'application, c'est une variable de Bootstrap volontairement non modifiée. Ne
-la remplacez pas par la couleur de fond de page.
-
-**Effet d'ombre** à enregistrer comme style :
-`0 10px 30px -12px rgba(31, 56, 100, 0.28)` — ombre douce, portée basse.
+| **Page** | un grand classeur dans votre fichier. Un fichier peut en contenir plusieurs. | panneau de gauche, en haut |
+| **Frame** | un cadre qui contient un écran | panneau de gauche, sous *Layers* |
+| **Variable** | une couleur enregistrée sous un nom. La changer met à jour tout le fichier d'un coup. | panneau de gauche, icône *Variables* |
+| **Composant** | un élément réutilisable (un bouton, une carte). On le dessine une fois, on s'en sert partout. | on le crée soi-même |
 
 ---
 
-## 3. Styles de texte
+## 1. Créer les pages
 
-Deux polices, toutes deux disponibles nativement dans Figma (Google Fonts) :
+Dans le panneau de gauche, cliquez sur **+** à côté de *Pages*, et créez-en six.
+Renommez-les par double-clic :
 
-| Style | Police | Graisse | Usage |
+```text
+00 · Design system     les couleurs, les textes, les boutons
+01 · Public            accueil, connexions, inscription
+02 · Enfant            accueil, journal, conseils, bibliothèque, profil
+03 · Parent            tableau de bord, mes enfants, profil
+04 · Admin             contenus, parents
+99 · Imports bruts     là où arrivent les photos — on n'y touche jamais
+```
+
+**Pourquoi une page « Imports bruts »** : les photos importées y arrivent. Vous
+copiez ensuite ce dont vous avez besoin vers les pages propres, et vous
+retravaillez la copie. Ainsi, vous gardez toujours l'original : le jour où vous
+referez une photo, vous ne perdrez pas votre travail.
+
+Pour déplacer une frame d'une page à l'autre : clic droit → **Copier**, aller
+sur l'autre page, **Coller**.
+
+### Comment disposer les frames dans une page
+
+Rangez-les en colonnes, de gauche à droite dans l'ordre du parcours, et une
+ligne par largeur :
+
+```text
+              Accueil      Journal 1     Journal 2     Conseils
+1440 px       [cadre]      [cadre]       [cadre]       [cadre]
+ 390 px       [cadre]      [cadre]       [cadre]       [cadre]
+```
+
+---
+
+## 2. Enregistrer les couleurs
+
+Ce sont les couleurs exactes de l'application, prises dans son fichier de style.
+Les enregistrer permet de toutes les changer d'un coup plus tard.
+
+Panneau de gauche → **Variables** → **+** → créez une collection nommée
+`Digi-Santé`, puis ajoutez ces couleurs une par une :
+
+| Nom | Code couleur | À quoi ça sert dans l'application |
+|---|---|---|
+| `marine` | `#1F3864` | barre du haut, titres, bouton principal |
+| `turquoise` | `#0E7C7B` | liens, courbe du graphique |
+| `turquoise-clair` | `#14A3A1` | survol des liens |
+| `or` | `#C99A2E` | boutons « voir la vidéo », liens externes |
+| `or-clair` | `#E5B955` | survol de ces boutons |
+| `fond` | `#E7F3F2` | fond de page |
+| `bordure` | `#D6E6E5` | contour des cartes et des champs |
+| `texte` | `#16233D` | texte normal |
+| `texte-doux` | `#5B6B85` | texte secondaire, plus clair |
+| `vert` | `#16A34A` | temps d'écran raisonnable (moins de 2 h) |
+| `vert-doux` | `#DCFCE7` | fond des messages verts |
+| `orange` | `#EA580C` | temps d'écran élevé (2 à 4 h) |
+| `orange-doux` | `#FFEDD5` | fond des messages orange |
+| `rouge` | `#DC2626` | temps d'écran excessif (plus de 4 h) |
+| `rouge-doux` | `#FEE2E2` | fond des messages rouges |
+
+⚠️ **Le fond des cartes, des champs et des tableaux reste blanc.** Ne le
+remplacez pas par la couleur `fond` : dans l'application, c'est un choix
+délibéré, et tout changerait d'aspect.
+
+**Ombre des cartes**, à enregistrer comme style d'effet :
+X 0, Y 10, flou 30, étalement −12, couleur `#1F3864` à 28 % d'opacité.
+
+---
+
+## 3. Enregistrer les styles de texte
+
+L'application utilise deux polices, toutes deux disponibles dans Figma sans rien
+installer (ce sont des Google Fonts) :
+
+- **Baloo 2** pour les titres — ronde, chaleureuse, adaptée aux enfants ;
+- **Nunito** pour le texte courant.
+
+Sélectionnez un texte dans une frame importée, puis, dans le panneau de droite,
+cliquez sur les quatre points `⠿` à côté de *Text* → **+** pour enregistrer le
+style. Créez-en sept :
+
+| Nom du style | Police | Graisse | Où on le voit |
 |---|---|---|---|
-| `Titre / XL` | Baloo 2 | 800 | accroche de la page d'accueil |
-| `Titre / L` | Baloo 2 | 700 | titres de page (`h1`) |
-| `Titre / M` | Baloo 2 | 700 | titres de carte (`h2`, `h3`) |
+| `Titre / XL` | Baloo 2 | 800 | la grande accroche de la page d'accueil |
+| `Titre / L` | Baloo 2 | 700 | titre de page (« Salut Léa ! ») |
+| `Titre / M` | Baloo 2 | 700 | titre de carte |
 | `Corps / Normal` | Nunito | 400 | texte courant |
 | `Corps / Gras` | Nunito | 700 | mises en avant |
-| `Corps / Doux` | Nunito | 600 | texte secondaire, couleur `texte-doux` |
+| `Corps / Doux` | Nunito | 600 | texte secondaire (couleur `texte-doux`) |
 | `Chiffre / Géant` | Baloo 2 | 800 | le temps d'écran du jour |
 
 ---
 
-## 4. Composants à créer
+## 4. Créer les composants
 
-Extraits des captures avec **Capture Selection** (⌥⇧D) ou découpés dans les
-frames importées. Ce sont les briques réellement réutilisées dans l'application :
+Un **composant** se dessine une fois et se réutilise partout. Si vous modifiez
+l'original, toutes les copies suivent.
 
-| Composant | Variantes | Où le trouver |
+**Comment faire** : sélectionnez l'élément dans une frame importée →
+clic droit → **Create component** (ou **⌥⌘K** / **Ctrl+Alt+K**).
+
+Les dix éléments qui reviennent le plus dans cette application :
+
+| Composant | Variantes à prévoir | Où le trouver |
 |---|---|---|
-| **Bouton** | marine, or, fantôme, supprimer × (normal, large) | partout |
-| **Carte** | standard, `card-enfant` (bord coloré) | toutes les pages |
-| **Pastille** | neutre, verte, orange, rouge | douleurs, limites, compteurs |
-| **Jauge** | vert, orange, rouge × (fine, épaisse) | accueil enfant, tableau de bord |
-| **Avatar** | petit, normal, grand × 12 avatars | partout dans les espaces enfant et parent |
-| **Ligne de profil** | — | profils enfant et parent, fiche admin |
-| **Barre de navigation** | enfant (colorée), parent, admin | en-tête de chaque espace |
-| **Carte de conseil** | orange (alerte), vert (félicitations) | écran des conseils |
-| **Champ de formulaire** | normal, avec aide, **en erreur** | tous les formulaires |
-| **Curseur** | 0 %, 50 %, 100 % | journal, étape 1 |
+| **Bouton** | marine, or, fantôme, rouge « supprimer » | partout |
+| **Carte** | simple, et version colorée de l'espace enfant | toutes les pages |
+| **Pastille** | grise, verte, orange, rouge | douleurs, limites, compteurs |
+| **Jauge** | verte, orange, rouge | accueil enfant, tableau de bord |
+| **Avatar rond** | petit, moyen, grand | espaces enfant et parent |
+| **Ligne de profil** | — | pages de profil, fiche admin |
+| **Barre du haut** | enfant (colorée), parent, admin | en haut de chaque page |
+| **Carte de conseil** | orange (alerte), verte (félicitations) | écran des conseils |
+| **Champ de formulaire** | normal, avec texte d'aide, **en erreur** | tous les formulaires |
+| **Curseur** | à 0 %, à 50 %, à 100 % | journal, étape 1 |
 
-L'état **en erreur** est celui qu'on oublie : capturez-le pour de bon
-(écran P3 « Ajouter un enfant — erreurs ») plutôt que de l'inventer.
+💡 Le plus simple pour attraper un élément isolé : utilisez
+**Capture Selection** (**⌥⇧D**) dans le navigateur, en dessinant juste autour de
+l'élément. Vous obtenez une petite frame propre, sans le reste de la page.
+
+⚠️ N'oubliez pas l'état **en erreur** des champs : c'est celui qu'on invente le
+plus souvent au lieu de le photographier. L'écran « Ajouter un enfant —
+erreurs » de la liste est là pour ça.
 
 ---
 
-## 5. Ordre de travail conseillé
+## 5. Dans quel ordre travailler
 
 ```text
-1. Importer les 5 écrans P1              → page « 99 · Imports bruts »
-2. Créer les variables de couleur et les styles de texte
-3. Dupliquer les frames vers leurs pages, les renommer
-4. Extraire les composants d'une seule frame bien remplie
-      (l'accueil enfant contient : navigation, avatar, jauge, cartes, boutons)
-5. Remplacer les éléments des autres frames par les composants
-6. Importer les écrans P2, puis P3, en réutilisant les composants
+1. Importer les 5 écrans prioritaires      → page « 99 · Imports bruts »
+2. Enregistrer les couleurs et les styles de texte
+3. Copier les frames vers leurs pages, les renommer
+4. Créer les composants à partir d'UNE seule frame bien remplie
+      (l'accueil enfant contient déjà : barre du haut, avatar, jauge,
+       cartes, boutons, pastilles)
+5. Dans les autres frames, remplacer les éléments par ces composants
+6. Importer les écrans de priorité 2, puis 3
 ```
 
-L'étape 4 est celle qui fait gagner du temps : tout le reste du fichier
-s'appuie dessus. Ne l'entamez qu'une fois les couleurs et les textes en place.
+L'étape 4 est celle qui fait gagner le plus de temps : tout le reste s'appuie
+dessus. Ne la commencez qu'une fois les couleurs et les textes enregistrés.
 
 ---
 
-## 6. Deux principes à tenir
+## 6. Deux règles à ne pas oublier
 
-**Ne retouchez jamais un import brut.** Dupliquez-le, retravaillez la copie.
-Le jour où l'interface changera, vous réimporterez sans rien perdre.
+**Ne modifiez jamais un import brut.** Copiez-le d'abord. Le jour où
+l'application changera, vous referez la photo sans perdre votre travail.
 
-**Le design doit rester fidèle à l'application** tant qu'il sert de
-documentation. Si vous voulez explorer une autre direction visuelle, créez une
-page `05 · Exploration` : mélanger l'existant et les propositions dans les mêmes
-frames rend le fichier inutilisable pour les deux usages.
+**Gardez la maquette fidèle à l'application** tant qu'elle sert de
+documentation. Si vous voulez proposer un autre design, créez une page
+`05 · Propositions`. Mélanger l'existant et les idées neuves dans les mêmes
+cadres rend le fichier inutilisable pour les deux usages.
 
 ---
 
-➡️ Guide d'utilisation de l'extension : [`README.md`](./README.md)
-➡️ Liste des écrans : [`ecrans-a-capturer.md`](./ecrans-a-capturer.md)
+➡️ Le guide d'utilisation de l'extension : [`README.md`](./README.md)
+➡️ La liste des écrans : [`ecrans-a-capturer.md`](./ecrans-a-capturer.md)
