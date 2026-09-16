@@ -1,0 +1,134 @@
+===============================================================================
+DIGI-SANTE JUNIOR — ACCES DE TEST (serveur de demonstration)
+Mise a jour : 16/09/2026
+===============================================================================
+
+⚠ Ce fichier ne contient QUE des comptes de demonstration, dont les mots de
+  passe sont publics (ils sont dans le README et charges par les fixtures).
+  N'y ajoutez JAMAIS un vrai mot de passe, ni APP_SECRET, ni les identifiants
+  MySQL : ceux-la vivent uniquement dans .env.prod sur le serveur.
+
+
+-------------------------------------------------------------------------------
+1. ADRESSE DE L'APPLICATION
+-------------------------------------------------------------------------------
+
+  Site           https://digisante.150.lebondeveloppeur.net
+
+  Connexion parent / administrateur    /login             (par email)
+  Connexion enfant                     /connexion-enfant  (par identifiant)
+
+  Depuis la page d'accueil : bouton « Je suis un parent » ou « Je suis un
+  enfant ». Apres connexion, chacun est redirige automatiquement vers son
+  espace.
+
+
+-------------------------------------------------------------------------------
+2. COMPTES DE DEMONSTRATION
+-------------------------------------------------------------------------------
+
+ADMINISTRATEUR                 page /login
+  Email          admin@digisante.local
+  Mot de passe   admin123
+  Espace         /admin  (contenus de la bibliotheque, comptes parents)
+
+PARENT 1 — enfants Lea et Tom   page /login
+  Email          parent@digisante.local
+  Mot de passe   parent123
+  Espace         /parent  (tableau de bord, mes enfants, profil)
+
+PARENT 2 — enfants Noah et Ines page /login
+  Email          sofia@digisante.local
+  Mot de passe   parent123
+
+ENFANTS                        page /connexion-enfant
+  Identifiants   lea | tom | noah | ines
+  Mot de passe   enfant123   (le meme pour les quatre)
+  Espace         /enfant  (accueil, journal, decouvrir, profil)
+
+  lea et tom appartiennent a parent@digisante.local
+  noah et ines appartiennent a sofia@digisante.local
+
+  Profil de chaque enfant (utile pour choisir quoi demontrer) :
+
+    lea    12 ans   limite 2 h     beaucoup d'ecran, douleurs cou et yeux
+                                   -> depassements frequents, plusieurs conseils
+    tom     9 ans   limite 1 h 30  ecran modere, parfois mal aux poignets
+    noah   13 ans   limite 2 h 30  douleurs aux epaules et au dos
+    ines   11 ans   limite 2 h     journees equilibrees
+                                   -> souvent le message « Super journee ! »
+
+
+-------------------------------------------------------------------------------
+3. PARCOURS DE TEST CONSEILLE (10 minutes)
+-------------------------------------------------------------------------------
+
+ENFANT (lea / enfant123)
+  1. Accueil : jauge du temps d'ecran du jour, avatar, prenom.
+  2. « Mon journal » : les 4 enfants ont deja un journal aujourd'hui, donc la
+     page affiche directement les conseils. Pour tester le formulaire en
+     2 etapes, voir la section 4 ci-dessous.
+  3. « Decouvrir » : la bibliotheque, groupee par type de contenu.
+  4. « Mon profil » : carte d'identite et changement de mot de passe.
+     (Si vous changez le mot de passe, notez-le : la connexion suivante
+      utilisera le nouveau.)
+
+PARENT (parent@digisante.local / parent123)
+  1. Tableau de bord : journal du jour de l'enfant, jauge, douleurs signalees,
+     conseils recus, graphique 7 jours.
+  2. Basculer sur « 30 derniers jours » : la courbe change d'echelle.
+  3. Changer d'enfant avec les boutons en haut (Lea / Tom).
+  4. « Mes enfants » : ajouter un enfant (l'identifiant de connexion est
+     genere automatiquement a partir du prenom), modifier, supprimer.
+  5. « Mon profil » : email, ville, pays, mot de passe.
+
+ADMINISTRATEUR (admin@digisante.local / admin123)
+  1. « Contenus » : creer, modifier, supprimer une fiche / video / quiz.
+     Un contenu rattache a une regle est propose a l'enfant dans ses conseils.
+  2. « Parents » : liste des comptes, fiche d'un parent avec ses enfants en
+     lecture seule, suppression d'un compte (definitive, en cascade).
+
+CONTROLES D'ACCES (a tester, cela doit ECHOUER)
+  - Un parent qui ouvre /admin              -> erreur 403
+  - Un enfant qui ouvre /parent             -> erreur 403
+  - Un visiteur non connecte qui ouvre /parent -> renvoye vers /login
+  - /parent/enfants/<id d'un enfant d'un autre parent>/modifier -> 403
+
+
+-------------------------------------------------------------------------------
+4. REMETTRE LES DONNEES A ZERO (sur le serveur, en SSH)
+-------------------------------------------------------------------------------
+
+Les enfants de demonstration ont deja rempli le journal du jour. Pour tester le
+formulaire en 2 etapes (temps d'ecran + schema du corps) :
+
+  cd /home/user/digi-sante-junior-easy
+  alias dcp='docker compose --env-file .env.prod -f compose.prod.yaml'
+  dcp exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"
+
+Pour recharger entierement le jeu de demonstration (EFFACE toutes les donnees,
+y compris les comptes crees pendant les tests) :
+
+  dcp exec app composer install
+  dcp exec app php bin/console --env=dev doctrine:fixtures:load --no-interaction
+  dcp exec app composer install --no-dev --optimize-autoloader
+  dcp exec app php bin/console cache:clear
+
+
+-------------------------------------------------------------------------------
+5. ACCES TECHNIQUES (reserves a l'administrateur du serveur)
+-------------------------------------------------------------------------------
+
+phpMyAdmin et MySQL ne sont PAS exposes sur Internet en production.
+Pour y acceder depuis votre machine, ouvrir un tunnel SSH :
+
+  ssh -L 3308:127.0.0.1:3308 root@vps1501
+  puis se connecter a 127.0.0.1:3308 avec un client MySQL.
+
+Les identifiants MySQL et APP_SECRET se trouvent dans le fichier .env.prod du
+serveur (non versionne, chmod 600). Ils ne doivent figurer dans aucun document
+partage.
+
+Journaux de l'application :
+  dcp logs --tail 50 app
+  dcp exec app tail -50 var/log/prod.log
