@@ -9,6 +9,11 @@
 /vendor/
 ###< symfony/framework-bundle ###
 
+###> déploiement ###
+# Secrets du serveur : jamais versionnés (voir .env.prod.dist)
+/.env.prod
+###< déploiement ###
+
 ###> phpunit/phpunit ###
 /phpunit.xml
 /.phpunit.cache/

@@ -1,0 +1,79 @@
+# Digi-Santé Junior — déploiement sur serveur
+#
+# Différences avec compose.yaml (développement) :
+#   - aucun port ouvert sur l'extérieur : tout écoute sur 127.0.0.1, seul le
+#     reverse proxy (nginx) atteint l'application ;
+#   - pas de phpMyAdmin : c'est un outil de développement ;
+#   - les mots de passe viennent d'un fichier non versionné, pas du dépôt ;
+#   - APP_ENV=prod : ni profiler, ni page d'erreur détaillée ;
+#   - les conteneurs redémarrent tout seuls après un reboot du serveur.
+#
+# Démarrage :
+#   docker compose --env-file .env.prod -f compose.prod.yaml up -d --remove-orphans
+#
+# `--remove-orphans` supprime le conteneur phpMyAdmin s'il tourne encore.
+# Le nom de projet et le volume sont identiques à ceux du développement :
+# la base existante est conservée.
+
+name: digisante-junior
+
+services:
+  app:
+    build: .
+    container_name: digisante_junior_app
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      # Les variables d'environnement réelles ont priorité sur les fichiers
+      # .env de Symfony : rien à configurer dans le dépôt.
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: ${APP_SECRET:?APP_SECRET manquant dans .env.prod}
+      # Dans le réseau Docker, MySQL s'appelle `database` (nom du service).
+      DATABASE_URL: 'mysql://digisante:${MYSQL_PASSWORD:?MYSQL_PASSWORD manquant dans .env.prod}@database:3306/digisante_junior?serverVersion=8.0.36&charset=utf8mb4'
+      TZ: Europe/Paris
+    ports:
+      # 127.0.0.1 : inaccessible depuis Internet, seul nginx passe.
+      - '127.0.0.1:8081:80'
+    volumes:
+      - ./:/app
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  database:
+    image: mysql:8.0.36
+    container_name: digisante_junior_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD manquant dans .env.prod}
+      MYSQL_DATABASE: digisante_junior
+      MYSQL_USER: digisante
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD manquant dans .env.prod}
+      # Même fuseau que PHP : CURDATE() et « today » désignent le même jour.
+      TZ: Europe/Paris
+    ports:
+      # Accès depuis votre machine par tunnel SSH uniquement :
+      #   ssh -L 3308:127.0.0.1:3308 utilisateur@serveur
+      - '127.0.0.1:3308:3306'
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test:
+        ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-p${MYSQL_ROOT_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  db_data:
