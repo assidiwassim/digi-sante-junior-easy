@@ -1,4 +1,4 @@
-# Prompt Claude Code — Phase 03 : Base de données, Doctrine et entité `User`
+# Prompt Claude Code — Phase 03 : Gabarit de base, charte graphique et page d'accueil
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
 
@@ -6,141 +6,146 @@
 
 ## Contexte du projet
 
-**Digi-Santé Junior** : application Symfony de suivi du bien-être numérique des
-enfants de 8 à 14 ans. Trois rôles **sans hiérarchie** (un administrateur n'est
-ni parent ni enfant) :
+**Digi-Santé Junior** est une application web de suivi du bien-être numérique
+des enfants de 8 à 14 ans (journal quotidien du temps d'écran et des douleurs,
+conseils personnalisés, suivi par les parents). Trois rôles sans hiérarchie :
+administrateur, parent, enfant.
 
-| Rôle | Espace | Connexion |
-|---|---|---|
-| `ROLE_ADMIN` | `/admin` | **email** |
-| `ROLE_PARENT` | `/parent` | **email** |
-| `ROLE_CHILD` | `/enfant` | **identifiant** (pas d'email) |
+Déjà en place : Docker (`app`, `database`, `phpmyadmin`), squelette Symfony 7.4
+avec **tous les paquets du projet** (phase 01), base MySQL et les cinq entités
+`User`, `Enfant`, `JournalEntree`, `DouleurZone`, `ContenuBienEtre` (phase 02).
+`HomeController` renvoie encore une simple réponse texte.
 
-Stack : PHP 8.4, Symfony 7.4, **Doctrine ORM 3**, MySQL 8, Twig, Docker.
-Je débute avec Symfony : code simple, en français, sans sur-ingénierie.
+Stack : PHP 8.4, Symfony 7.4, Twig, **Bootstrap 5.3 par CDN**, MySQL 8, Docker.
+**Aucun bundler, aucun Node.js, aucun npm** : les fichiers de `public/` sont
+servis tels quels.
+
+Je débute avec Symfony : je veux du code simple, en français, lisible de haut
+en bas.
 
 ## Objectif de la phase
 
-Connecter l'application à MySQL et créer la première table : `users`, le compte
-de connexion commun aux trois rôles. Ajouter phpMyAdmin pour regarder la base
-sans écrire de SQL.
+Passer d'une réponse texte à de vraies pages HTML : un gabarit commun à tout le
+site, la charte graphique du projet, et une page d'accueil publique qui
+présente le service.
 
 ## Avant de coder
 
-1. Lis `compose.yaml`, `.env` et `composer.json` pour voir la configuration
-   existante.
-2. Vérifie que le service `database` tourne et que `DATABASE_URL` pointe bien
-   sur lui (hôte `database`, port 3306 **dans** le réseau Docker).
-3. Explique-moi la différence entre `.env` et `.env.local` avant de toucher à
-   ces fichiers.
+1. Lis `src/Controller/HomeController.php`, `composer.json` et la structure des
+   dossiers pour voir ce qui existe déjà.
+2. Twig, Asset et la barre de debug sont installés depuis la phase 01 : n'installe
+   aucun paquet ; s'il en manque un, signale-le moi.
+3. Ne modifie pas la configuration Docker de la phase 01 ni les entités de la
+   phase 02.
 
 ## À implémenter
 
-### 1. Doctrine
+### 1. Twig et les gabarits
 
-- Installer `symfony/orm-pack` et, en dépendance de développement,
-  `symfony/maker-bundle`.
-- Vérifier la configuration générée dans `config/packages/doctrine.yaml` et la
-  commenter en français là où c'est utile.
+Twig, le composant Asset, la barre de debug, le profiler et `dump()` sont déjà
+installés (phase 01). La barre de debug apparaîtra dès cette première page HTML :
+elle servira à chaque phase pour comprendre ce que fait Symfony.
 
-### 2. phpMyAdmin
+Remplacer le `templates/base.html.twig` créé par la recette par le gabarit dont
+**toutes** les pages hériteront. Il doit exposer ces blocs, et seulement
+ceux-là :
 
-Ajouter un service `phpmyadmin` dans `compose.yaml` :
+`title`, `body_class`, `navbar`, `logo`, `marque_suffixe`, `menu`,
+`menu_utilisateur`, `body`, `javascripts`.
 
-- image `phpmyadmin:5.2`, port `8082:80` ;
-- `PMA_HOST: database`, `PMA_PORT: 3306`, `PMA_USER` et `PMA_PASSWORD` renseignés
-  pour que la connexion soit **automatique** (aucun écran de login) ;
-- `TZ: Europe/Paris` ;
-- `depends_on` avec `condition: service_healthy`.
+Le gabarit contient :
 
-Note dans un commentaire que c'est un outil **de développement uniquement**.
+- `<html lang="fr">`, un `<meta viewport>`, le favicon ;
+- les polices Google Fonts **Baloo 2** (titres) et **Nunito** (texte) ;
+- Bootstrap 5.3 par CDN (CSS dans le `<head>`, bundle JS avant `</body>`) ;
+- `public/css/app.css` via `asset()` ;
+- une barre de navigation Bootstrap repliable (`navbar-expand-lg`) avec la
+  marque « Digi-Santé Junior » ;
+- l'affichage des **messages flash** (`app.flashes`), prêt pour les phases
+  suivantes ;
+- un pied de page discret.
 
-### 3. Entité `User`
+### 2. Charte graphique
 
-Un seul type de compte pour les trois rôles :
+`public/css/app.css` contient **uniquement** la charte et les composants du
+projet, pas de recopie de Bootstrap :
 
-| Propriété | Type | Règles |
-|---|---|---|
-| `id` | `int` | clé primaire auto |
-| `email` | `?string(180)` | **unique**, nullable (les enfants n'en ont pas), validé par `#[Assert\Email]` |
-| `username` | `?string(60)` | **unique**, nullable (réservé aux enfants) |
-| `roles` | `json` | liste de rôles |
-| `password` | `string` | mot de passe **haché**, jamais en clair |
-| `pays` | `?string(80)` | facultatif |
-| `ville` | `?string(80)` | facultatif |
-| `createdAt` | `datetime_immutable` | rempli dans le constructeur |
+- la palette en variables CSS sur `:root` (bleu marine, turquoise, or, teintes
+  douces) ;
+- les polices : Baloo 2 pour `h1`-`h3`, Nunito pour le texte ;
+- des boutons **en pilule** et des cartes **arrondies à ombre douce** ;
+- les classes maison : `btn-marine`, `btn-or`, `btn-fantome`, `btn-supprimer`,
+  `card-enfant`, `carte-titre`, `encadre`, `pastille`, `stat-libelle`,
+  `stat-valeur`, `gros-chiffre`, `jauge` + `niveau-vert|orange|rouge`,
+  `profil-ligne`, `avatar-bulle`, `texte-doux` ;
+- le fond de page posé sur `body`.
 
-Exigences :
+⚠️ Piège à éviter : **ne redéfinis pas la variable Bootstrap `--bs-body-bg`**,
+elle sert de fond aux cartes, champs, tableaux et menus. Le fond coloré de la
+page se met sur `body`.
 
-- la classe implémente `UserInterface` et `PasswordAuthenticatedUserInterface` ;
-- `getUserIdentifier()` renvoie l'email **sinon** le username ;
-- `getRoles()` ajoute toujours `ROLE_USER` ;
-- les rôles sont des **constantes de classe** (`ROLE_ADMIN`, `ROLE_PARENT`,
-  `ROLE_CHILD`) : pas d'enum PHP ;
-- `setEmail()` et `setUsername()` enregistrent en **minuscules**, sans espaces
-  autour ;
-- `#[UniqueEntity]` sur `email` et sur `username`, avec des messages en français
-  (« Cette adresse email est déjà utilisée. ») ;
-- une méthode `isParent()` pratique pour la suite.
+### 3. Page d'accueil publique
 
-⚠️ Les setters liés à un formulaire acceptent `null` (`?string`) : sinon un
-champ vide provoque une erreur 500 **avant** la validation.
+`templates/home/index.html.twig`, rendue par `HomeController` :
 
-### 4. Migration
-
-- Générer la migration, **me la faire relire** avant de l'appliquer, puis
-  l'appliquer.
-- Vérifier ensuite avec `doctrine:schema:validate`.
+- une accroche (« Mieux vivre avec les écrans, un jour à la fois »), une
+  pastille « Pour les 8 à 14 ans », un paragraphe de présentation ;
+- deux boutons d'appel à l'action : **« 🚀 Je suis un enfant »** et
+  **« 👨‍👩‍👧 Je suis un parent »** (pour l'instant, ils pointent vers `#` :
+  la connexion parent arrive en phase 04, la connexion enfant en phase 06) ;
+- une carte de présentation de la mascotte 🦊 ;
+- trois cartes d'arguments : conseils sur mesure, suivi clair pour les parents,
+  ton toujours positif.
 
 ## Contraintes techniques et architecturales
 
-- **Toute** modification du schéma passe par une migration : jamais de SQL à la
-  main dans la base.
-- Les requêtes Doctrine vivent dans les **repositories**, jamais dans un
-  contrôleur.
-- Dates : type `datetime_immutable` ; pour une date sans heure (plus tard),
-  ce sera `date_immutable`.
-- Pas d'enum PHP : des constantes de classe.
-- Propriétés `private`, getters/setters classiques, pas de magie.
+- **Utiliser d'abord les classes Bootstrap** (grille, `card`, `btn`, `alert`,
+  utilitaires `d-flex`, `gap-*`, `mt-*`…). `app.css` ne sert qu'à ce que
+  Bootstrap ne fait pas.
+- Le contenu de chaque page va dans `{% block body %}`.
+- Aucune logique métier dans Twig.
+- JavaScript vanilla uniquement, et seulement s'il est nécessaire.
+- Le site doit être **responsive** : lisible à 400 px de large, sans défilement
+  horizontal.
 
 ## Commandes attendues
 
 ```bash
-docker compose exec app composer require symfony/orm-pack
-docker compose exec app composer require --dev symfony/maker-bundle
-docker compose exec app php bin/console make:entity
-docker compose exec app php bin/console make:migration
-docker compose exec app php bin/console doctrine:migrations:migrate --no-interaction
-docker compose exec app php bin/console doctrine:schema:validate
+docker compose exec app php bin/console lint:twig templates
+docker compose exec app php bin/console cache:clear
 ```
 
 ## Ce qui n'est PAS dans cette phase
 
-- Pas de formulaire d'inscription ni de connexion (phase 04).
-- Pas de `security.yaml`, pas de rôle appliqué à une URL (phase 04).
-- Pas d'entité `Enfant`, `JournalEntree`, `DouleurZone` ou `ContenuBienEtre`
-  (phases 05, 07 et 08).
-- Aucun utilisateur créé en base pour l'instant.
+- Aucune nouvelle entité, aucune migration : le modèle de données est complet
+  depuis la phase 02.
+- Aucune installation de paquet (tout est installé depuis la phase 01).
+- Pas de connexion, pas d'inscription, pas de rôle (phase 04).
+- Pas de layout `parent/`, `enfant/` ou `admin/` : ils viendront avec leurs
+  espaces respectifs.
 
 ## Scénario de test manuel
 
-1. Lancer la migration : `docker compose exec app php bin/console doctrine:migrations:migrate --no-interaction`.
-2. Ouvrir phpMyAdmin sur `http://localhost:8082` : la connexion doit être automatique.
-3. Ouvrir la base `digisante_junior`, puis la table `users`, onglet « Structure ».
-4. Vérifier les colonnes `email`, `username`, `roles`, `password`, `pays`, `ville`, `created_at`, et les index uniques sur `email` et `username`.
-5. **Résultat attendu** : la table existe avec les bonnes colonnes et contraintes, et `doctrine:schema:validate` affiche `[OK]` pour le mapping **et** pour la base.
+1. Ouvrir `http://localhost:8081`.
+2. Vérifier l'affichage : polices Baloo 2 et Nunito, couleurs de la charte,
+   boutons en pilule, cartes arrondies.
+3. Réduire la fenêtre du navigateur à environ 400 px de large.
+4. Vérifier que le menu se replie derrière le bouton hamburger et qu'aucune
+   barre de défilement horizontale n'apparaît.
+5. **Résultat attendu** : une page d'accueil habillée et responsive, servie par le gabarit commun, et la barre de debug s'affiche en bas.
 
 ## Critères de validation
 
-- [ ] `doctrine:schema:validate` : deux `[OK]`.
-- [ ] La table `users` est visible dans phpMyAdmin avec ses index uniques.
-- [ ] `User` implémente les deux interfaces de sécurité et expose ses rôles en
-      constantes.
-- [ ] Le fichier de migration est lisible et ne contient que ce changement.
-- [ ] `.env` ne contient aucun mot de passe réel autre que celui du Docker local.
+- [ ] `lint:twig templates` affiche `[OK]`.
+- [ ] La page d'accueil hérite de `base.html.twig` (aucun `<html>` en double).
+- [ ] `app.css` ne contient que la charte, et ne redéfinit pas `--bs-body-bg`.
+- [ ] Le rendu est correct à 400 px comme en plein écran.
+- [ ] Les blocs Twig listés plus haut existent tous et sont utilisables.
+- [ ] La barre de debug de Symfony apparaît en bas de la page (environnement de
+      développement).
 
 ## Enfin
 
-- N'écris **aucun test automatisé** : je valide dans phpMyAdmin.
-- Termine en m'expliquant en quelques lignes ce que fait exactement une
-  migration, et pourquoi on ne modifie jamais une migration déjà appliquée.
+- N'écris **aucun test automatisé** : je valide au navigateur.
+- Termine par la liste des classes CSS maison que tu as créées, avec une ligne
+  d'explication chacune, pour que je les réutilise dans les phases suivantes.

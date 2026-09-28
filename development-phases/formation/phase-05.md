@@ -1,13 +1,12 @@
-# Formation — Phase 05 : Espace parent, profils enfants et relations Doctrine
+# Formation — Phase 05 : Espace parent et profils enfants
 
 ## 1. Objectifs pédagogiques
 
 À la fin de cette leçon, vous devez être capable de :
 
-- déclarer les trois **relations Doctrine** utilisées ici : `ManyToOne`,
-  `OneToOne`, `OneToMany` ;
-- expliquer ce qu'est le **côté propriétaire** d'une relation ;
-- distinguer `cascade: ['remove']` (Doctrine) de `onDelete: 'CASCADE'` (base) ;
+- **utiliser** les relations et les cascades déclarées en phase 02 pour créer,
+  modifier et supprimer un enfant et son compte ;
+- écrire une requête de repository (`findByParent()`, `genererUsername()`) ;
 - écrire un **voter** et expliquer en quoi il complète `access_control` ;
 - créer une **extension Twig** pour ajouter un filtre d'affichage ;
 - comprendre pourquoi un `RangeType` a besoin d'un **transformer** ;
@@ -16,86 +15,43 @@
 ## 2. Prérequis
 
 - Phases 01 à 04 terminées : un parent peut s'inscrire et se connecter.
-- Savoir ce qu'est une entité, un repository, une migration (phase 03).
+- Savoir ce qu'est une entité, une relation, une cascade et une contrainte de
+  validation (phase 02) : l'entité `Enfant` existe déjà, relisez
+  `src/Entity/Enfant.php` avant de commencer.
 - Savoir ce qu'est un formulaire Symfony et un champ non mappé (phase 04).
 
 ---
 
 ## 3. Concepts à apprendre
 
-### Concept 1 — Les relations entre entités
+### Concept 1 — Se servir des entités de la phase 02
 
-**Pourquoi ?** Les données du monde réel sont liées : un parent **a** des
-enfants, un enfant **appartient** à un parent. En base, ce lien est une clé
-étrangère ; côté PHP, on veut manipuler des objets.
+**Pourquoi ?** L'entité `Enfant`, ses relations avec `User`, ses cascades, ses
+constantes et ses contraintes existent **depuis la phase 02**
+([leçon 02](./phase-02.md)). Cette phase ne touche pas au schéma : elle
+**utilise** ce qui a été déclaré.
 
-**Comment ça fonctionne ?** Trois relations suffisent ici :
+**Rappel rapide.**
 
-| Relation | Lecture | Dans le projet |
-|---|---|---|
-| `ManyToOne` | plusieurs X pour un Y | plusieurs enfants pour un parent |
-| `OneToMany` | l'inverse du précédent | la collection d'enfants d'un parent |
-| `OneToOne` | un pour un | un enfant ↔ un compte de connexion |
-
-**Exemple commenté.**
-
-```php
-class Enfant
-{
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'enfants')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private ?User $parent = null;
-    // Cette classe porte la clé étrangère parent_id : c'est le CÔTÉ PROPRIÉTAIRE.
-}
-
-class User
-{
-    /** @var Collection<int, Enfant> */
-    #[ORM\OneToMany(targetEntity: Enfant::class, mappedBy: 'parent', cascade: ['remove'])]
-    private Collection $enfants;
-    // Côté INVERSE : aucune colonne en base, c'est du confort de lecture.
-}
-```
-
-À retenir : `inversedBy` et `mappedBy` se répondent. Le côté qui porte
-`JoinColumn` est celui qui a la colonne en base ; c'est lui que Doctrine regarde
-pour enregistrer le lien.
+| Déclaré en phase 02 | Ce qu'on en fait ici |
+|---|---|
+| `Enfant::parent` (`ManyToOne`, `onDelete: 'CASCADE'`) | `$enfant->setParent($parent)` avant `persist()` |
+| `User::enfants` (`OneToMany`, `cascade: ['remove']`) | lister les enfants, supprimer sans boucle |
+| `Enfant::compte` (`OneToOne` non nullable, `cascade: ['persist', 'remove']`) | un seul `persist()` crée l'enfant **et** son compte ; `remove()` supprime les deux |
+| `Enfant::AVATARS`, `getAvatarEmoji()` | la galerie d'avatars et l'affichage des cartes |
+| `#[Assert\…]` (âge 8-14 ans, limite 15-480 par pas de 15) | les messages d'erreur du formulaire `EnfantType` |
 
 **Dans ce projet.** L'enfant a **deux** relations vers `User` : son `parent`
-(qui le gère) et son `compte` (avec lequel il se connecte). Deux rôles
-différents, donc deux relations.
+(qui le gère) et son `compte` (avec lequel il se connecte). Si un détail vous
+échappe (côté propriétaire, différence `cascade` / `onDelete`, pourquoi des
+constantes plutôt que des enums), relisez la leçon 02 avant de continuer.
+
+⚠️ Règle du projet : **pas de classe « manager » de suppression**. Les cascades
+sont configurées, on ne les réimplémente pas en PHP.
 
 ---
 
-### Concept 2 — Les cascades
-
-**Pourquoi ?** Supprimer un parent doit supprimer ses enfants, leurs comptes,
-leurs journaux. Sinon la base se remplit de lignes orphelines — et de données
-personnelles qui auraient dû disparaître.
-
-**Comment ça fonctionne ?** Deux mécanismes, souvent confondus :
-
-| | Où | Qui l'exécute | Quand |
-|---|---|---|---|
-| `cascade: ['remove']` | dans le mapping Doctrine | **PHP** | quand vous appelez `remove()` sur l'objet parent |
-| `onDelete: 'CASCADE'` | sur la `JoinColumn` | **MySQL** | quand la ligne parente est supprimée, par n'importe quel moyen |
-
-**Dans ce projet.** Les deux sont utilisés, volontairement :
-
-```text
-Parent ──► Enfants ──► Compte de connexion (cascade Doctrine : c'est un OneToOne)
-                  └──► Journaux ──► Douleurs (onDelete en base : c'est massif)
-```
-
-`cascade: ['persist']` existe aussi : enregistrer l'enfant enregistre son compte
-en même temps, sans `persist()` séparé.
-
-⚠️ Règle du projet : **pas de classe « manager » de suppression**. On configure
-les cascades, on ne les réimplémente pas en PHP.
-
----
-
-### Concept 3 — Le voter
+### Concept 2 — Le voter
 
 **Pourquoi ?** `access_control` protège une **URL**. Mais
 `/parent/enfants/12/modifier` est autorisée à **tous** les parents : il faut
@@ -136,37 +92,7 @@ Voter = maille fine (par objet). Les deux se complètent.
 
 ---
 
-### Concept 4 — Les constantes d'entité
-
-**Pourquoi ?** Il faut une liste fermée d'avatars, avec pour chacun un emoji, un
-nom et une couleur.
-
-**Comment ça fonctionne ?** Une constante de classe, et des getters d'affichage.
-
-```php
-public const AVATARS = [
-    'renard' => ['emoji' => '🦊', 'nom' => 'Renard malin', 'couleur' => '#F59E0B'],
-    'panda'  => ['emoji' => '🐼', 'nom' => 'Panda calme',  'couleur' => '#64748B'],
-];
-
-public function getAvatarEmoji(): string
-{
-    return self::AVATARS[$this->avatar]['emoji'] ?? '🙂';
-}
-```
-
-La **clé** (`renard`) est enregistrée en base ; l'emoji et le nom ne servent
-qu'à l'affichage. Le `?? '🙂'` évite une erreur si une ancienne valeur traîne en
-base.
-
-**Dans ce projet.** Règle explicite : **pas d'enum PHP**. Les listes fixes
-(avatars, zones du corps, types de contenu, règles de conseil) sont des
-constantes dans l'entité concernée. C'est plus simple à lire pour un débutant et
-cela évite les migrations de type.
-
----
-
-### Concept 5 — L'extension Twig
+### Concept 3 — L'extension Twig
 
 **Pourquoi ?** « 150 minutes » n'a aucun sens pour un enfant ; « 2 h 30 » si. Ce
 formatage est utilisé dans une dizaine de gabarits : il ne doit exister qu'une
@@ -206,7 +132,7 @@ directement, sans passer par Twig.
 
 ---
 
-### Concept 6 — Le transformer de données
+### Concept 4 — Le transformer de données
 
 **Pourquoi ?** Un `<input type="range">` renvoie **toujours** une chaîne
 (`"120"`). La propriété `maxMinutesJour` est un `int`. Sans conversion, le
@@ -226,7 +152,7 @@ affichera alors un message propre, au lieu d'une erreur technique.
 
 ---
 
-### Concept 7 — Le CSRF hors formulaire Symfony
+### Concept 5 — Le CSRF hors formulaire Symfony
 
 **Pourquoi ?** Le bouton « Supprimer » n'est pas un formulaire de saisie, mais
 c'est une action destructrice : elle doit être protégée comme les autres.
@@ -248,6 +174,8 @@ if (!$this->isCsrfTokenValid('supprimer-enfant-'.$enfant->getId(), $request->get
 }
 ```
 
+Un jeton absent ou faux donne donc un **403** — même règle pour toutes les
+suppressions du projet (enfants, contenus, parents).
 Le jeton inclut l'identifiant : celui de l'enfant 3 ne vaut pas pour l'enfant 4.
 Le `confirm()` protège de la fausse manœuvre, **pas** de l'attaque : les deux
 sont nécessaires.
@@ -308,40 +236,52 @@ $resolver->setDefaults([
 
 ```php
 if ($options['creation']) {
-    $builder->add('motDePasse', TextType::class, ['mapped' => false, /* … */]);
+    $builder->add('motDePasse', PasswordType::class, ['mapped' => false, /* … */]);
 }
 ```
 
 À la création, le formulaire demande un mot de passe ; à la modification, non. Un
 seul `*Type`, un seul partiel Twig, deux comportements.
 
+### Le profil du parent, et le piège de l'utilisateur connecté
+
+Le menu de l'espace parent mène à `/parent/profil` (`parent_profil`,
+`Parent\ProfilController`) : deux formulaires sur la même page,
+`ProfilParentType` (email obligatoire, pays, ville) et `MotDePasseType` (un
+champ `plainPassword`, `RepeatedType` non mappé, comme dans `InscriptionType`).
+
+```php
+$formProfil = $this->createForm(ProfilParentType::class, $parent);
+$formProfil->handleRequest($request);
+
+if ($formProfil->isSubmitted() && !$formProfil->isValid()) {
+    // Le formulaire a déjà modifié l'objet User en mémoire. Or c'est
+    // l'utilisateur connecté : un email vide ou faux le déconnecterait
+    // à la requête suivante. On recharge ses vraies valeurs.
+    $entityManager->refresh($parent);
+}
+```
+
 ---
 
 ## 5. Commandes
 
-### `docker compose exec app php bin/console make:entity Enfant`
-
-- **Ce qu'elle fait** : crée l'entité et son repository, et propose d'ajouter les
-  relations (`relation` comme type de champ).
-- **À observer** : le générateur écrit **les deux côtés** de la relation et les
-  méthodes `addEnfant()` / `removeEnfant()`. Relisez-les.
-
 ### `docker compose exec app php bin/console make:voter EnfantVoter`
 
 - **Ce qu'elle fait** : génère le squelette d'un voter avec `supports()` et
-  `voteOnAttribute()`.
+  `voteOnAttribute()`, dans `src/Security/Voter/EnfantVoter.php` (espace de noms
+  `App\Security\Voter`). Le squelette propose des attributs d'exemple
+  (`POST_EDIT`, `POST_VIEW`) : remplacez-les par la seule constante
+  `GERER = 'ENFANT_GERER'`.
 - **À observer** : le voter est automatiquement enregistré comme service, sans
   configuration.
 
-### `docker compose exec app php bin/console make:migration` puis `doctrine:migrations:migrate`
-
-- **À observer** : le SQL doit contenir la création de `enfant` **et** les deux
-  clés étrangères, dont une avec `ON DELETE CASCADE`.
-
 ### `docker compose exec app php bin/console doctrine:schema:validate`
 
-- **Quand** : après toute modification de relation. Un mapping bancal se voit
-  immédiatement ici.
+- **Quand** : pour confirmer que le schéma n'a pas bougé. Aucune entité n'est
+  modifiée dans cette phase : **aucune migration** n'est attendue ; si
+  `make:migration` propose quelque chose, c'est qu'une entité a été touchée par
+  erreur.
 
 ### `docker compose exec app php bin/console debug:twig --filter=duree`
 
@@ -354,10 +294,10 @@ seul `*Type`, un seul partiel Twig, deux comportements.
 
 | Composant | Rôle ici |
 |---|---|
-| **Doctrine ORM** | relations, cascades, collections |
+| **Doctrine ORM** | utilisation des relations et cascades (déclarées en phase 02), requêtes de repository |
 | **Security (Voter)** | autorisation sur un objet précis |
 | **Form** | option personnalisée, champ non mappé, transformer |
-| **Validator** | âge 8-14 ans, limite 15-480 par pas de 15 |
+| **Validator** | contraintes de la phase 02 (âge 8-14 ans, limite 15-480 par pas de 15) + mot de passe non mappé |
 | **Twig (extension)** | le filtre `duree` |
 | **String (Slugger)** | génération de l'identifiant |
 
@@ -368,27 +308,31 @@ seul `*Type`, un seul partiel Twig, deux comportements.
 ```text
 src/
 ├── Controller/Parent/
-│   └── EnfantController.php      liste, création, modification, suppression
-├── Entity/
-│   ├── Enfant.php                profil + constantes AVATARS et LIMITE_*
-│   └── User.php                  modifié : relations enfants / profilEnfant
+│   ├── EnfantController.php      liste, création, modification, suppression
+│   └── ProfilController.php      /parent/profil : informations + mot de passe
 ├── Form/
 │   ├── EnfantType.php            option « creation »
+│   ├── ProfilParentType.php      email, pays, ville
 │   └── MotDePasseType.php        réutilisé par le parent ET l'enfant
-├── Repository/
-│   └── EnfantRepository.php      findByParent()
-├── Security/
-│   └── EnfantVoter.php           ENFANT_GERER
+├── Repository/                   (fichiers existants depuis la phase 02)
+│   ├── EnfantRepository.php      + findByParent()
+│   └── UserRepository.php        + genererUsername()
+├── Security/Voter/
+│   └── EnfantVoter.php           ENFANT_GERER (créé par make:voter)
 └── Twig/
     └── DureeExtension.php        filtre « duree »
 
 templates/
 ├── parent/
 │   ├── layout.html.twig          menu de l'espace parent
+│   ├── profil.html.twig          les deux formulaires du profil
 │   └── enfants/                  index, nouveau, modifier, _formulaire
 ├── form/avatars.html.twig        galerie d'avatars
 └── _partials/bouton_supprimer.html.twig
 ```
+
+Les entités `Enfant` et `User` ne sont **pas modifiées** : elles datent de la
+phase 02.
 
 Pourquoi un dossier `Controller/Parent/` : chaque espace a ses contrôleurs, ce
 qui rend la structure lisible dès le premier coup d'œil.
@@ -439,7 +383,7 @@ EnfantVoter : ce parent est-il celui de l'enfant 42 ?  → NON
 profil enfant, pas de journal, pas de conseils, pas de suivi. C'est aussi ici que
 se joue le **cloisonnement entre familles**, une exigence forte du projet.
 
-**Composants utilisés** : Doctrine (relations), Security (voter), Form,
+**Composants utilisés** : Doctrine (relations de la phase 02, repositories), Security (voter), Form,
 Validator, Twig (extension).
 
 **Fichiers créés** : voir l'arborescence ci-dessus.
@@ -464,12 +408,15 @@ Validator, Twig (extension).
 → Le parent n'a pas été affecté avant l'enregistrement.
 → Solution : `$enfant->setParent($parent)` avant `persist()`.
 
-**Le compte de l'enfant n'est pas enregistré**
-→ Il manque `cascade: ['persist']` sur la relation `compte`.
-→ Signe : erreur « A new entity was found through the relationship… ».
+**Erreur « A new entity was found through the relationship… »**
+→ Le compte est créé mais `$enfant->setCompte($compte)` a été oublié, ou la
+cascade `persist` de la phase 02 a été retirée de `Enfant::compte`.
+→ Solution : relier le compte à l'enfant avant `persist()` ; vérifier le
+mapping (voir la [leçon 02](./phase-02.md)).
 
 **Supprimer un enfant laisse son compte en base**
-→ Il manque `cascade: ['remove']` sur la même relation.
+→ La suppression a été faite en SQL, ou `cascade: ['remove']` manque sur
+`Enfant::compte` (phase 02).
 → Vérification : après suppression, cherchez le `username` dans la table `users`.
 
 **Le curseur de limite provoque « Cette valeur n'est pas valide »**
@@ -483,6 +430,11 @@ entier.
 **403 sur son propre enfant**
 → Comparaison d'objets au lieu d'identifiants, ou utilisateur rechargé.
 → Solution : comparer les `getId()`, comme dans l'exemple du voter.
+
+**Après une saisie invalide sur le profil, le parent est déconnecté**
+→ L'objet `User` connecté a gardé l'email invalide en mémoire.
+→ Solution : `$entityManager->refresh($user)` quand le formulaire est soumis
+mais invalide.
 
 **La suppression renvoie 403 alors que le bouton vient du site**
 → Le nom du jeton CSRF du gabarit ne correspond pas à celui du contrôleur.
@@ -516,7 +468,8 @@ entier.
 2. Dans phpMyAdmin, ouvrez la table `enfant` : repérez les colonnes `parent_id`
    et `compte_id`, puis retrouvez les deux comptes correspondants dans `users`.
 3. Supprimez un enfant depuis l'interface, puis vérifiez dans `users` que son
-   compte a bien disparu. Quelle option de mapping l'a provoqué ?
+   compte a bien disparu. Quelle option de mapping, déclarée en phase 02, l'a
+   provoqué ?
 4. Connectez-vous avec un **second** compte parent, puis tentez d'ouvrir
    `/parent/enfants/1/modifier` (l'enfant du premier parent) : vous devez obtenir
    un 403. Retirez temporairement l'appel au voter, rechargez : la page s'affiche.
@@ -546,6 +499,8 @@ entier.
 - [ ] Le résultat attendu est obtenu
 
 ### Aller plus loin
+
+⬅️ [Phase précédente](./phase-04.md)
 
 ➡️ [Phase suivante](./phase-06.md)
 

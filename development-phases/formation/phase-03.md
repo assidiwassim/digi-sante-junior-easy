@@ -1,293 +1,297 @@
-# Formation — Phase 03 : Base de données, Doctrine et entité `User`
+# Formation — Phase 03 : Gabarit de base, charte graphique et page d'accueil
 
 ## 1. Objectifs pédagogiques
 
 À la fin de cette leçon, vous devez être capable de :
 
-- expliquer ce qu'est un **ORM** et ce qu'il vous évite d'écrire ;
-- déclarer une **entité** Doctrine et comprendre chaque attribut de mapping ;
-- expliquer le rôle d'un **repository** et pourquoi les requêtes y vivent ;
-- comprendre ce qu'est une **migration** et pourquoi on ne modifie jamais la base
-  à la main ;
-- lire une `DATABASE_URL` et savoir où la configurer ;
-- choisir entre `null` autorisé ou non, et comprendre l'effet sur les
-  formulaires à venir.
+- expliquer ce qu'est un **moteur de gabarits** et pourquoi on n'écrit pas du
+  HTML dans un contrôleur ;
+- écrire un gabarit Twig : variables, conditions, boucles, inclusions ;
+- construire un **héritage de gabarits** avec `{% extends %}` et `{% block %}` ;
+- générer des liens avec `path()` et des URL de fichiers avec `asset()` ;
+- comprendre l'**échappement automatique** et pourquoi il vous protège ;
+- organiser du CSS entre une bibliothèque (Bootstrap) et une charte maison.
 
 ## 2. Prérequis
 
-- Phases 01 et 02 terminées.
-- Savoir ce qu'est une table, une colonne, une clé primaire, un index.
-- Savoir lire une classe PHP avec des propriétés privées et des getters/setters.
+- Phases 01 et 02 terminées : l'application répond sur `http://localhost:8081`,
+  les paquets sont installés et les tables existent.
+- Savoir écrire du HTML et du CSS.
+- Comprendre ce qu'est une route et un contrôleur (phase 01).
 
 ---
 
 ## 3. Concepts à apprendre
 
-### Concept 1 — L'ORM (Object-Relational Mapping)
+### Concept 1 — Le moteur de gabarits (Twig)
 
-**Pourquoi ?** Écrire du SQL à la main partout dans l'application, c'est du code
-répétitif, difficile à relire, et une porte ouverte aux injections SQL si l'on
-concatène des variables.
+**Pourquoi ?** Écrire du HTML avec des `echo` en PHP mélange la logique et
+l'affichage, devient illisible, et expose aux failles XSS dès qu'on affiche une
+donnée saisie par un utilisateur.
 
-**Comment ça fonctionne ?** Un ORM fait correspondre :
-
-```text
-une classe PHP   ←→   une table
-un objet         ←→   une ligne
-une propriété    ←→   une colonne
-```
-
-Vous manipulez des objets ; Doctrine génère le SQL.
+**Comment ça fonctionne ?** Le contrôleur prépare des **données**, Twig produit
+le **HTML**. Twig compile chaque gabarit en PHP une fois, puis réutilise la
+version compilée : c'est rapide.
 
 **Exemple.**
 
 ```php
-$user = new User();
-$user->setEmail('parent@digisante.local');
-$entityManager->persist($user);   // « je veux enregistrer cet objet »
-$entityManager->flush();          // exécute réellement le INSERT
+// Dans le contrôleur : on prépare des données
+return $this->render('home/index.html.twig', [
+    'titre' => 'Mieux vivre avec les écrans',
+]);
 ```
 
-`persist()` **prépare**, `flush()` **exécute**. Oublier `flush()` est l'erreur
-classique du débutant : rien ne part en base, et aucune erreur ne s'affiche.
+```twig
+{# Dans le gabarit : on affiche #}
+<h1>{{ titre }}</h1>
+```
 
-**Dans ce projet.** Doctrine ORM 3 gère cinq entités au total. Ici on ne crée que
-la première : `User`.
+**Dans ce projet.** Toutes les pages sont des gabarits Twig. Règle du projet :
+**aucune logique métier dans Twig** — un gabarit affiche, il ne décide pas.
 
 ---
 
-### Concept 2 — L'entité et son mapping
+### Concept 2 — La syntaxe Twig
 
-**Pourquoi ?** Doctrine doit savoir quelle classe correspond à quelle table, et
-quel type SQL donner à chaque propriété.
+Trois balises à retenir :
 
-**Comment ça fonctionne ?** On le déclare avec des **attributs PHP** posés sur la
-classe et sur les propriétés.
+| Balise | Rôle | Exemple |
+|---|---|---|
+| `{{ … }}` | **affiche** une valeur | `{{ enfant.prenom }}` |
+| `{% … %}` | **exécute** une instruction | `{% if … %}`, `{% for … %}` |
+| `{# … #}` | **commente** (invisible dans le HTML) | `{# note pour l'équipe #}` |
 
-**Exemple commenté.**
-
-```php
-#[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'users')]          // « user » est un mot réservé en SQL
-class User
-{
-    #[ORM\Id]                        // clé primaire
-    #[ORM\GeneratedValue]            // auto-incrémentée par MySQL
-    #[ORM\Column]
-    private ?int $id = null;         // null tant que l'objet n'est pas enregistré
-
-    #[ORM\Column(length: 180, unique: true, nullable: true)]
-    private ?string $email = null;
-    //    ^^^^^^^ 180 caractères, index unique, peut être NULL
-}
+```twig
+{% if contenus is empty %}
+    <p>La bibliothèque est vide.</p>
+{% else %}
+    <ul>
+        {% for contenu in contenus %}
+            <li>{{ contenu.titre }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
 ```
 
-Pourquoi `email` est-il **nullable** alors qu'il semble obligatoire ? Parce que
-les **enfants** se connecteront avec un identifiant, sans email (phase 06). La
-colonne autorise donc `NULL`, et c'est le **formulaire d'inscription** du parent
-qui exigera l'email (phase 04).
-
-Règle du projet à retenir : les setters liés à un formulaire acceptent `null`
-(`?string`). Sinon, un champ laissé vide provoque une erreur 500 **avant** que
-la validation ait pu afficher un message propre.
+`{{ enfant.prenom }}` essaie, dans l'ordre : la propriété publique `prenom`,
+puis `getPrenom()`, puis `isPrenom()`. C'est pour cela qu'on peut écrire
+`{{ enfant.avatarEmoji }}` alors que la méthode s'appelle `getAvatarEmoji()`.
 
 ---
 
-### Concept 3 — Le repository
+### Concept 3 — L'héritage de gabarits
 
-**Pourquoi ?** Il faut un endroit unique où vivent les requêtes d'une entité :
-sinon les mêmes requêtes se dupliquent dans plusieurs contrôleurs, avec des
-variantes subtiles.
+**Pourquoi ?** La barre de navigation, les polices, le pied de page sont
+identiques sur toutes les pages. Les dupliquer, c'est se condamner à les
+corriger vingt fois.
 
-**Comment ça fonctionne ?** Chaque entité a un repository. Il hérite de méthodes
-toutes faites, et vous y ajoutez les vôtres.
+**Comment ça fonctionne ?** Un gabarit **parent** définit la structure et
+réserve des emplacements (`{% block %}`). Un gabarit **enfant** hérite du parent
+et remplit ces emplacements.
 
-```php
-$userRepository->find(12);                               // par identifiant
-$userRepository->findOneBy(['email' => 'a@b.fr']);        // un seul résultat
-$userRepository->findBy(['ville' => 'Lyon'], ['email' => 'ASC']); // une liste
-$userRepository->findAll();                               // tout
+**Exemple.**
+
+```twig
+{# templates/base.html.twig — le parent #}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>{% block title %}Digi-Santé Junior{% endblock %}</title>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <nav>{% block menu %}{% endblock %}</nav>
+    <main>{% block body %}{% endblock %}</main>
+    {% block javascripts %}{% endblock %}
+</body>
+</html>
 ```
 
-**Dans ce projet.** Règle stricte : **aucune requête dans un contrôleur**. Dès
-qu'une recherche dépasse `find()` / `findBy()`, on écrit une méthode dans le
-repository, avec un nom explicite en français (`findParents()`,
-`findAujourdhui()`…).
+```twig
+{# templates/home/index.html.twig — l'enfant #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Accueil — Digi-Santé Junior{% endblock %}
+
+{% block body %}
+    <h1>Mieux vivre avec les écrans, un jour à la fois.</h1>
+{% endblock %}
+```
+
+`{% extends %}` doit être la **première** instruction du fichier. Un gabarit
+enfant ne peut **rien** contenir en dehors d'un `{% block %}` : Twig lève
+l'erreur « A template that extends another one cannot include content outside
+Twig blocks ».
+
+**Dans ce projet.** Une hiérarchie à deux niveaux :
+
+```text
+base.html.twig                  navigation, polices, flash, pied de page
+    ├── parent/layout.html.twig  menu du parent      (phase 05)
+    ├── enfant/layout.html.twig  menu de l'enfant    (phase 06)
+    └── admin/layout.html.twig   menu de l'admin     (phase 08)
+```
+
+Les blocs exposés par `base.html.twig` sont fixés dès maintenant : `title`,
+`body_class`, `navbar`, `logo`, `marque_suffixe`, `menu`, `menu_utilisateur`,
+`body`, `javascripts`.
 
 ---
 
-### Concept 4 — Les migrations
+### Concept 4 — L'échappement automatique
 
-**Pourquoi ?** La base de votre collègue, celle des tests et celle de production
-doivent recevoir **les mêmes changements, dans le même ordre**. Les appliquer à
-la main est impossible à tenir.
+**Pourquoi ?** Si un utilisateur saisit `<script>alert('vol')</script>` comme
+prénom et que vous l'affichez tel quel, le navigateur **exécute** ce script :
+c'est une faille XSS.
+
+**Comment ça fonctionne ?** Twig échappe automatiquement tout ce qui passe par
+`{{ … }}` : les chevrons deviennent `&lt;` et `&gt;`, le texte s'affiche sans
+être exécuté.
+
+**Exemple.**
+
+```twig
+{{ '<b>gras</b>' }}       {# affiche littéralement <b>gras</b>  #}
+{{ '<b>gras</b>'|raw }}   {# affiche du texte en gras — DANGEREUX #}
+```
+
+**Dans ce projet.** `|raw` n'est utilisé qu'à deux endroits, toujours derrière
+`json_encode` pour envoyer au JavaScript des données produites par le serveur :
+en phase 07 (les zones du schéma corporel) et en phase 10 (les nombres du
+graphique) — **jamais** une saisie d'utilisateur.
+
+---
+
+### Concept 5 — `path()` et `asset()`
+
+**Pourquoi ?** Écrire `/parent/enfants/12/modifier` à la main dans vingt
+gabarits, c'est vingt corrections le jour où l'URL change.
 
 **Comment ça fonctionne ?**
 
-```text
-1. vous modifiez une entité
-2. make:migration compare vos entités à la base et génère un fichier SQL horodaté
-3. vous RELISEZ ce fichier
-4. doctrine:migrations:migrate l'exécute et note qu'il est appliqué
+- `path('nom_de_route')` génère l'URL à partir du **nom** de la route ;
+- `asset('css/app.css')` génère l'URL d'un fichier de `public/`.
+
+```twig
+<a href="{{ path('app_home') }}">Accueil</a>
+<a href="{{ path('parent_enfant_modifier', {id: enfant.id}) }}">Modifier</a>
+<link href="{{ asset('css/app.css') }}" rel="stylesheet">
 ```
 
-Doctrine garde la trace des migrations déjà passées dans une table dédiée : la
-même migration ne s'exécute jamais deux fois.
-
-**Exemple.**
-
-```php
-public function up(Schema $schema): void
-{
-    $this->addSql('CREATE TABLE users (id INT AUTO_INCREMENT NOT NULL, …)');
-}
-```
-
-**Dans ce projet.** Trois règles :
-
-1. toute modification de schéma passe par une migration ;
-2. on ne modifie **jamais** la base à la main (ni via phpMyAdmin) ;
-3. on ne modifie **jamais** une migration déjà partagée — on en crée une
-   nouvelle.
+Si le nom de route n'existe pas, Twig lève une erreur **au rendu** : c'est une
+bonne nouvelle, vous découvrez le problème tout de suite.
 
 ---
 
-### Concept 5 — `DATABASE_URL` et la connexion
+### Concept 6 — Bibliothèque CSS et charte maison
 
-**Pourquoi ?** L'application doit savoir où est la base, avec quel utilisateur.
+**Pourquoi ?** Bootstrap fournit une grille, des cartes, des boutons, une barre
+de navigation repliable, des modales — testés et accessibles. Le réécrire serait
+du temps perdu.
 
-**Comment ça fonctionne ?** Une seule variable d'environnement contient tout :
+**Comment ça fonctionne ?** Bootstrap est chargé **par CDN** (une simple balise
+`<link>`), et `public/css/app.css` ne contient que ce que Bootstrap ne fait pas :
+la palette, les polices, et les composants propres au projet.
 
-```dotenv
-DATABASE_URL="mysql://digisante:digisante@database:3306/digisante_junior?serverVersion=8.0.36&charset=utf8mb4"
-#              ^^^^^  ^^^^^^^^^ ^^^^^^^^^ ^^^^^^^^ ^^^^ ^^^^^^^^^^^^^^^^
-#              type   user      password  hôte     port  base
-```
-
-⚠️ L'hôte est `database` — le **nom du service Docker** — et le port `3306`,
-car l'application parle à MySQL **depuis l'intérieur** du réseau Docker. Depuis
-votre machine (DBeaver par exemple), c'est `127.0.0.1:3308`.
-
----
-
-### Concept 6 — Les contraintes de validation, première rencontre
-
-**Pourquoi ?** La base garantit la cohérence technique (unicité, type), mais pas
-les règles métier (« cet email doit ressembler à un email »).
-
-**Comment ça fonctionne ?** Des attributs `#[Assert\…]` sur les propriétés, et
-`#[UniqueEntity]` sur la classe.
-
-```php
-#[UniqueEntity(fields: ['email'], message: 'Cette adresse email est déjà utilisée.')]
-class User
-{
-    #[Assert\Email(message: 'Cette adresse email n\'est pas valide.')]
-    private ?string $email = null;
+```css
+:root {
+    --marine: #1F3864;
+    --turquoise: #0E7C7B;
+    --or: #C99A2E;
 }
+
+.btn-marine { background: var(--marine); color: #fff; border-radius: 999px; }
+.pastille   { border-radius: 999px; padding: .15rem .7rem; font-weight: 700; }
 ```
 
-La validation sera **déclenchée** par les formulaires en phase 04. On la déclare
-maintenant parce que ces règles appartiennent à l'entité, pas au formulaire.
-
-Message toujours **en français et écrit pour l'utilisateur** : « Cette adresse
-email est déjà utilisée. », pas « UNIQUE constraint violation ».
+⚠️ **Piège du projet** : ne redéfinissez **jamais** la variable Bootstrap
+`--bs-body-bg`. Elle sert de fond aux cartes, aux champs, aux tableaux et aux
+menus déroulants : la changer repeint tout en cascade. Le fond coloré de la page
+se pose sur `body`.
 
 ---
 
 ## 4. Explications avec exemples
 
-### L'entité `User`, et pourquoi elle est particulière
+### Rendre un gabarit depuis un contrôleur
 
 ```php
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+
+class HomeController extends AbstractController
+//                   ^^^^^^^^^^^^^^^^^^^^^^^^^ donne accès à render(), redirectToRoute()…
 {
-    public const ROLE_ADMIN = 'ROLE_ADMIN';
-    public const ROLE_PARENT = 'ROLE_PARENT';
-    public const ROLE_CHILD = 'ROLE_CHILD';
-
-    #[ORM\Column]
-    private array $roles = [];
-
-    /** Identifiant utilisé par Symfony Security : l'email, sinon le username. */
-    public function getUserIdentifier(): string
+    #[Route('/', name: 'app_home', methods: ['GET'])]
+    public function index(): Response
     {
-        return (string) ($this->email ?? $this->username);
-    }
-
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-        $roles[] = 'ROLE_USER';                    // tout le monde a au moins ce rôle
-        return array_values(array_unique($roles));
+        return $this->render('home/index.html.twig');
+        //                    ^^^ chemin relatif au dossier templates/
     }
 }
 ```
 
-- `implements UserInterface` : le **contrat** que Symfony Security attend d'une
-  classe d'utilisateur (phase 04). On l'écrit dès maintenant pour ne pas avoir à
-  créer une migration supplémentaire plus tard.
-- `roles` est de type `json` : MySQL stocke `["ROLE_PARENT"]`. Pratique, mais
-  cela complique les recherches — on le verra en phase 11.
-- Les rôles sont des **constantes de classe**. Règle du projet : **pas d'enum
-  PHP**, des constantes avec, si besoin, des getters d'affichage.
+`render()` fait trois choses : il rend le gabarit, en fait une chaîne, et
+l'emballe dans une `Response` avec le bon type de contenu.
 
-### Normaliser une donnée dans le setter
+### Une page responsive avec la grille Bootstrap
 
-```php
-public function setEmail(?string $email): static
-{
-    // On enregistre toujours l'email en minuscules, sans espaces autour.
-    $this->email = $email ? mb_strtolower(trim($email)) : null;
-
-    return $this;
-}
+```twig
+<section class="row g-3">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h3>Des conseils sur mesure</h3>
+                <p class="texte-doux mb-0">Chaque conseil découle de ce que l'enfant a saisi.</p>
+            </div>
+        </div>
+    </div>
+</section>
 ```
 
-Pourquoi ? Sans cela, `Parent@Digisante.local` et `parent@digisante.local`
-seraient deux comptes différents, et l'index unique ne servirait à rien.
+- `row` + `col-md-4` : trois colonnes sur écran moyen, empilées sur mobile ;
+- `g-3` : l'espace entre les colonnes ;
+- `h-100` : cartes de même hauteur ;
+- `texte-doux` : classe **maison**, définie dans `app.css`.
+
+Le réflexe : **chercher d'abord une classe Bootstrap**, n'écrire du CSS que si
+elle n'existe pas.
 
 ---
 
 ## 5. Commandes
 
-### `docker compose exec app composer require symfony/orm-pack`
+> Aucun `composer require` dans cette phase : Twig, Asset et le profiler sont
+> installés depuis la phase 01. Flex a déjà créé `config/packages/twig.yaml` et
+> le dossier `templates/`.
 
-- **Ce qu'elle fait** : installe Doctrine (ORM, DBAL, migrations) et crée
-  `config/packages/doctrine.yaml`.
-- **À observer** : Flex configure `DATABASE_URL` dans `.env`. Vérifiez qu'elle
-  pointe bien sur le service `database`.
+### La barre de debug (profiler)
 
-### `docker compose exec app composer require --dev symfony/maker-bundle`
+- **Ce que c'est** : la barre noire en bas des pages en développement, et le
+  **profiler** (`/_profiler`), installés en `--dev` en phase 01.
+- **Pourquoi elle apparaît seulement maintenant** : elle ne s'injecte que dans
+  une page HTML complète (avec `</body>`). Tant que `HomeController` renvoyait
+  du texte brut, elle restait invisible ; dès le premier gabarit, elle s'affiche.
+- **À observer** : la barre en bas de la page d'accueil. Toutes les leçons
+  suivantes s'en servent.
 
-- **Ce qu'elle fait** : installe le générateur de code (`make:entity`,
-  `make:form`, `make:voter`…).
-- **Pourquoi `--dev`** : c'est un outil de développement, inutile en production.
+### `docker compose exec app php bin/console lint:twig templates`
 
-### `docker compose exec app php bin/console make:entity`
+- **Ce qu'elle fait** : vérifie la syntaxe de tous les gabarits.
+- **Pourquoi** : une erreur Twig ne se voit qu'au moment d'afficher la page ;
+  le linter la trouve sans ouvrir le navigateur.
+- **Quand** : avant de terminer la phase, et dès qu'une page blanche apparaît.
+- **À observer** : `[OK] All N Twig files contain valid syntax.`
 
-- **Ce qu'elle fait** : crée ou modifie une entité **en dialoguant** avec vous
-  (nom de propriété, type, longueur, nullable).
-- **À observer** : elle crée aussi le repository. Le code généré est à relire et
-  à compléter (commentaires, constantes, normalisation).
+### `docker compose exec app php bin/console cache:clear`
 
-### `docker compose exec app php bin/console make:migration`
+- **Ce qu'elle fait** : vide le cache (gabarits compilés, configuration).
+- **Quand** : après un changement de configuration, ou si une modification
+  semble ignorée.
 
-- **Ce qu'elle fait** : compare vos entités à la base et génère le SQL de l'écart.
-- **À observer** : **ouvrez le fichier généré**. Si vous y voyez une table que
-  vous n'attendiez pas, il y a un problème de mapping.
+### `docker compose exec app php bin/console debug:twig`
 
-### `docker compose exec app php bin/console doctrine:migrations:migrate`
-
-- **Ce qu'elle fait** : exécute les migrations non encore appliquées.
-- **Quand** : après chaque `make:migration`, et à chaque installation du projet.
-
-### `docker compose exec app php bin/console doctrine:schema:validate`
-
-- **Ce qu'elle fait** : vérifie deux choses — le mapping est-il cohérent, et la
-  base correspond-elle aux entités ?
-- **À observer** : **deux** `[OK]`. Un message « The database schema is not in
-  sync » signifie qu'il manque une migration.
+- **Ce qu'elle fait** : liste les fonctions, filtres et tests Twig disponibles.
+- **Quand** : « existe-t-il déjà un filtre pour ça ? » — souvent, oui.
 
 ---
 
@@ -295,169 +299,165 @@ seraient deux comptes différents, et l'index unique ne servirait à rien.
 
 | Composant | Rôle ici |
 |---|---|
-| **Doctrine ORM** | mapping objet ↔ table, `persist()`, `flush()` |
-| **Doctrine DBAL** | la couche basse qui parle à MySQL |
-| **DoctrineMigrationsBundle** | génère et applique les migrations |
-| **MakerBundle** | génère entités, repositories et formulaires |
-| **Validator** | les contraintes `#[Assert\…]` (utilisées en phase 04) |
+| **Twig** | le moteur de gabarits |
+| **TwigBundle** | l'intègre à Symfony (`render()`, `path()`, `asset()`) |
+| **Asset** | génère les URL des fichiers de `public/` |
+| **WebProfilerBundle** | barre de debug et profiler (développement uniquement) |
+| **Routing** | `path()` s'appuie sur les noms de routes (phase 01) |
 
 ---
 
 ## 7. Architecture et organisation du code
 
 ```text
-src/
-├── Entity/
-│   └── User.php              une classe = une table
-└── Repository/
-    └── UserRepository.php    toutes les requêtes sur les utilisateurs
+templates/
+├── base.html.twig          gabarit racine : toutes les pages en héritent
+├── home/
+│   └── index.html.twig     la page d'accueil publique
+└── _partials/              morceaux réutilisés (arrivent phase 05)
 
-migrations/
-└── VersionYYYYMMDDHHMMSS.php historique des changements de schéma
-
-config/packages/
-└── doctrine.yaml             connexion, mapping, réglages
+public/
+├── index.php               point d'entrée (phase 01)
+├── favicon.svg
+└── css/
+    └── app.css             charte du projet UNIQUEMENT
 ```
 
-Pourquoi cette séparation :
+Pourquoi :
 
-- l'**entité** décrit une donnée et ses règles ;
-- le **repository** décrit comment la retrouver ;
-- la **migration** décrit comment la base doit évoluer.
-
-Trois responsabilités, trois fichiers.
+- un dossier par « espace » dans `templates/` : on retrouve une page en
+  devinant son chemin ;
+- `_partials/` préfixé d'un underscore : ce ne sont pas des pages entières ;
+- `app.css` dans `public/` : servi tel quel, sans compilation, conformément au
+  choix « pas de bundler » du projet.
 
 ---
 
 ## 8. Flux de fonctionnement
 
 ```text
-Votre code
-    ↓ $repository->findOneBy(['email' => 'a@b.fr'])
-Repository
+Navigateur
     ↓
-Doctrine ORM  (construit le SQL, avec des paramètres liés)
+Route app_home
     ↓
-Doctrine DBAL
+HomeController::index()
     ↓
-PDO / pdo_mysql
+render('home/index.html.twig')
     ↓
-MySQL (conteneur database)
+Twig : index.html.twig  {% extends 'base.html.twig' %}
+    ↓        remplit les blocs title, body…
+base.html.twig assemble la page complète
     ↓
-lignes → objets User hydratés
+HTML + <link> Bootstrap (CDN) + <link> app.css
+    ↓
+Navigateur : le CSS est chargé, la page s'affiche
 ```
-
-Les valeurs passent toujours en **paramètres liés**, jamais concaténées : c'est
-ce qui protège des injections SQL.
 
 ---
 
 ## 9. Application au projet
 
-**Pourquoi cette phase ?** Tout le reste de l'application tourne autour des
-comptes : parents, enfants, administrateur. `User` est donc la première table.
+**Pourquoi cette phase ?** L'accueil est la vitrine : c'est la première page que
+verront un enfant et un parent. Et surtout, `base.html.twig` créé ici servira
+**toutes** les pages des phases suivantes. Une base bien pensée évite des
+dizaines de corrections plus tard.
 
-**Un seul `User` pour trois rôles**, c'est un choix structurant :
+**Composants utilisés** : Twig, Asset, Routing, et le profiler (en `--dev`),
+tous installés en phase 01.
 
-- un parent et un administrateur se connectent par **email** ;
-- un enfant se connecte par **identifiant** ;
-- d'où les deux colonnes nullables et uniques, et `getUserIdentifier()` qui
-  renvoie l'une ou l'autre.
+**Fichiers créés** : `templates/base.html.twig`,
+`templates/home/index.html.twig`, `public/css/app.css`, et la modification de
+`HomeController` pour rendre un gabarit au lieu d'un texte.
 
-**Composants utilisés** : Doctrine ORM, Migrations, MakerBundle.
+**Pourquoi cette architecture ?** Les blocs de `base.html.twig` sont définis
+**maintenant** parce que les trois espaces (parent, enfant, admin) s'y
+brancheront sans le modifier : l'espace enfant changera `body_class` et `logo`,
+l'admin changera `marque_suffixe`, chacun remplira `menu`.
 
-**Fichiers créés** : `src/Entity/User.php`, `src/Repository/UserRepository.php`,
-une migration, et le service `phpmyadmin` dans `compose.yaml`.
-
-**Pourquoi phpMyAdmin ?** Pour **voir** ce que Doctrine fabrique. Regarder la
-table après une migration est le meilleur moyen de comprendre le mapping. C'est
-un outil de développement : il n'ira pas en production (phase 13).
-
-**Ce qui n'est pas encore là** : aucun utilisateur en base, aucune connexion,
-aucun formulaire. La table existe, c'est tout.
+**Ce qui n'est pas encore là** : les boutons « Je suis un parent » et « Je suis
+un enfant » pointent vers `#`, car les pages de connexion arrivent en phase 04
+(parent) et en phase 06 (enfant).
 
 ---
 
 ## 10. Erreurs fréquentes
 
-**`Unknown database 'digisante_junior'`**
-→ La base n'a pas encore été créée.
-→ Solution : `php bin/console doctrine:database:create --if-not-exists`.
+**`Unable to find template "home/index.html.twig"`**
+→ Chemin ou nom de fichier erroné (Twig est sensible à la casse).
+→ Signe : erreur 500 avec le chemin cherché affiché.
+→ Solution : vérifier le nom exact dans `templates/`.
 
-**`Connection refused` au premier démarrage**
-→ MySQL met quelques secondes à être prêt.
-→ Signe : le `healthcheck` du conteneur n'est pas encore *healthy*.
-→ Solution : attendre, puis relancer la commande.
+**`Variable "titre" does not exist`**
+→ La variable n'a pas été passée par le contrôleur.
+→ Solution : l'ajouter au tableau de `render()`, ou utiliser
+`{{ titre|default('—') }}`.
 
-**`The database schema is not in sync with the current mapping file`**
-→ Vous avez modifié une entité sans générer ou appliquer la migration.
-→ Solution : `make:migration` puis `doctrine:migrations:migrate`.
+**Du HTML s'affiche en toutes lettres (`<b>gras</b>`)**
+→ C'est l'échappement automatique, et c'est **voulu**.
+→ Solution : ne recourez à `|raw` que pour du contenu que **vous** générez.
 
-**`Table 'user' doesn't exist` alors que la migration est passée**
-→ `user` est un mot réservé : la table s'appelle `users` via
-`#[ORM\Table(name: 'users')]`.
-→ Solution : utiliser le nom réel, ou passer par l'entité plutôt que par du SQL.
+**Les modifications du CSS ne s'affichent pas**
+→ Le navigateur a mis le fichier en cache.
+→ Solution : rechargement forcé (Cmd/Ctrl + Maj + R).
 
-**Rien n'est enregistré, sans message d'erreur**
-→ `flush()` a été oublié après `persist()`.
-→ Signe : aucune ligne en base, aucune exception.
+**Toute la page devient blanche ou grise après un ajout dans `app.css`**
+→ Vous avez sans doute redéfini `--bs-body-bg`.
+→ Solution : retirez cette règle, mettez le fond sur `body`.
 
-**Une migration a été générée alors que vous n'avez rien changé**
-→ Souvent un type de colonne légèrement différent (ex. `datetime` vs
-`datetime_immutable`), ou une base pas à jour.
-→ Solution : lire le SQL généré **avant** de l'appliquer, et corriger le mapping
-si le changement n'est pas voulu.
+**Une barre de défilement horizontale apparaît sur mobile**
+→ Un élément a une largeur fixe supérieure à l'écran.
+→ Solution : largeurs relatives, `max-width: 100%` sur les images, et laisser la
+grille Bootstrap empiler les colonnes.
 
 ---
 
 ## 11. Bonnes pratiques
 
-- **Relisez toujours la migration générée** avant de l'appliquer. C'est du SQL
-  qui va s'exécuter sur des données réelles.
-- **Ne modifiez jamais la base via phpMyAdmin** : votre changement serait absent
-  chez les autres et écrasé à la prochaine migration.
-- **Types de date explicites** : `date_immutable` pour un jour,
-  `datetime_immutable` pour un instant. Les objets immuables évitent les
-  modifications accidentelles.
-- **Propriétés privées, getters/setters classiques**, pas de setters dynamiques
-  ni de magie.
-- **Normalisez dans le setter** (minuscules, `trim`) : la donnée est propre
-  **avant** d'atteindre la base.
-- **Constantes plutôt qu'enums** : c'est la convention de ce projet, appliquée
-  partout (rôles, avatars, zones du corps, types de contenu).
+- **Un gabarit affiche, il ne décide pas.** Un calcul se fait dans le contrôleur
+  ou dans une méthode d'entité.
+- **Bootstrap d'abord**, CSS maison ensuite : moins de code, plus de cohérence.
+- **Nommez les classes maison en français**, comme le reste du projet
+  (`carte-titre`, `texte-doux`, `pastille`).
+- **Jamais d'URL écrite en dur** : toujours `path('nom_de_route')`.
+- **Testez à 400 px de large** à chaque page : le public visé consulte souvent
+  sur téléphone.
+- **Vérifiez avec `lint:twig`** avant de considérer la phase terminée.
 
 ---
 
 ## 12. Exercice pratique
 
-1. Ouvrez phpMyAdmin (`http://localhost:8082`) et regardez la structure de la
-   table `users` : type de chaque colonne, index uniques.
-2. Ajoutez temporairement une propriété à l'entité :
+1. Dans `base.html.twig`, ajoutez un bloc `{% block pied_de_page %}` contenant
+   l'année courante :
 
-```php
-#[ORM\Column(length: 20, nullable: true)]
-private ?string $telephone = null;
+```twig
+<footer class="text-center small py-4 texte-doux">
+    {% block pied_de_page %}
+        Digi-Santé Junior — {{ 'now'|date('Y') }}
+    {% endblock %}
+</footer>
 ```
 
-3. Lancez `make:migration` et **ouvrez le fichier généré** : vous devez y lire un
-   `ALTER TABLE users ADD telephone …`.
-4. Appliquez la migration, vérifiez la colonne dans phpMyAdmin.
-5. Supprimez la propriété, regénérez une migration (elle contiendra un `DROP`),
-   appliquez-la, puis **supprimez les deux fichiers de migration d'exercice** et
-   vérifiez que `doctrine:schema:validate` est de nouveau au vert.
+2. Dans `home/index.html.twig`, redéfinissez ce bloc pour afficher un autre
+   texte, et vérifiez que seule la page d'accueil change.
+3. Affichez volontairement une variable inexistante (`{{ inconnue }}`) : lisez le
+   message d'erreur, puis corrigez avec le filtre `default`.
+4. Ajoutez une quatrième carte d'argument dans la grille et vérifiez qu'elle
+   s'empile correctement sur mobile.
+5. Remettez ensuite le gabarit dans l'état attendu par la phase.
 
-Vous devez savoir expliquer pourquoi on ne supprime pas une migration **déjà
-partagée** avec d'autres développeurs.
+Vous devez savoir expliquer ce que fait `{% extends %}` et pourquoi Twig refuse
+du contenu écrit hors d'un bloc dans un gabarit enfant.
 
 ---
 
 ## 13. Scénario de test manuel
 
-1. Lancer `make migrate` (ou `doctrine:migrations:migrate`).
-2. Ouvrir phpMyAdmin sur `http://localhost:8082`.
-3. Sélectionner la base `digisante_junior` et ouvrir la table `users`.
-4. Vérifier la présence des colonnes `email`, `username`, `roles`, `password`, `created_at`.
-5. **Résultat attendu** : la table existe avec les bonnes colonnes, et `doctrine:schema:validate` affiche deux `[OK]`.
+1. Ouvrir `http://localhost:8081`.
+2. Vérifier que les polices, les couleurs et les boutons arrondis s'affichent.
+3. Réduire la fenêtre à la largeur d'un téléphone (~400 px).
+4. Vérifier que le contenu reste lisible, sans barre de défilement horizontale.
+5. **Résultat attendu** : la page est habillée, responsive, le menu se replie sur mobile, et la barre de debug s'affiche en bas.
 
 ---
 
@@ -473,8 +473,10 @@ partagée** avec d'autres développeurs.
 
 ### Aller plus loin
 
+⬅️ [Phase précédente](./phase-02.md)
+
 ➡️ [Phase suivante](./phase-04.md)
 
-➡️ [Phase de développement](../README.md#phase-03--base-de-données-doctrine-et-entité-user)
+➡️ [Phase de développement](../README.md#phase-03--gabarit-de-base-charte-graphique-et-page-daccueil)
 
 ➡️ [Prompt Claude Code](../prompts/phase-03.md)

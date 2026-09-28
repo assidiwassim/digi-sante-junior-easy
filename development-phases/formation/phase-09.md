@@ -164,10 +164,11 @@ commentaire pour le « pourquoi ».
 class ConseilService
 {
     /**
-     * Seuil du conseil 20-20-20, atteint dès 2 h d'écran : c'est aussi le
-     * moment où la jauge passe à l'orange (JournalEntree::niveauPourMinutes).
+     * Seuil du conseil 20-20-20, atteint dès 2 h d'écran : on reprend la
+     * constante de la jauge (JournalEntree::SEUIL_ORANGE, 120 min) pour que
+     * conseil et couleur changent au même moment.
      */
-    private const SEUIL_ECRAN_MINUTES = 120;
+    private const SEUIL_ECRAN_MINUTES = JournalEntree::SEUIL_ORANGE;
     private const SEUIL_DOULEUR = 3;
 ```
 
@@ -183,7 +184,7 @@ if ($total >= self::SEUIL_ECRAN_MINUTES) { … } // ✅ se lit tout seul
 ### Concept 6 — Deux seuils qui doivent rester cohérents
 
 **Pourquoi ?** La jauge passe à l'orange à 2 h (`JournalEntree::niveauPourMinutes()`,
-phase 07). Le conseil 20-20-20 utilise le même seuil. Si l'un teste `>` et
+méthode d'entité écrite en phase 02, affichée dès la phase 07). Le conseil 20-20-20 utilise le même seuil. Si l'un teste `>` et
 l'autre `>=`, un journal de **2 h pile** affiche une jauge orange… sans aucun
 conseil. L'utilisateur voit une incohérence, sans comprendre pourquoi.
 
@@ -193,8 +194,8 @@ conseil. L'utilisateur voit une incohérence, sans comprendre pourquoi.
 } elseif ($total >= self::SEUIL_ECRAN_MINUTES) {   // >= et non >
 ```
 
-**Dans ce projet.** C'est une correction réelle, notée dans l'historique de
-`CLAUDE.md` : le conseil utilisait `>` et ne se déclenchait pas à 2 h pile.
+**Dans ce projet.** C'est une correction réelle, notée dans l'historique du
+`CLAUDE.md` du dépôt de référence : le conseil utilisait `>` et ne se déclenchait pas à 2 h pile.
 Retenez la leçon générale : **une même règle exprimée à deux endroits finit
 toujours par diverger** — commentez le lien entre les deux, ou factorisez.
 
@@ -336,10 +337,12 @@ l'architecture et non par la discipline.
 
 ## 5. Commandes
 
-### `docker compose exec app php bin/console debug:autowiring | grep -i conseil`
+### `docker compose exec app php bin/console debug:autowiring Conseil --all`
 
-- **Ce qu'elle fait** : liste les types injectables et vérifie que votre service
-  est reconnu.
+- **Ce qu'elle fait** : liste les types injectables contenant « Conseil » et
+  vérifie que votre service est reconnu.
+- **À observer** : l'option `--all` est indispensable. Sans elle, les services
+  `App\` n'apparaissent pas (et un `| grep -i conseil` ne trouve rien).
 - **Quand** : « Cannot autowire … ».
 
 ### `docker compose exec app php bin/console debug:container ConseilService`
@@ -460,6 +463,9 @@ précédentes ont collecté la donnée ; celle-ci lui donne du sens.
 **Aucun conseil à 2 h pile, alors que la jauge est orange**
 → Le seuil utilise `>` au lieu de `>=`.
 → C'est le bug réel corrigé sur ce projet (Concept 6).
+→ Pour le vérifier, prenez un enfant dont la limite est **d'au moins 2 h** :
+avec une limite plus basse (Léa, 1 h 30 depuis la phase 05), c'est le conseil de
+dépassement qui s'affiche, et c'est normal.
 
 **Une douleur au cou d'intensité 2 déclenche les étirements**
 → Le seuil d'intensité n'est pas appliqué, ou la comparaison est `>=` là où il
@@ -512,6 +518,9 @@ faut `>` (ou l'inverse).
 
 ## 13. Scénario de test manuel
 
+0. Prérequis : dans l'admin (`/admin/contenus`), créer un contenu rattaché à la
+   règle « Yoga des yeux » (et idéalement un par règle), sinon le conseil
+   s'affiche sans contenu associé.
 1. Supprimer le journal du jour de l'enfant pour pouvoir recommencer :
    `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"`.
 2. Remplir un journal avec **plus de temps d'écran que la limite** du profil et une douleur aux yeux.
@@ -532,6 +541,8 @@ faut `>` (ou l'inverse).
 - [ ] Le résultat attendu est obtenu
 
 ### Aller plus loin
+
+⬅️ [Phase précédente](./phase-08.md)
 
 ➡️ [Phase suivante](./phase-10.md)
 

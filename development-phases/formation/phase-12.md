@@ -1,26 +1,29 @@
-# Formation — Phase 12 : Fixtures, qualité et tests automatisés
+# Formation — Phase 12 : Données de démonstration et qualité
 
 ## 1. Objectifs pédagogiques
 
 À la fin de cette leçon, vous devez être capable de :
 
 - créer des **fixtures** : un jeu de données de démonstration reproductible ;
+- hacher les mots de passe des comptes de démonstration comme ceux de vrais
+  utilisateurs ;
+- rendre des données **déterministes** (même résultat à chaque chargement) ;
 - expliquer à quoi servent les **linters** de Symfony et ce que chacun vérifie ;
-- choisir le bon type de test : `TestCase`, `KernelTestCase` ou `WebTestCase` ;
-- écrire un test de parcours qui simule un vrai utilisateur ;
-- comprendre pourquoi une **transaction annulée** rend les tests indépendants ;
-- savoir ce qu'un test **prouve** — et ce qu'il ne prouve pas.
+- regrouper les commandes utiles dans un `Makefile` ;
+- vérifier la qualité d'une application avec une **recette manuelle** au
+  navigateur ;
+- documenter l'installation et l'utilisation du projet dans un `README`.
 
-> ⚠️ C'est **la seule phase du parcours où l'on écrit des tests automatisés**.
-> Les onze précédentes se valident au navigateur. Ici, les tests deviennent le
-> filet de sécurité qui protège les évolutions futures : c'est une exigence du
-> projet, inscrite dans `CLAUDE.md`.
+> ⚠️ C'est **la dernière phase du parcours**. Elle ne crée aucune
+> fonctionnalité : elle rend le projet **facile à installer, à démontrer et à
+> vérifier**, par vous comme par la personne qui le reprendra.
 
 ## 2. Prérequis
 
 - Phases 01 à 11 terminées : toutes les fonctionnalités existent.
 - Savoir lancer une commande dans le conteneur.
-- Connaître les règles métier du projet (elles sont ce que l'on va tester).
+- Connaître les parcours des trois rôles (admin, parent, enfant) : c'est eux que
+  l'on va rejouer.
 
 ---
 
@@ -28,10 +31,10 @@
 
 ### Concept 1 — Les fixtures
 
-**Pourquoi ?** Un projet qui démarre sur une base vide est intestable : pas de
-compte pour se connecter, pas de journal pour afficher un graphique. Et chacun
-finirait par créer ses propres données à la main, différentes de celles du
-voisin.
+**Pourquoi ?** Un projet qui démarre sur une base vide est impossible à
+démontrer : pas de compte pour se connecter, pas de journal pour afficher un
+graphique. Et chacun finirait par créer ses propres données à la main,
+différentes de celles du voisin.
 
 **Comment ça fonctionne ?** Une classe décrit les données de démonstration, une
 commande les charge.
@@ -62,14 +65,67 @@ class AppFixtures extends Fixture
 données existantes sont perdues. À rappeler dans l'aide du `Makefile`, et à ne
 jamais lancer en production.
 
-**Dans ce projet.** Les fixtures créent 1 administrateur, 2 parents, 4 enfants,
-des journaux sur plusieurs semaines (dont celui du jour) et une quinzaine de
-contenus — **dont un par règle déclencheuse**, sans quoi les conseils de la
-phase 09 n'auraient rien à proposer.
+**Dans ce projet.** Les fixtures créent :
+
+| Donnée | Contenu |
+|---|---|
+| 1 administrateur | `admin@digisante.local` / `admin123` |
+| 2 parents | `parent@digisante.local` et `sofia@digisante.local` / `parent123` |
+| 4 enfants | `lea`, `tom`, `noah`, `ines` / `enfant123` |
+| Journaux | plusieurs semaines par enfant, **dont celui du jour** |
+| Contenus | une quinzaine, **dont un par règle déclencheuse** : `20-20-20`, `etirement_cervical`, `yoga_yeux` |
+
+Sans un contenu par règle, les conseils de la phase 09 n'auraient rien à
+proposer ; sans journaux sur plusieurs semaines, la courbe de 30 jours de la
+phase 10 serait vide.
 
 ---
 
-### Concept 2 — Les linters
+### Concept 2 — Des mots de passe hachés, même pour la démo
+
+**Pourquoi ?** Le pare-feu compare le mot de passe saisi à un **hash**. Un mot
+de passe écrit en clair dans la base ne correspondrait jamais : la connexion
+échouerait.
+
+**Comment ça fonctionne ?** Les fixtures reçoivent `UserPasswordHasherInterface`
+par leur constructeur (une fixture est un service), exactement comme le
+contrôleur d'inscription.
+
+```php
+$compte->setPassword($this->passwordHasher->hashPassword($compte, 'enfant123'));
+```
+
+Les mots de passe de démonstration sont connus et documentés ; ils ne sont
+**jamais générés au hasard**, sinon personne ne pourrait se connecter.
+
+---
+
+### Concept 3 — Des données déterministes
+
+**Pourquoi ?** Des journaux inventés avec `mt_rand()` changeraient à chaque
+chargement : le graphique d'hier ne ressemblerait pas à celui d'aujourd'hui, et
+une capture d'écran de la documentation deviendrait fausse.
+
+**Comment ça fonctionne ?** Deux précautions suffisent.
+
+```php
+// 1. Une graine fixe : mt_rand() renvoie toujours la même suite de nombres
+mt_srand(20240912);
+
+// 2. Des dates relatives à aujourd'hui, jamais des dates figées
+$enfant->setDateNaissance(new \DateTimeImmutable('today -10 years'));
+$journal->setDate(new \DateTimeImmutable('today -' . $jour . ' days'));
+```
+
+- La graine rend les **valeurs** identiques d'un chargement à l'autre.
+- Les dates relatives gardent les **âges** entre 8 et 14 ans et placent les
+  journaux sur les dernières semaines, quelle que soit la date du chargement.
+  Une date de naissance figée (`2015-03-01`) finirait par sortir de la plage
+  autorisée par la validation.
+
+---
+
+### Concept 4 — Les linters
 
 **Pourquoi ?** Certaines erreurs ne se voient qu'en ouvrant la page qui les
 contient. Un linter les trouve sans navigateur.
@@ -84,225 +140,180 @@ contient. Un linter les trouve sans navigateur.
 | `doctrine:schema:validate` | mapping cohérent **et** base à jour |
 
 `lint:container` est le plus sous-estimé : il détecte une dépendance mal typée
-sans exécuter la moindre page.
+sans exécuter la moindre page. `doctrine:schema:validate` signale une entité
+modifiée sans migration.
+
+⚠️ Un linter vérifie la **forme**, pas le **comportement** : un gabarit
+syntaxiquement correct peut afficher la mauvaise donnée. D'où le concept suivant.
 
 ---
 
-### Concept 3 — Les trois niveaux de test
+### Concept 5 — La recette manuelle
 
-**Pourquoi ?** Tester une règle de calcul et tester un parcours de connexion
-n'ont ni le même coût ni le même intérêt.
+**Pourquoi ?** Chaque phase s'est terminée par un scénario de test manuel. Une
+fois le projet fini, la moindre modification peut casser une règle écrite il y a
+dix phases. Il faut donc pouvoir **tout rejouer**, rapidement et dans le même
+ordre.
 
-| Classe de base | Ce qu'elle démarre | Pour quoi | Vitesse |
-|---|---|---|---|
-| `TestCase` | rien | une classe pure (le filtre `duree`) | très rapide |
-| `KernelTestCase` | le conteneur de services | un service (`ConseilService`) | rapide |
-| `WebTestCase` | un client HTTP simulé | un parcours complet | plus lent |
-
-**Exemple, du plus simple au plus complet.**
-
-```php
-// TestCase : aucune dépendance
-public function testFormateLesMinutes(): void
-{
-    $this->assertSame('2 h 30', DureeExtension::formater(150));
-}
-```
-
-```php
-// KernelTestCase : on récupère un service dans le conteneur
-$conseils = static::getContainer()->get(ConseilService::class)->getConseils($journal);
-```
-
-```php
-// WebTestCase : on simule un navigateur
-$client = static::createClient();
-$client->request('GET', '/enfant/journal');
-$this->assertResponseRedirects('/enfant/journal/etape/1');
-```
-
-**Règle simple** : prenez le niveau le plus bas qui répond à la question.
-
----
-
-### Concept 4 — Des tests indépendants
-
-**Pourquoi ?** Un test qui crée un enfant laisserait des données derrière lui. Le
-test suivant compterait alors un enfant de trop, et échouerait « sans raison ».
-
-**Comment ça fonctionne ?** `dama/doctrine-test-bundle` ouvre une **transaction**
-au début de chaque test et l'**annule** à la fin. Tout ce que le test a écrit
-disparaît.
+**Comment ça fonctionne ?** On regroupe les scénarios des phases précédentes en
+une **checklist** que l'on déroule au navigateur, sur une base fraîchement
+rechargée (`make reset-db`).
 
 ```text
-début du test  →  BEGIN TRANSACTION
-    le test crée, modifie, supprime librement
-fin du test    →  ROLLBACK        (la base retrouve son état initial)
+Public   : accueil, inscription parent, connexion email, connexion enfant
+Parent   : tableau de bord (jauge, courbe 30 jours), créer / modifier / supprimer un enfant
+Enfant   : journal en 2 étapes, conseils, bibliothèque, profil
+Admin    : CRUD des contenus, liste et fiche des parents, suppression en cascade
+Sécurité : un parent ne voit pas l'enfant d'un autre (403), un enfant n'ouvre pas /parent
 ```
 
-Conséquences pratiques :
-
-- l'ordre des tests n'a aucune importance ;
-- un test peut supprimer le journal du jour d'un enfant des fixtures sans gêner
-  les autres ;
-- la base de test reste toujours identique à ce que les fixtures ont chargé.
+Le **résultat attendu** de chaque ligne est celui écrit dans la phase
+correspondante.
 
 ---
 
-### Concept 5 — Simuler un navigateur
+### Concept 6 — Le README
 
-**Pourquoi ?** Un parcours (connexion, formulaire, redirection) ne se teste pas
-en appelant une méthode : il faut suivre les pages.
+**Pourquoi ?** Un projet que seul son auteur sait lancer n'est pas terminé.
 
-**Comment ça fonctionne ?** Le client `WebTestCase` envoie des requêtes **sans
-réseau ni serveur**, directement dans le noyau.
+**Comment ça fonctionne ?** Le `README.md` à la racine répond aux questions
+qu'une nouvelle personne se pose, dans l'ordre :
 
-```php
-$client = static::createClient();
-$crawler = $client->request('GET', '/enfant/journal/etape/1');
+1. **Installation** : `make install` (qui démarre aussi les conteneurs).
+2. **Adresses** : application, phpMyAdmin.
+3. **Comptes de démonstration** : les identifiants du concept 1.
+4. **Commandes utiles** : `make fixtures`, `make reset-db`, `make lint`.
+5. **Rejouer le journal** : un enfant ne remplit qu'un journal par jour, et les
+   fixtures ont déjà rempli celui du jour. Pour refaire le parcours :
 
-$client->submitForm('Suivant : mon corps →', [
-    'journal_ecrans[ecranTv]' => '60',
-    'journal_ecrans[ecranOrdinateur]' => '45',
-]);
-
-$this->assertResponseRedirects('/enfant/journal/etape/2');
-$client->followRedirect();
-$this->assertSelectorTextContains('body', 'Mon corps');
+```bash
+docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"
 ```
 
-Le `crawler` permet aussi d'inspecter le HTML : `$crawler->filter('input[type="range"]')`
-compte les curseurs, par exemple.
-
-**Se connecter dans un test** :
-
-```php
-$tom = static::getContainer()->get(UserRepository::class)->findOneBy(['username' => 'tom']);
-$client->loginUser($tom);
-```
-
-Convention du projet : `loginUser()` partout, **sauf** quand c'est la connexion
-elle-même que l'on teste.
-
----
-
-### Concept 6 — Le code 422
-
-**Pourquoi ?** Beaucoup de débutants écrivent `assertResponseIsSuccessful()`
-après avoir soumis un formulaire **invalide** — et le test échoue sans qu'ils
-comprennent pourquoi.
-
-**Comment ça fonctionne ?** Depuis Symfony 6.2, un formulaire invalide renvoie
-**422 Unprocessable Content**, pas 200. C'est plus juste : la requête a bien été
-comprise, mais elle n'a pas pu être traitée.
-
-```php
-$client->submitForm('Suivant', [ /* valeurs invalides */ ]);
-
-$this->assertResponseStatusCodeSame(422);                       // ✅
-$this->assertSelectorTextContains('body', 'c\'est impossible'); // le message
-```
-
-**Dans ce projet.** C'est une erreur réellement commise pendant le développement :
-le test du plafond de 16 h attendait un 200. Le code était bon, le test était
-faux.
-
----
-
-### Concept 7 — Ce qu'un test prouve
-
-**Pourquoi ?** Un test vert donne confiance. Parfois à tort.
-
-**Comment ça fonctionne ?** Un test ne prouve qu'une chose : **ce cas précis se
-comporte comme écrit**. Il ne prouve pas que la fonctionnalité est correcte, ni
-qu'elle plaira à l'utilisateur.
-
-Le meilleur réflexe : **cassez volontairement la règle** que le test protège, et
-vérifiez que le test **échoue**. Un test qui ne rougit jamais ne sert à rien.
-
-```php
-// Exemple : ce test protège-t-il vraiment le cloisonnement entre familles ?
-// → retirez l'appel au voter dans le contrôleur : le test DOIT échouer.
-public function testUnParentNePeutPasToucherAuxEnfantsDUnAutre(): void
-```
+6. **Problèmes fréquents** : port déjà pris, base inaccessible, journal déjà
+   rempli…
 
 ---
 
 ## 4. Explications avec exemples
 
-### Un test de règle métier
+### Créer un enfant et son compte dans les fixtures
 
 ```php
-public function testDeuxHeuresPileDonnentDejaLe202020(): void
+private function creerEnfant(ObjectManager $manager, User $parent, string $prenom, string $nom, string $identifiant, int $age, string $avatar, int $limite): Enfant
 {
-    $conseils = $this->getConseils(ecranTv: 120, limite: 180);
+    $compte = new User();
+    $compte->setUsername($identifiant);
+    $compte->setRoles([User::ROLE_CHILD]);
+    $compte->setPassword($this->passwordHasher->hashPassword($compte, 'enfant123'));
 
-    $this->assertSame(['Repose tes yeux avec le 20-20-20'], array_column($conseils, 'titre'));
+    $enfant = new Enfant();
+    $enfant->setPrenom($prenom);
+    $enfant->setNom($nom);                 // colonne NOT NULL : obligatoire
+    $enfant->setDateNaissance(new \DateTimeImmutable('today -' . $age . ' years'));
+    $enfant->setAvatar($avatar);           // une clé de Enfant::AVATARS
+    $enfant->setMaxMinutesJour($limite);   // multiple de 15, entre 15 et 480
+    $enfant->setParent($parent);
+    $enfant->setCompte($compte);
+
+    $manager->persist($compte);
+    $manager->persist($enfant);
+
+    return $enfant;
 }
 ```
 
-Court, lisible, et il protège exactement le bug corrigé en phase 09 (le seuil
-`>=` au lieu de `>`). Un bon test raconte une règle métier.
+Une petite méthode privée évite de répéter quatre fois le même bloc. Le compte
+est créé **avec** le profil : c'est la règle du projet (compte enfant
+obligatoire).
 
-Les arguments nommés (`ecranTv:`, `limite:`) rendent l'intention évidente sans
-commentaire.
-
-### Un test de parcours complet
+### Créer des journaux sur plusieurs semaines
 
 ```php
-public function testParcoursCompletDuJournal(): void
-{
-    $client = static::createClient();
-    $tom = static::getContainer()->get(UserRepository::class)->findOneBy(['username' => 'tom']);
-    $client->loginUser($tom);
+mt_srand(20240912);
 
-    // Les fixtures ont déjà rempli la journée de Tom : on la supprime.
-    // (La base est remise en état automatiquement après le test.)
-    $journalRepository = static::getContainer()->get(JournalEntreeRepository::class);
-    $entityManager = static::getContainer()->get(EntityManagerInterface::class);
-    $entityManager->remove($journalRepository->findAujourdhui($tom->getProfilEnfant()));
-    $entityManager->flush();
-
-    // … étape 1, étape 2
-
-    // On vérifie ce qui est réellement en base, pas seulement l'affichage
-    $entityManager->clear();
-    $journal = $journalRepository->findAujourdhui($tom->getProfilEnfant());
-    $this->assertSame(150, $journal->getTotalEcran());
-    $this->assertCount(2, $journal->getDouleurs());
+for ($jour = 0; $jour < 35; $jour++) {
+    $journal = new JournalEntree();
+    $journal->setEnfant($enfant);
+    $journal->setDate(new \DateTimeImmutable('today -' . $jour . ' days'));
+    $journal->setEcranTv(mt_rand(0, 8) * 15);
+    // … autres écrans
+    $manager->persist($journal);
 }
 ```
 
-Trois enseignements :
+- `$jour = 0` correspond à **aujourd'hui** : le tableau de bord affiche tout de
+  suite une journée remplie.
+- 35 jours couvrent largement la courbe de 30 jours.
+- Des multiples de 15 minutes donnent des valeurs réalistes, comme celles des
+  curseurs.
 
-- le test **peut supprimer** des données des fixtures : la transaction annulera
-  tout ;
-- `$entityManager->clear()` vide le cache d'objets pour relire depuis la base —
-  sans lui, on vérifierait l'objet gardé en mémoire ;
-- le test vérifie **l'état final en base**, pas seulement le HTML : c'est ce qui
-  permet d'affirmer que les données invalides ont bien été ignorées.
+### Un contenu par règle déclencheuse
 
-### Ce que couvre la suite du projet
+```php
+$contenu = new ContenuBienEtre();
+$contenu->setTitre('Repose tes yeux avec le 20-20-20');
+$contenu->setType('exercice');
+$contenu->setContenu('Toutes les 20 minutes, regarde à 20 pieds (6 m) pendant 20 secondes.');
+$contenu->setDeclencheur(ContenuBienEtre::DECLENCHEUR_20_20_20);
+$manager->persist($contenu);
+```
 
-| Fichier | Règles protégées |
-|---|---|
-| `SecuriteTest` | pages publiques, connexion, inscription, cloisonnement des espaces |
-| `ParentEnfantTest` | création d'un enfant et de son compte, validations, 403 entre familles, suppression en cascade, CSRF |
-| `JournalTest` | parcours en 2 étapes, curseurs à zéro, plafond de 16 h, étape 2 impossible sans l'étape 1, données invalides ignorées |
-| `ConseilServiceTest` | les cinq règles et leurs seuils |
-| `DureeExtensionTest` | le formatage des durées |
-
-Quelques dizaines de tests suffisent : ils couvrent les règles **qu'on ne peut
-pas se permettre de casser**.
+Les clés (`20-20-20`, `etirement_cervical`, `yoga_yeux`) sont les constantes de
+`ContenuBienEtre::DECLENCHEURS` : les textes des conseils vivent **en base**,
+pas dans le code.
 
 ---
 
 ## 5. Commandes
 
-### `docker compose exec app composer require --dev doctrine/doctrine-fixtures-bundle`
+### Le bundle des fixtures : déjà là
 
+- **Rien à installer** : `doctrine/doctrine-fixtures-bundle` fait partie des
+  paquets installés en phase 01 (avec `--dev`), et sa recette a déjà créé un
+  `src/DataFixtures/AppFixtures.php` vide. Cette phase le remplit. S'il manque
+  un paquet, signalez-le plutôt que de l'ajouter en douce.
 - **Pourquoi `--dev`** : les fixtures ne doivent **jamais** être installées en
   production — elles purgeraient la base.
+- **À observer** : `docker compose exec app php bin/console list doctrine:fixtures`
+  affiche la commande `doctrine:fixtures:load`.
+
+### Les cibles du `Makefile`
+
+- `migrate` existe déjà depuis la phase 02. On ajoute `fixtures`, `reset-db` et
+  `lint`, et on complète `install` (migrations + fixtures).
+
+```makefile
+install: ## Démarre les conteneurs, installe les dépendances, applique les migrations, charge les fixtures
+	docker compose up -d --build
+	docker compose exec app composer install
+	$(MAKE) migrate
+	$(MAKE) fixtures
+
+fixtures: ## ⚠️ Purge la base et recharge les données de démonstration
+	docker compose exec app php bin/console doctrine:fixtures:load --no-interaction
+
+reset-db: ## Supprime et recrée la base, migrations + fixtures
+	docker compose exec app php bin/console doctrine:database:drop --force --if-exists
+	docker compose exec app php bin/console doctrine:database:create
+	$(MAKE) migrate
+	$(MAKE) fixtures
+
+lint: ## Vérifie gabarits, YAML, services et schéma
+	docker compose exec app php bin/console lint:twig templates
+	docker compose exec app php bin/console lint:yaml config
+	docker compose exec app php bin/console lint:container
+	docker compose exec app php bin/console doctrine:schema:validate
+```
+
+⚠️ Dans un `Makefile`, les lignes de commande commencent par une
+**tabulation**, pas par des espaces.
+
+### `make install`
+
+- **Ce qu'elle fait** : démarre les conteneurs, installe les dépendances,
+  applique les migrations et charge les fixtures.
+- **Quand** : la première fois.
 
 ### `make fixtures`
 
@@ -314,29 +325,20 @@ pas se permettre de casser**.
 
 - **Ce qu'elle fait** : supprime la base, la recrée, applique les migrations,
   recharge les fixtures.
-- **Quand** : repartir d'un état parfaitement propre.
+- **Quand** : repartir d'un état parfaitement propre, par exemple avant une
+  démonstration ou une recette manuelle.
 
 ### `make lint`
 
 - **Ce qu'elle fait** : enchaîne les quatre vérifications.
-- **À observer** : **cinq** `[OK]` (schema:validate en affiche deux).
+- **À observer** : un `[OK]` pour chacune des quatre commandes
+  (`schema:validate` en affiche un pour le mapping et un pour la base).
 
-### `make tests`
+### `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"`
 
-- **Ce qu'elle fait** : prépare la base de test (création, migrations, fixtures)
-  **puis** lance PHPUnit.
-- **À observer** : la ligne finale `OK (N tests, M assertions)`. La suite échoue
-  aussi sur les **dépréciations** : c'est voulu, cela garde le projet à jour.
-
-### `docker compose exec app php bin/phpunit --testdox`
-
-- **Ce qu'elle fait** : affiche les tests sous forme de phrases lisibles.
-- **Quand** : pour relire ce que la suite couvre réellement.
-
-### `docker compose exec app php bin/phpunit --filter testLeTotalDeLaJourneeEstPlafonne`
-
-- **Ce qu'elle fait** : ne lance qu'un test.
-- **Quand** : pendant la correction d'un test qui échoue.
+- **Ce qu'elle fait** : supprime les journaux du jour (et leurs douleurs, par la
+  clé étrangère).
+- **Quand** : pour rejouer le parcours du journal avec un enfant des fixtures.
 
 ---
 
@@ -345,10 +347,9 @@ pas se permettre de casser**.
 | Composant | Rôle ici |
 |---|---|
 | **DoctrineFixturesBundle** | données de démonstration |
-| **PHPUnit + symfony/test-pack** | exécution des tests |
-| **BrowserKit / CssSelector** | client HTTP simulé, `assertSelectorTextContains()` |
-| **dama/doctrine-test-bundle** | une transaction annulée par test |
-| **Console** | `lint:twig`, `lint:yaml`, `lint:container`, `schema:validate` |
+| **PasswordHasher** | hachage des mots de passe des comptes de démonstration |
+| **Console** | `lint:twig`, `lint:yaml`, `lint:container`, `schema:validate`, `dbal:run-sql` |
+| **Makefile** (hors Symfony) | raccourcis des commandes du projet |
 
 ---
 
@@ -358,63 +359,47 @@ pas se permettre de casser**.
 src/DataFixtures/
 └── AppFixtures.php            toutes les données de démonstration
 
-tests/
-├── bootstrap.php              initialisation de l'environnement de test
-├── Controller/
-│   ├── SecuriteTest.php
-│   ├── ParentEnfantTest.php
-│   └── JournalTest.php
-├── Service/
-│   └── ConseilServiceTest.php
-└── Twig/
-    └── DureeExtensionTest.php
-
-phpunit.dist.xml               configuration de PHPUnit
-.env.test                      environnement de test (base séparée)
+Makefile                       install, migrate, fixtures, reset-db, lint
+README.md                      installation, comptes, commandes, problèmes fréquents
 ```
 
-L'arborescence de `tests/` **reflète** celle de `src/` : on trouve le test d'une
-classe sans réfléchir.
-
-⚠️ Piège du projet : les droits MySQL de la base de test viennent de
-`docker/mysql/init.sql`, qui ne s'exécute **qu'à la création du volume**. Si la
-base de test refuse l'accès, il faut recréer le volume
-(`docker compose down -v`, puis réinstaller) — c'est documenté dans le README.
+Une seule classe de fixtures suffit ici : elle se lit de haut en bas, dans
+l'ordre des dépendances (utilisateurs, puis enfants, puis journaux, puis
+contenus).
 
 ---
 
 ## 8. Flux de fonctionnement
 
 ```text
-make tests
+make reset-db
     ↓
-création de la base digisante_junior_test (si absente)
+doctrine:database:drop  →  doctrine:database:create
     ↓
-migrations appliquées
+doctrine:migrations:migrate     (toutes les tables)
     ↓
-fixtures chargées
+doctrine:fixtures:load
     ↓
-PHPUnit démarre
+purge  →  AppFixtures::load()  →  persist()  →  flush()
     ↓
-pour chaque test :
-    BEGIN TRANSACTION
-        le test s'exécute (client HTTP simulé, service, ou classe pure)
-    ROLLBACK
+base prête : comptes, enfants, journaux (dont aujourd'hui), contenus
     ↓
-résultat : OK (N tests) — ou la liste des échecs
+make lint  →  recette manuelle au navigateur
 ```
 
 ---
 
 ## 9. Application au projet
 
-**Pourquoi cette phase ?** Jusqu'ici, chaque phase était validée à la main. À
-partir de maintenant, la moindre modification pourrait casser silencieusement une
-règle écrite il y a dix phases. Les tests figent ce qui a été construit.
+**Pourquoi cette phase ?** Jusqu'ici, chaque phase était validée à la main, sur
+des données créées au fil de l'eau. Pour terminer le projet, il faut une base
+**identique pour tout le monde**, des commandes **simples à retenir** et une
+documentation qui permette à quelqu'un d'autre de tout relancer.
 
-**Composants utilisés** : Fixtures, PHPUnit, BrowserKit, DAMA, Console.
+**Composants utilisés** : Fixtures, PasswordHasher, Console, Makefile.
 
-**Fichiers créés** : voir l'arborescence, plus les cibles du `Makefile`.
+**Fichiers créés ou modifiés** : `src/DataFixtures/AppFixtures.php`, `Makefile`,
+`README.md`.
 
 **Pourquoi ces choix ?**
 
@@ -422,91 +407,100 @@ règle écrite il y a dix phases. Les tests figent ce qui a été construit.
   graphique de la phase 10 serait vide et invérifiable.
 - **Un contenu par règle déclencheuse** : sinon les conseils de la phase 09
   s'afficheraient sans contenu associé.
-- **DAMA** plutôt que recharger les fixtures entre chaque test : c'est beaucoup
-  plus rapide, et parfaitement fiable.
-- **Peu de tests, bien choisis** : sécurité, cloisonnement, parcours du journal,
-  règles de conseil, formatage. Le projet ne cherche pas 100 % de couverture,
-  mais 100 % des **règles critiques**.
-
-**Ce qui reste manuel** : l'ergonomie, le rendu visuel, l'adaptation du ton aux
-enfants. Aucun test ne dit si une page est agréable à utiliser.
+- **Des données déterministes** : la démonstration et les captures de la
+  documentation restent vraies d'un chargement à l'autre.
+- **Des cibles `make`** : personne n'a à retenir de longues commandes Docker.
+- **Linters + recette manuelle** : les linters attrapent les erreurs de forme en
+  quelques secondes ; la recette vérifie le comportement, l'ergonomie et le ton
+  adapté aux enfants, que rien d'autre ne peut juger.
 
 ---
 
 ## 10. Erreurs fréquentes
 
-**`Unknown database 'digisante_junior_test'`**
-→ La base de test n'a pas été créée.
-→ Solution : `make tests` (qui la prépare), ou les trois commandes `--env=test`.
+**`There are no commands defined in the "doctrine:fixtures" namespace`**
+→ Le bundle n'est pas installé (étape oubliée en phase 01), ou l'environnement
+n'est pas `dev`.
+→ Solution : vérifier `APP_ENV=dev`, puis `composer show doctrine/doctrine-fixtures-bundle` ;
+s'il est absent, reprendre l'installation des paquets de la phase 01.
 
-**`Access denied for user 'digisante'@'%' to database 'digisante_junior_test'`**
-→ Le volume MySQL a été créé avant `docker/mysql/init.sql`.
-→ Solution : `docker compose down -v` puis réinstallation complète.
+**Impossible de se connecter avec un compte de démonstration**
+→ Le mot de passe a été enregistré en clair.
+→ Solution : passer par `$this->passwordHasher->hashPassword()`.
 
-**Un test échoue avec 422 alors qu'on attendait 200**
-→ Le formulaire est invalide : c'est **normal** si c'est ce qu'on testait.
-→ Solution : `assertResponseStatusCodeSame(422)`.
+**`Cannot delete or update a parent row: a foreign key constraint fails`**
+→ Les fixtures ont été chargées avec `--append`, ou une donnée est créée dans
+le mauvais ordre.
+→ Solution : `make reset-db` ; persister les objets dans l'ordre des
+dépendances (parent avant enfant, journal avant douleurs).
 
-**Les tests passent un par un mais échouent tous ensemble**
-→ Les données ne sont pas isolées : DAMA n'est pas activé.
-→ Vérification : la configuration du bundle dans `config/packages/`.
+**Un enfant des fixtures est refusé par la validation (âge)**
+→ Sa date de naissance est figée et il a « vieilli ».
+→ Solution : une date relative, `new \DateTimeImmutable('today -10 years')`.
 
-**`The current node list is empty` lors d'un `submitForm()`**
-→ Le libellé du bouton ne correspond pas exactement (accents, emoji, espace).
-→ Solution : copier le libellé **tel qu'il apparaît** dans le gabarit.
+**Le graphique change à chaque rechargement**
+→ La graine aléatoire n'est pas fixée.
+→ Solution : `mt_srand(20240912)` au début de `load()`.
 
-**Un test vérifie la base et ne voit pas les changements**
-→ L'objet est encore en cache mémoire.
-→ Solution : `$entityManager->clear()` avant de relire.
+**Le tableau de bord n'affiche rien pour aujourd'hui**
+→ La boucle des journaux commence à 1 au lieu de 0, ou MySQL et PHP ne sont pas
+sur le même fuseau (`TZ` dans `compose.yaml`).
+→ Solution : démarrer à `$jour = 0` ; vérifier `Europe/Paris` des deux côtés.
 
-**La suite échoue sur une dépréciation, pas sur une assertion**
-→ C'est voulu : le projet traite les dépréciations comme des erreurs.
-→ Solution : corriger le code déprécié (souvent un `'ASC'`/`'DESC'` en chaîne).
+**`make: *** missing separator. Stop.`**
+→ Une ligne de commande du `Makefile` est indentée avec des espaces.
+→ Solution : la remplacer par une **tabulation**.
+
+**`doctrine:schema:validate` : « The database schema is not in sync »**
+→ Une entité a été modifiée sans migration.
+→ Solution : `make:migration`, relire le fichier, puis `make migrate`.
 
 ---
 
 ## 11. Bonnes pratiques
 
-- **Un test = une règle métier.** Pas de test qui vérifie dix choses à la fois.
-- **Nommez les tests en français**, comme des phrases :
-  `testUnParentNePeutPasToucherAuxEnfantsDUnAutre`.
-- **Vérifiez l'état final en base**, pas seulement l'affichage.
-- **Cassez la règle pour vérifier que le test rougit.** C'est le seul moyen de
-  savoir qu'il sert à quelque chose.
-- **N'adaptez jamais le code pour faire passer un test** : si le test a raison,
-  corrigez le code ; s'il a tort, corrigez le test — et dites lequel des deux.
 - **Les fixtures ne vont jamais en production** : elles purgent la base.
-- **Faites de `make lint` et `make tests` un réflexe** avant de considérer une
-  tâche terminée.
+- **Des données réalistes et cohérentes** : des prénoms, des durées en multiples
+  de 15 minutes, des âges dans la plage autorisée.
+- **Des données déterministes** : graine fixe et dates relatives.
+- **Documentez chaque compte de démonstration** dans le `README`.
+- **Faites de `make lint` un réflexe** avant de considérer une tâche terminée,
+  puis exercez la fonctionnalité au navigateur.
+- **Rejouez la recette manuelle sur une base propre** (`make reset-db`) : une
+  donnée laissée par un essai précédent peut masquer un problème.
 
 ---
 
 ## 12. Exercice pratique
 
-1. Lancez `make reset-db`, puis connectez-vous avec les trois comptes de
-   démonstration. Notez l'identifiant et le mot de passe de chacun.
-2. Lancez `docker compose exec app php bin/phpunit --testdox` et **lisez la
-   liste** : chaque ligne décrit une règle du projet. Retrouvez celle qui protège
-   le plafond de 16 h.
-3. Cassez volontairement une règle : dans `ConseilService`, remettez `>` au lieu
-   de `>=` pour le seuil de 2 h. Relancez les tests : **un** test doit échouer,
-   et le message doit vous dire lequel. Remettez `>=`.
-4. Écrivez un test supplémentaire, court, pour une règle qui vous semble non
-   couverte — par exemple : « un enfant de 15 ans est refusé à la création ».
-   Lancez-le, vérifiez qu'il passe, puis assurez-vous qu'il échoue si vous
-   retirez la contrainte d'âge de l'entité.
-5. Lancez `make lint` et lisez chacune des quatre sorties : sauriez-vous dire ce
-   que chaque commande vient de vérifier ?
+1. Lancez `make reset-db`, puis connectez-vous avec les trois types de comptes
+   de démonstration. Notez l'identifiant et le mot de passe de chacun.
+2. Relancez `make fixtures` deux fois de suite et comparez la courbe du tableau
+   de bord parent : elle doit être **identique**. Retirez `mt_srand(20240912)`,
+   rechargez : que constatez-vous ? Remettez la graine.
+3. Ajoutez dans `AppFixtures` un nouveau contenu de type « exercice », puis
+   rechargez et vérifiez qu'il apparaît dans la bibliothèque de l'enfant.
+4. Introduisez volontairement une erreur de syntaxe dans un gabarit (une balise
+   `{% endif %}` en trop), lancez `make lint` et lisez le message. Corrigez.
+5. Rédigez votre checklist de recette manuelle à partir des scénarios des phases
+   01 à 11, puis déroulez-la entièrement. Pour le journal, utilisez la commande
+   `dbal:run-sql` du README.
 
 ---
 
 ## 13. Scénario de test manuel
 
 1. Lancer `make reset-db` pour repartir d'une base propre remplie par les fixtures.
-2. Se connecter avec chacun des trois comptes de démonstration (admin, parent, enfant).
-3. Lancer `make lint`, puis `make tests`.
-4. Ouvrir le tableau de bord parent : les journaux des dernières semaines doivent être visibles dans la courbe.
-5. **Résultat attendu** : les trois connexions fonctionnent, les quatre linters affichent `[OK]`, la suite PHPUnit est verte, et le graphique est rempli.
+2. Se connecter avec l'admin (`admin@digisante.local`), un parent
+   (`parent@digisante.local`) et un enfant (`lea`).
+3. Ouvrir le tableau de bord parent : les journaux des dernières semaines doivent
+   être visibles dans la courbe de 30 jours.
+4. Supprimer le journal du jour (commande du README), puis rejouer le journal en
+   2 étapes en tant qu'enfant.
+5. Lancer `make lint`.
+6. **Résultat attendu** : les trois connexions fonctionnent, le graphique est
+   rempli, le journal se rejoue sans erreur, et les quatre vérifications de
+   `make lint` affichent `[OK]`.
 
 ---
 
@@ -520,10 +514,20 @@ enfants. Aucun test ne dit si une page est agréable à utiliser.
 - [ ] J'ai exécuté le scénario de test manuel
 - [ ] Le résultat attendu est obtenu
 
+## Conclusion
+
+Bravo : c'est la fin du parcours. Digi-Santé Junior est complet — trois espaces,
+un journal, des conseils, un tableau de bord, une administration — et il
+s'installe, se démontre et se vérifie en quelques commandes. Pour toute
+évolution future, gardez les mêmes réflexes : une migration pour le schéma,
+`make lint`, puis la recette manuelle au navigateur.
+
 ### Aller plus loin
 
-➡️ [Phase suivante](./phase-13.md)
+⬅️ [Phase précédente](./phase-11.md)
 
-➡️ [Phase de développement](../README.md#phase-12--données-de-démonstration-qualité-et-tests)
+➡️ [Retour au sommaire de la formation](./README.md)
+
+➡️ [Phase de développement](../README.md#phase-12--données-de-démonstration-et-qualité)
 
 ➡️ [Prompt Claude Code](../prompts/phase-12.md)

@@ -1,4 +1,4 @@
-# Prompt Claude Code — Phase 05 : Espace parent, profils enfants et comptes de connexion
+# Prompt Claude Code — Phase 05 : Espace parent : profils enfants
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
 
@@ -10,9 +10,10 @@
 enfants de 8 à 14 ans. Trois rôles sans hiérarchie : `ROLE_ADMIN`,
 `ROLE_PARENT`, `ROLE_CHILD`.
 
-Déjà en place : entité `User` (email **ou** identifiant, rôles, mot de passe
-haché), inscription et connexion par email, `access_control` sur `/admin`,
-`/parent`, `/enfant`, gabarit `base.html.twig` et charte Bootstrap.
+Déjà en place : les cinq entités et leurs relations (phase 02, dont `User` et
+`Enfant`), gabarit `base.html.twig` et charte Bootstrap (phase 03), inscription
+et connexion par email, `access_control` sur `/admin`, `/parent`, `/enfant`
+(phase 04). Tous les paquets sont installés depuis la phase 01.
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, Bootstrap 5.3 par CDN,
 MySQL 8, Docker. Code simple, en français, sans sur-ingénierie.
@@ -25,8 +26,8 @@ parent choisit le mot de passe.
 
 ## Avant de coder
 
-1. Lis `src/Entity/User.php`, `src/Repository/UserRepository.php`,
-   `config/packages/security.yaml`, `templates/base.html.twig` et
+1. Lis `src/Entity/User.php`, `src/Entity/Enfant.php`,
+   `src/Repository/UserRepository.php`, `config/packages/security.yaml`, `templates/base.html.twig` et
    `public/css/app.css` (classes maison disponibles).
 2. Repère les conventions déjà utilisées (noms de routes, injection dans
    l'action, messages flash) et suis-les.
@@ -34,29 +35,26 @@ parent choisit le mot de passe.
 
 ## À implémenter
 
-### 1. Entité `Enfant`
+### 1. Entité `Enfant` (déjà en place)
 
-| Propriété | Type | Règles |
-|---|---|---|
-| `parent` | `ManyToOne` vers `User` | non nullable, `onDelete: 'CASCADE'` |
-| `compte` | `OneToOne` vers `User` | **non nullable**, `cascade: ['persist', 'remove']` |
-| `prenom`, `nom` | `string(80)` | obligatoires |
-| `dateNaissance` | `date_immutable` | l'enfant doit avoir **entre 8 et 14 ans** |
-| `avatar` | `string(20)` | choisi dans une galerie |
-| `maxMinutesJour` | `int` | limite quotidienne, **15 à 480 min par pas de 15**, défaut 120 |
-| `journalEntrees` | `OneToMany` | `cascade: ['remove']` (les journaux arrivent en phase 07) |
+L'entité existe depuis la phase 02 : lis-la, ne la recrée pas et ne génère
+**aucune migration** dans cette phase. Rappels utiles pour la suite :
 
-- Côté `User` : relation inverse `enfants` (`cascade: ['remove']`) et
-  `profilEnfant` (`OneToOne` inverse).
-- **Constantes de classe**, pas d'enum : `Enfant::AVATARS` (12 avatars, chacun
-  avec `emoji`, `nom` et `couleur`), `LIMITE_MIN`, `LIMITE_MAX`, `LIMITE_PAS`.
-- Getters d'affichage : `getNomComplet()`, `getAge()` (années révolues),
-  `getAvatarEmoji()`, `getAvatarNom()`.
-- Messages de validation en français, écrits pour le parent :
-  « L'application est réservée aux enfants de 8 à 14 ans. »,
-  « La limite se règle par tranches de 15 minutes. »
+- `parent` (`ManyToOne` vers `User`, `onDelete: 'CASCADE'`) et `compte`
+  (`OneToOne` **non nullable**, `cascade: ['persist', 'remove']`) : persister
+  l'enfant persiste aussi son compte ; le supprimer supprime le compte et, via
+  `journalEntrees` (`cascade: ['remove']`), ses journaux.
+- Côté `User` : `enfants` (`cascade: ['remove']`) et `profilEnfant`.
+- Constantes : `Enfant::AVATARS` (12 avatars : `emoji`, `nom`, `couleur`),
+  `LIMITE_MIN`, `LIMITE_MAX`, `LIMITE_PAS`, `LIMITE_DEFAUT`, `AGE_MIN`,
+  `AGE_MAX` ; getters `getNomComplet()`, `getAge()`, `getAvatarEmoji()`,
+  `getAvatarNom()`, `getAvatarCouleur()`.
+- Les contraintes (8-14 ans, limite 15-480 min par pas de 15) et leurs messages
+  (« L'application est réservée aux enfants de 8 à 14 ans. », « La limite se
+  règle par tranches de 15 minutes. ») sont déjà sur l'entité : les formulaires
+  de cette phase les déclenchent.
 
-Génère la migration, fais-la-moi relire, puis applique-la.
+Si une propriété ou une constante citée ici manque, signale-le avant de coder.
 
 ### 2. Identifiant de connexion de l'enfant
 
@@ -79,12 +77,17 @@ Dans `UserRepository`, une méthode `genererUsername(string $prenom): string` :
   profil (avec la limite) et le changement de mot de passe de l'enfant.
 - `parent_enfant_supprimer` : **POST uniquement**, jeton CSRF vérifié, puis
   suppression (le compte et les journaux partent en cascade).
+  Jeton invalide ou absent → **403** avec
+  `throw $this->createAccessDeniedException('Jeton CSRF invalide.')` (même règle
+  pour toutes les suppressions du projet).
 
 Ajoute `requirements: ['id' => '\d+']` sur chaque paramètre `{id}`.
 
 ### 4. Sécurité : `EnfantVoter`
 
-Un voter avec l'attribut `ENFANT_GERER` : un parent ne peut consulter, modifier
+Un voter généré par `make:voter EnfantVoter` (fichier
+`src/Security/Voter/EnfantVoter.php` ; remplace les attributs d'exemple
+`POST_EDIT`/`POST_VIEW` du squelette) avec l'attribut `ENFANT_GERER` : un parent ne peut consulter, modifier
 ou supprimer **que ses propres enfants**. Chaque action ciblant un enfant
 appelle `$this->denyAccessUnlessGranted(EnfantVoter::GERER, $enfant)` →
 **403** pour l'enfant d'un autre foyer.
@@ -97,8 +100,9 @@ appelle `$this->denyAccessUnlessGranted(EnfantVoter::GERER, $enfant)` →
   du compte (champ non mappé, 6 caractères minimum).
   ⚠️ Un `RangeType` envoie une **chaîne** : ajoute un `CallbackTransformer` pour
   le champ entier `maxMinutesJour`.
-- `MotDePasseType` : nouveau mot de passe répété, 6 caractères minimum,
-  réutilisable ailleurs.
+- `MotDePasseType` : un champ `plainPassword` (`RepeatedType`, non mappé,
+  même nom que dans `InscriptionType`), 6 caractères minimum, réutilisable
+  ailleurs (espace enfant, phase 06).
 - Un partiel `templates/form/avatars.html.twig` pour la galerie.
   ⚠️ Le thème Bootstrap entoure chaque radio d'un `div.form-check` : écris les
   `<input>` toi-même dans le partiel, puis appelle `setRendered`.
@@ -113,11 +117,25 @@ une durée est affichée.
 
 - `templates/parent/layout.html.twig` (étend `base.html.twig`) avec le menu
   **Tableau de bord** / **Mes enfants** et le menu utilisateur (initiale +
-  début de l'email, lien profil, déconnexion).
+  début de l'email, lien « Mon profil », déconnexion).
 - Pages liste / nouveau / modifier, avec **un seul partiel** de formulaire
   réutilisé à la création et à la modification.
 - Un partiel `_partials/bouton_supprimer.html.twig` : petit formulaire POST avec
   jeton CSRF et `confirm()` du navigateur.
+
+### 8. Profil du parent
+
+Le menu mène à « Mon profil » : crée la page, sinon le lien pointe vers une
+route inexistante (erreur 500 sur toutes les pages parent).
+
+- `Parent\ProfilController`, route `/parent/profil` (GET + POST), nom
+  `parent_profil`.
+- Deux formulaires sur la page : `ProfilParentType` (email **obligatoire**,
+  pays, ville) et `MotDePasseType` pour changer son mot de passe (haché).
+- ⚠️ Ce formulaire modifie **l'utilisateur connecté** : après une saisie
+  invalide (email vide ou déjà pris), appelle `$entityManager->refresh($user)`,
+  sinon Symfony compare un utilisateur modifié à celui de la session et le
+  déconnecte à la requête suivante.
 
 ## Contraintes techniques et architecturales
 
@@ -133,15 +151,13 @@ une durée est affichée.
 ## Commandes attendues
 
 ```bash
-docker compose exec app php bin/console make:entity Enfant
 docker compose exec app php bin/console make:voter EnfantVoter
-docker compose exec app php bin/console make:migration
-docker compose exec app php bin/console doctrine:migrations:migrate --no-interaction
 docker compose exec app php bin/console doctrine:schema:validate
 ```
 
 ## Ce qui n'est PAS dans cette phase
 
+- Pas de création d'entité ni de migration (tout le schéma date de la phase 02).
 - Pas de connexion enfant ni d'espace `/enfant` (phase 06).
 - Pas de journal, pas de douleurs (phase 07).
 - Pas de tableau de bord ni de graphique (phase 10).
@@ -162,8 +178,10 @@ docker compose exec app php bin/console doctrine:schema:validate
 - [ ] Deux enfants prénommés « Léa » reçoivent `lea` puis `lea2`.
 - [ ] Modifier l'URL avec l'identifiant de l'enfant d'un autre parent renvoie **403**.
 - [ ] Supprimer un enfant supprime son compte **et** ses données liées.
-- [ ] La suppression sans jeton CSRF est refusée.
-- [ ] `doctrine:schema:validate` et `lint:twig templates` sont au vert.
+- [ ] La suppression sans jeton CSRF est refusée (**403**).
+- [ ] Sur « Mon profil », un email vide affiche une erreur **sans** déconnecter le parent.
+- [ ] Aucune nouvelle migration : `doctrine:schema:validate` reste au vert
+      (schéma synchronisé), comme `lint:twig templates`.
 
 ## Enfin
 

@@ -1,4 +1,4 @@
-# Prompt Claude Code — Phase 06 : Espace enfant, connexion par identifiant, accueil et profil
+# Prompt Claude Code — Phase 06 : Espace enfant : connexion et accueil
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
 
@@ -12,7 +12,9 @@ enfants de 8 à 14 ans. Trois rôles sans hiérarchie : `ROLE_ADMIN`,
 
 Déjà en place : entité `User` (email **ou** identifiant), entité `Enfant` avec
 son compte de connexion créé par le parent, espace parent fonctionnel,
-`EnfantVoter`, filtre Twig `duree`, charte Bootstrap.
+`EnfantVoter`, filtre Twig `duree`, charte Bootstrap. Tous les paquets du
+projet sont installés depuis la phase 01 (dont `twig/extra-bundle` et
+`twig/intl-extra`).
 
 Particularité : les parents et l'administrateur se connectent avec leur
 **email** sur `/login`, les enfants avec un **identifiant** (ex. `lea`) sur une
@@ -38,13 +40,14 @@ personnalisé et une page de profil où il peut changer son mot de passe.
 
 ### 1. Charger l'utilisateur par email **ou** identifiant
 
-`UserRepository` implémente `UserLoaderInterface` :
+`UserRepository` implémente déjà `UserLoaderInterface` depuis la phase 04, avec
+une recherche par email seulement. **Étends** la même méthode :
 
 ```php
 public function loadUserByIdentifier(string $identifier): ?User
 ```
 
-La requête cherche dans `u.email` **ou** `u.username`, sur la valeur en
+La requête cherche désormais dans `u.email` **ou** `u.username`, sur la valeur en
 minuscules et sans espaces autour. C'est pour cela que le provider de
 `security.yaml` n'a **pas** d'option `property` — vérifie que c'est bien le cas.
 
@@ -66,15 +69,17 @@ minuscules et sans espaces autour. C'est pour cela que le provider de
   L'identifiant ou le mot de passe n'est pas le bon. Essaie encore. »
 - Un lien discret « Je suis un parent → » vers `/login`, et l'inverse sur la
   page parent.
+- Les boutons « 🚀 Je suis un enfant » de la page d'accueil et de la page de
+  connexion parent pointaient vers `#` : fais-les pointer vers
+  `path('app_enfant_login')`, maintenant que la route existe.
 
 ### 3. Layout de l'espace enfant
 
 `templates/enfant/layout.html.twig` (étend `base.html.twig`) :
 
 - fond coloré propre à l'espace enfant (via le bloc `body_class`) ;
-- menu : **🏠 Accueil**, **📔 Mon journal** (la route arrivera en phase 07,
-  prévois-la ou mets le lien en place au dernier moment), **📚 Découvrir**
-  (phase 08) ;
+- menu : **🏠 Accueil** seulement ; **📔 Mon journal** (phase 07) et
+  **📚 Découvrir** (phase 08) seront ajoutés par leur phase ;
 - menu utilisateur : avatar + prénom, lien « Mon profil », déconnexion ;
 - lien actif mis en évidence selon la route courante.
 
@@ -90,12 +95,21 @@ Préfixe `/enfant`, réservé à `ROLE_CHILD` par `access_control`.
   de sa limite quotidienne avec le filtre `duree`.
 - `/enfant/profil` (route `enfant_profil`) : carte d'identité en lecture seule
   (avatar et son nom, prénom, identifiant de connexion, âge, limite d'écran) et
-  un formulaire de **changement de mot de passe** réutilisant `MotDePasseType`.
+  un formulaire de **changement de mot de passe** réutilisant `MotDePasseType`
+  (champ `plainPassword`).
 - Le profil enfant se récupère avec `#[CurrentUser] User $user` puis
   `$user->getProfilEnfant()` ; si aucun profil n'est rattaché, lève une 404
   explicite.
 - Textes au **tutoiement**, encourageants : « Ton nouveau mot de passe est
   enregistré. Pense à bien le retenir ! »
+- Date en toutes lettres : `twig/extra-bundle` et `twig/intl-extra` sont
+  installés depuis la phase 01 (s'il en manque un, signale-le), utilise
+  `{{ 'now'|format_date('full', locale: 'fr') }}` (« lundi 28 septembre 2026 »).
+
+### 5. Redirection de l'enfant
+
+Complète `HomeController::index()` : `ROLE_CHILD` → `enfant_accueil`. Sans cela,
+un enfant qui vient de se connecter retombe sur la page d'accueil publique.
 
 ## Contraintes techniques et architecturales
 
@@ -138,6 +152,7 @@ docker compose exec app php bin/console cache:clear
 - [ ] La connexion **parent** par email fonctionne toujours.
 - [ ] Un enfant connecté qui ouvre `/parent` ou `/admin` reçoit **403**.
 - [ ] L'identifiant est insensible à la casse (`LEA` fonctionne).
+- [ ] Un enfant qui se connecte arrive directement sur `/enfant`.
 - [ ] La page de connexion enfant n'affiche aucun message technique.
 - [ ] `lint:twig templates` est au vert.
 

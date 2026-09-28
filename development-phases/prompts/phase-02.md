@@ -1,4 +1,4 @@
-# Prompt Claude Code — Phase 02 : Gabarit de base, charte graphique et page d'accueil
+# Prompt Claude Code — Phase 02 : Base de données et entités
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
 
@@ -6,132 +6,270 @@
 
 ## Contexte du projet
 
-**Digi-Santé Junior** est une application web de suivi du bien-être numérique
-des enfants de 8 à 14 ans (journal quotidien du temps d'écran et des douleurs,
-conseils personnalisés, suivi par les parents). Trois rôles sans hiérarchie :
-administrateur, parent, enfant.
+**Digi-Santé Junior** : application Symfony de suivi du bien-être numérique des
+enfants de 8 à 14 ans. L'enfant déclare chaque jour son temps d'écran et ses
+douleurs, reçoit des conseils ; ses parents suivent l'évolution. Trois rôles
+**sans hiérarchie** (un administrateur n'est ni parent ni enfant) :
 
-Stack : PHP 8.4, Symfony 7.4, Twig, **Bootstrap 5.3 par CDN**, MySQL 8, Docker.
-**Aucun bundler, aucun Node.js, aucun npm** : les fichiers de `public/` sont
-servis tels quels.
+| Rôle | Espace | Connexion |
+|---|---|---|
+| `ROLE_ADMIN` | `/admin` | **email** |
+| `ROLE_PARENT` | `/parent` | **email** |
+| `ROLE_CHILD` | `/enfant` | **identifiant** (pas d'email) |
 
-Je débute avec Symfony : je veux du code simple, en français, lisible de haut
-en bas.
+Déjà en place (phase 01) : Docker (`app`, `database` MySQL 8, `phpmyadmin` sur
+`http://localhost:8082`), squelette Symfony 7.4, et **tous les paquets du
+projet** (Doctrine ORM, Maker, Security, Validator…). Aucune entité n'existe
+encore.
+
+Stack : PHP 8.4, Symfony 7.4, **Doctrine ORM 3**, MySQL 8, Twig, Docker.
+Je débute avec Symfony : code simple, en français, sans sur-ingénierie.
 
 ## Objectif de la phase
 
-Passer d'une réponse texte à de vraies pages HTML : un gabarit commun à tout le
-site, la charte graphique du projet, et une page d'accueil publique qui
-présente le service.
+Connecter l'application à MySQL et créer **les cinq entités** du projet, avec
+leurs relations, leurs cascades de suppression, leurs listes fixes et leurs
+règles de validation : `User`, `Enfant`, `JournalEntree`, `DouleurZone`,
+`ContenuBienEtre`. Aucune page dans cette phase : on construit le modèle de
+données, que les phases suivantes utiliseront sans le recréer.
 
 ## Avant de coder
 
-1. Lis `src/Controller/HomeController.php`, `composer.json` et la structure des
-   dossiers pour voir ce qui existe déjà.
-2. Vérifie si Twig est installé ; s'il ne l'est pas, installe-le.
-3. Ne modifie pas la configuration Docker de la phase 01.
+1. Lis `compose.yaml`, `.env`, `composer.json` et `config/packages/doctrine.yaml`
+   pour voir la configuration existante.
+2. Vérifie que le service `database` tourne et que `DATABASE_URL` pointe bien
+   sur lui (hôte `database`, port 3306 **dans** le réseau Docker).
+3. Explique-moi la différence entre `.env` et `.env.local` avant de toucher à
+   ces fichiers, et rappelle-moi qu'une vraie variable d'environnement (ici la
+   `DATABASE_URL` fournie par `compose.yaml`) l'emporte sur les deux : `.env`
+   ne sert que de valeur de repli.
+4. Tous les paquets sont installés depuis la phase 01 : n'en installe aucun ;
+   s'il en manque un, signale-le moi.
+5. Annonce-moi l'ordre dans lequel tu vas créer les entités avant de commencer.
 
 ## À implémenter
 
-### 1. Twig et les gabarits
+### 1. Doctrine
 
-Installer Twig et le composant Asset, puis créer `templates/base.html.twig`,
-gabarit dont **toutes** les pages hériteront. Il doit exposer ces blocs, et
-seulement ceux-là :
+- Vérifier la configuration générée dans `config/packages/doctrine.yaml` et la
+  commenter en français là où c'est utile.
+- Ajoute au `Makefile` la cible `migrate`
+  (`php bin/console doctrine:migrations:migrate --no-interaction`) : les
+  scénarios de test l'utilisent à partir d'ici.
 
-`title`, `body_class`, `navbar`, `logo`, `marque_suffixe`, `menu`,
-`menu_utilisateur`, `body`, `javascripts`.
+### 2. Règles communes aux entités
 
-Le gabarit contient :
+- **Suppressions** : le projet s'appuie sur **les deux** mécanismes —
+  `cascade: ['remove']` côté Doctrine (sur la relation inverse), et
+  `onDelete: 'CASCADE'` sur la clé étrangère, filet de sécurité si une ligne est
+  supprimée hors Doctrine. Chaîne attendue : parent → enfants → compte +
+  journaux → douleurs.
+- **Listes fixes en constantes de classe**, pas d'enum PHP, avec des getters
+  d'affichage (`getAvatarEmoji()`, `getZoneLabel()`…).
+- **Contraintes `#[Assert\…]` sur l'entité** pour les règles permanentes, avec
+  des messages en français écrits pour l'utilisateur. Elles seront mises en
+  œuvre par les formulaires à partir de la phase 04.
+- ⚠️ Les setters liés à un formulaire acceptent `null` (`?string`, `?int`…) :
+  sinon un champ vide provoque une erreur 500 **avant** la validation.
+- Collections initialisées dans le constructeur (`new ArrayCollection()`).
 
-- `<html lang="fr">`, un `<meta viewport>`, le favicon ;
-- les polices Google Fonts **Baloo 2** (titres) et **Nunito** (texte) ;
-- Bootstrap 5.3 par CDN (CSS dans le `<head>`, bundle JS avant `</body>`) ;
-- `public/css/app.css` via `asset()` ;
-- une barre de navigation Bootstrap repliable (`navbar-expand-lg`) avec la
-  marque « Digi-Santé Junior » ;
-- l'affichage des **messages flash** (`app.flashes`), prêt pour les phases
-  suivantes ;
-- un pied de page discret.
+### 3. Entité `User` (table `users`)
 
-### 2. Charte graphique
+Un seul type de compte pour les trois rôles :
 
-`public/css/app.css` contient **uniquement** la charte et les composants du
-projet, pas de recopie de Bootstrap :
+| Propriété | Type | Règles |
+|---|---|---|
+| `id` | `int` | clé primaire auto |
+| `email` | `?string(180)` | **unique**, nullable (les enfants n'en ont pas), validé par `#[Assert\Email]` |
+| `username` | `?string(60)` | **unique**, nullable (réservé aux enfants) |
+| `roles` | `json` | liste de rôles |
+| `password` | `string` | mot de passe **haché**, jamais en clair |
+| `pays` | `?string(80)` | facultatif |
+| `ville` | `?string(80)` | facultatif |
+| `createdAt` | `datetime_immutable` | rempli dans le constructeur |
+| `enfants` | `OneToMany` vers `Enfant` | côté parent, `mappedBy: 'parent'`, `cascade: ['remove']`, trié par prénom |
+| `profilEnfant` | `OneToOne` inverse vers `Enfant` | côté enfant, `mappedBy: 'compte'` |
 
-- la palette en variables CSS sur `:root` (bleu marine, turquoise, or, teintes
-  douces) ;
-- les polices : Baloo 2 pour `h1`-`h3`, Nunito pour le texte ;
-- des boutons **en pilule** et des cartes **arrondies à ombre douce** ;
-- les classes maison : `btn-marine`, `btn-or`, `btn-fantome`, `btn-supprimer`,
-  `card-enfant`, `carte-titre`, `encadre`, `pastille`, `stat-libelle`,
-  `stat-valeur`, `gros-chiffre`, `jauge` + `niveau-vert|orange|rouge`,
-  `profil-ligne`, `avatar-bulle`, `texte-doux` ;
-- le fond de page posé sur `body`.
+Exigences :
 
-⚠️ Piège à éviter : **ne redéfinis pas la variable Bootstrap `--bs-body-bg`**,
-elle sert de fond aux cartes, champs, tableaux et menus. Le fond coloré de la
-page se met sur `body`.
+- la table s'appelle `users` (`user` est un mot réservé en SQL) ;
+- la classe implémente `UserInterface` et `PasswordAuthenticatedUserInterface` ;
+- `getUserIdentifier()` renvoie l'email **sinon** le username ;
+- `getRoles()` ajoute toujours `ROLE_USER` ;
+- les rôles sont des **constantes de classe** (`ROLE_ADMIN`, `ROLE_PARENT`,
+  `ROLE_CHILD`) : pas d'enum PHP ;
+- `setEmail()` et `setUsername()` enregistrent en **minuscules**, sans espaces
+  autour ;
+- `#[UniqueEntity]` sur `email` et sur `username`, avec des messages en français
+  (« Cette adresse email est déjà utilisée. », « Cet identifiant est déjà
+  utilisé. ») ;
+- une méthode `isParent()` pratique pour la suite ;
+- `eraseCredentials()` reste vide et porte l'attribut `#[\Deprecated]` : depuis
+  Symfony 7.3 cette méthode est dépréciée, et sans cet attribut Symfony
+  signale une dépréciation (visible dans la barre de debug à partir de la
+  phase 03).
+- ⚠️ Tri de `enfants` : `#[ORM\OrderBy(['prenom' => \SortDirection::Ascending])]`.
+  Passer `'ASC'` en chaîne est **déprécié**.
 
-### 3. Page d'accueil publique
+### 4. Entité `Enfant`
 
-`templates/home/index.html.twig`, rendue par `HomeController` :
+| Propriété | Type | Règles |
+|---|---|---|
+| `parent` | `ManyToOne` vers `User` | non nullable, `onDelete: 'CASCADE'` |
+| `compte` | `OneToOne` vers `User` | **non nullable**, `cascade: ['persist', 'remove']` (le compte part avec le profil) |
+| `prenom`, `nom` | `string(80)` | obligatoires |
+| `dateNaissance` | `date_immutable` | l'enfant doit avoir **entre 8 et 14 ans** |
+| `avatar` | `string(20)` | choisi dans `AVATARS`, défaut `renard` |
+| `maxMinutesJour` | `int` | limite quotidienne, **15 à 480 min par pas de 15**, défaut 120 |
+| `journalEntrees` | `OneToMany` vers `JournalEntree` | `mappedBy: 'enfant'`, `cascade: ['remove']` |
 
-- une accroche (« Mieux vivre avec les écrans, un jour à la fois »), une
-  pastille « Pour les 8 à 14 ans », un paragraphe de présentation ;
-- deux boutons d'appel à l'action : **« 🚀 Je suis un enfant »** et
-  **« 👨‍👩‍👧 Je suis un parent »** (pour l'instant, ils peuvent pointer vers
-  `#` : les pages de connexion arrivent en phase 04) ;
-- une carte de présentation de la mascotte 🦊 ;
-- trois cartes d'arguments : conseils sur mesure, suivi clair pour les parents,
-  ton toujours positif.
+- Constantes : `AVATARS` (12 avatars, chacun avec `emoji`, `nom` et `couleur` :
+  renard, panda, lion, chat, chien, lapin, grenouille, pieuvre, licorne,
+  dauphin, hibou, fusée), `LIMITE_MIN`, `LIMITE_MAX`, `LIMITE_PAS`,
+  `LIMITE_DEFAUT`, `AGE_MIN`, `AGE_MAX`.
+- Getters d'affichage : `getNomComplet()`, `getAge()` (années révolues),
+  `getAvatarEmoji()`, `getAvatarNom()`, `getAvatarCouleur()`.
+- Validation :
+  - date de naissance : `Assert\Range` entre `'today -15 years +1 day'` et
+    `'today -8 years'`, message « L'application est réservée aux enfants de 8 à
+    14 ans. » ;
+  - limite : `Assert\Range` (15 à 480, « La limite doit être comprise entre
+    15 minutes et 8 heures. ») et `Assert\DivisibleBy(15)`, « La limite se règle
+    par tranches de 15 minutes. » ;
+  - avatar : `Assert\Choice` sur les clés de `AVATARS` ;
+  - prénom, nom, date : obligatoires (« Merci de saisir le prénom. »…).
+
+### 5. Entité `JournalEntree`
+
+| Propriété | Type | Règles |
+|---|---|---|
+| `enfant` | `ManyToOne` vers `Enfant` | non nullable, `onDelete: 'CASCADE'` |
+| `date` | `date_immutable` | jour seul (minuit), initialisé à « today » dans le constructeur |
+| `ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`, `ecranConsole`, `ecranAutre` | `int` | minutes, défaut 0 |
+| `douleurs` | `OneToMany` vers `DouleurZone` | `mappedBy: 'journalEntree'`, `cascade: ['persist', 'remove']` |
+
+- **Index unique sur `(enfant_id, date)`** (`#[ORM\UniqueConstraint]`) : un seul
+  journal par enfant et par jour, garanti **en base**.
+- Constante `ECRANS` : nom de propriété → libellé affiché
+  (`'ecranTv' => '📺 Télévision'`, `'ecranOrdinateur' => '💻 Ordinateur'`…),
+  qui servira au formulaire.
+- `addDouleur()`, qui rattache aussi la douleur au journal.
+- `getTotalEcran()` : somme des six durées.
+- `niveauPourMinutes(int $minutes): string` (statique) : `vert` sous 2 h,
+  `orange` de 2 h à 4 h, `rouge` au-delà, avec les seuils en constantes
+  `SEUIL_ORANGE = 120` et `SEUIL_ROUGE = 240` — plus `getNiveauEcran()`.
+
+### 6. Entité `DouleurZone`
+
+- `journalEntree` (`ManyToOne`, non nullable, `onDelete: 'CASCADE'`), `zone`
+  (`string(20)`), `intensite` (`int`, 1 à 5 : constantes `INTENSITE_MIN` et
+  `INTENSITE_MAX`).
+- Constructeur `__construct(string $zone, int $intensite)`.
+- Constante `ZONES` : 6 zones avec leur libellé et leur emoji — `yeux`, `cou`,
+  `epaule`, `dos`, `poignet`, `main`. Les clés correspondront à l'attribut
+  `data-zone` du schéma du corps (phase 07).
+- Getters d'affichage `getZoneLabel()` et `getZoneEmoji()`.
+
+### 7. Entité `ContenuBienEtre`
+
+| Propriété | Type | Règles |
+|---|---|---|
+| `type` | `string(20)` | obligatoire, choisi dans `TYPES`, défaut `fiche` |
+| `titre` | `string(160)` | obligatoire |
+| `contenu` | `text` | obligatoire |
+| `url` | `?string(500)` | facultatif, URL valide |
+| `declencheur` | `?string(40)` | facultatif, choisi dans `DECLENCHEURS` |
+| `createdAt` | `datetime_immutable` | rempli dans le constructeur |
+
+- Constantes :
+  - `TYPES` : `fiche` 📄, `video` 🎬, `quiz` ❓, `glossaire` 📚, `exercice` 🤸,
+    chacun avec son libellé, son pluriel et son emoji (l'ordre du tableau sera
+    celui des groupes de la page « Découvrir ») ;
+  - `DECLENCHEURS` : **uniquement** les trois règles qu'appliquera le moteur de
+    conseils (phase 09) — `20-20-20` (« Règle du 20-20-20 »),
+    `etirement_cervical` (« Étirements du cou »), `yoga_yeux` (« Yoga des
+    yeux ») —, déclarées aussi en constantes nommées
+    (`DECLENCHEUR_20_20_20`…). ⚠️ N'ajoute **aucune** autre règle : une règle
+    proposée mais jamais déclenchée rendrait invisibles ses contenus.
+- Getters d'affichage : `getTypeLabel()`, `getTypeEmoji()`, `getDeclencheurLabel()`.
+- Validation : « Le titre est obligatoire. », « Le contenu est obligatoire. »,
+  `Assert\Choice` sur `type` et `declencheur`, et sur `url` :
+  `#[Assert\Url(message: 'Merci de saisir une URL valide.', requireTld: true, tldMessage: …)]`.
+  `requireTld: true` est obligatoire : l'omettre est déprécié depuis
+  Symfony 7.1, et sans lui `tldMessage` n'est jamais utilisé.
+
+### 8. Repositories
+
+`make:entity` crée un repository par entité : **laisse-les vides**. Chaque
+méthode de requête (`findByParent()`, `genererUsername()`, `findAujourdhui()`…)
+sera écrite dans la phase qui l'utilise.
+
+### 9. Migrations
+
+- Générer la ou les migrations, **me les faire relire** avant de les appliquer,
+  puis les appliquer (`make migrate`).
+- Vérifier ensuite avec `doctrine:schema:validate`.
 
 ## Contraintes techniques et architecturales
 
-- **Utiliser d'abord les classes Bootstrap** (grille, `card`, `btn`, `alert`,
-  utilitaires `d-flex`, `gap-*`, `mt-*`…). `app.css` ne sert qu'à ce que
-  Bootstrap ne fait pas.
-- Le contenu de chaque page va dans `{% block body %}`.
-- Aucune logique métier dans Twig.
-- JavaScript vanilla uniquement, et seulement s'il est nécessaire.
-- Le site doit être **responsive** : lisible à 400 px de large, sans défilement
-  horizontal.
+- **Toute** modification du schéma passe par une migration : jamais de SQL à la
+  main dans la base.
+- Les requêtes Doctrine vivront dans les **repositories**, jamais dans un
+  contrôleur.
+- Dates : `datetime_immutable` pour un instant, `date_immutable` pour un jour.
+- Pas d'enum PHP : des constantes de classe.
+- Propriétés `private`, getters/setters classiques, pas de magie.
+- Pas de classe « manager » de suppression : les cascades suffisent.
 
 ## Commandes attendues
 
 ```bash
-docker compose exec app composer require twig symfony/asset
-docker compose exec app php bin/console lint:twig templates
-docker compose exec app php bin/console cache:clear
+docker compose exec app php bin/console make:entity User
+docker compose exec app php bin/console make:entity Enfant
+docker compose exec app php bin/console make:entity JournalEntree
+docker compose exec app php bin/console make:entity DouleurZone
+docker compose exec app php bin/console make:entity ContenuBienEtre
+docker compose exec app php bin/console make:migration
+make migrate
+docker compose exec app php bin/console doctrine:schema:validate
+docker compose exec app php bin/console doctrine:mapping:info
 ```
 
 ## Ce qui n'est PAS dans cette phase
 
-- Pas de base de données, pas d'entité (phase 03).
-- Pas de connexion, pas d'inscription, pas de rôle (phase 04).
-- Pas de layout `parent/`, `enfant/` ou `admin/` : ils viendront avec leurs
-  espaces respectifs.
+- Aucun contrôleur, aucune page, aucun gabarit (la charte arrive en phase 03).
+- Pas de formulaire ni de configuration de `security.yaml` (le fichier par
+  défaut de la recette reste tel quel, phase 04).
+- Aucune méthode dans les repositories (chaque phase ajoute les siennes).
+- Aucune donnée en base : ni utilisateur, ni contenu (phases 04 et 12).
+- Aucune installation de paquet (tout est installé depuis la phase 01).
 
 ## Scénario de test manuel
 
-1. Ouvrir `http://localhost:8081`.
-2. Vérifier l'affichage : polices Baloo 2 et Nunito, couleurs de la charte,
-   boutons en pilule, cartes arrondies.
-3. Réduire la fenêtre du navigateur à environ 400 px de large.
-4. Vérifier que le menu se replie derrière le bouton hamburger et qu'aucune
-   barre de défilement horizontale n'apparaît.
-5. **Résultat attendu** : une page d'accueil habillée et responsive, servie par le gabarit commun.
+1. Appliquer les migrations : `make migrate`.
+2. Ouvrir phpMyAdmin sur `http://localhost:8082`, puis la base `digisante_junior`.
+3. Vérifier la présence des 5 tables : `users`, `enfant`, `journal_entree`, `douleur_zone`, `contenu_bien_etre`.
+4. Dans l'onglet « Structure » de chaque table, vérifier les colonnes, les index uniques (`email`, `username`, `compte_id`, `(enfant_id, date)`) et, via « Vue relationnelle », les clés étrangères : `parent_id`, `enfant_id` et `journal_entree_id` en `ON DELETE CASCADE` ; `compte_id` sans (le compte est supprimé par la cascade Doctrine `Enfant::compte`).
+5. **Résultat attendu** : les tables existent avec les bonnes colonnes et contraintes, `doctrine:schema:validate` affiche `[OK]` pour le mapping **et** pour la base, et `doctrine:mapping:info` liste 5 entités.
 
 ## Critères de validation
 
-- [ ] `lint:twig templates` affiche `[OK]`.
-- [ ] La page d'accueil hérite de `base.html.twig` (aucun `<html>` en double).
-- [ ] `app.css` ne contient que la charte, et ne redéfinit pas `--bs-body-bg`.
-- [ ] Le rendu est correct à 400 px comme en plein écran.
-- [ ] Les blocs Twig listés plus haut existent tous et sont utilisables.
+- [ ] `doctrine:schema:validate` : deux `[OK]`.
+- [ ] `doctrine:mapping:info` : 5 entités `[OK]`.
+- [ ] Les 5 tables sont visibles dans phpMyAdmin avec leurs index uniques et
+      leurs clés étrangères (`ON DELETE CASCADE` sur `parent_id`, `enfant_id`
+      et `journal_entree_id`, pas sur `compte_id`).
+- [ ] `User` implémente les deux interfaces de sécurité et expose ses rôles en
+      constantes.
+- [ ] Les listes fixes (`AVATARS`, `ECRANS`, `ZONES`, `TYPES`, `DECLENCHEURS`)
+      sont des constantes, sans enum PHP.
+- [ ] Les repositories sont vides.
+- [ ] Les fichiers de migration sont lisibles et ne contiennent que ce schéma.
+- [ ] `.env` ne contient aucun mot de passe réel autre que celui du Docker local.
 
 ## Enfin
 
-- N'écris **aucun test automatisé** : je valide au navigateur.
-- Termine par la liste des classes CSS maison que tu as créées, avec une ligne
-  d'explication chacune, pour que je les réutilise dans les phases suivantes.
+- N'écris **aucun test automatisé** : je valide dans phpMyAdmin.
+- Termine en m'expliquant en quelques lignes ce que fait exactement une
+  migration, pourquoi on ne modifie jamais une migration déjà appliquée, et la
+  différence entre `cascade: ['remove']` et `onDelete: 'CASCADE'`.

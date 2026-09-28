@@ -18,7 +18,7 @@
 
 - Phases 01 à 05 terminées : un profil enfant existe, avec son compte.
 - Comprendre le firewall, le provider et le hachage (phase 04).
-- Comprendre l'héritage de gabarits (phase 02).
+- Comprendre l'héritage de gabarits (phase 03).
 
 ---
 
@@ -32,7 +32,9 @@
 **Comment ça fonctionne ?** Par défaut, on écrirait `property: email` dans
 `security.yaml` : Symfony chercherait alors uniquement sur cette colonne. En
 implémentant `UserLoaderInterface` dans le repository, **vous** décidez comment
-retrouver l'utilisateur.
+retrouver l'utilisateur. `UserRepository` l'implémente déjà depuis la phase 04,
+avec une recherche par email seul : on **étend** maintenant la même méthode à
+l'email **ou** l'identifiant.
 
 ```php
 class UserRepository extends ServiceEntityRepository implements UserLoaderInterface
@@ -54,7 +56,7 @@ Trois choses à noter :
 - une **seule** valeur liée (`:identifiant`), utilisée deux fois : jamais de
   concaténation, donc pas d'injection SQL possible ;
 - `mb_strtolower(trim(...))` : cohérent avec la normalisation faite dans les
-  setters de `User` (phase 03) — d'où la casse sans importance ;
+  setters de `User` (phase 02) — d'où la casse sans importance ;
 - `getOneOrNullResult()` : l'unicité des deux colonnes garantit qu'il n'y a
   jamais deux résultats.
 
@@ -128,6 +130,13 @@ classe, l'autocomplétion fonctionne, et l'intention est explicite.
 **Dans ce projet.** C'est la convention : `#[CurrentUser] User $user` dans la
 signature, comme les autres dépendances (phase 04).
 
+Maintenant que `enfant_accueil` existe, `HomeController` (phase 04) reçoit sa
+troisième redirection :
+
+```php
+if ($this->isGranted(User::ROLE_CHILD)) { return $this->redirectToRoute('enfant_accueil'); }
+```
+
 ---
 
 ### Concept 5 — Du compte au profil
@@ -135,8 +144,8 @@ signature, comme les autres dépendances (phase 04).
 **Pourquoi ?** Le compte (`User`) sert à se connecter ; le profil (`Enfant`)
 porte le prénom, l'avatar, la limite. Deux objets, deux rôles.
 
-**Comment ça fonctionne ?** La relation `OneToOne` créée en phase 05 se lit dans
-les deux sens :
+**Comment ça fonctionne ?** La relation `OneToOne` déclarée en phase 02 (et
+remplie à la création de l'enfant, phase 05) se lit dans les deux sens :
 
 ```php
 $enfant = $user->getProfilEnfant();   // du compte vers le profil
@@ -265,7 +274,18 @@ if ($form->isSubmitted() && $form->isValid()) {
 }
 ```
 
-Deux détails utiles :
+### La date du jour en français
+
+```twig
+<p class="texte-doux">{{ 'now'|format_date('full', locale: 'fr') }}</p>
+{# « lundi 28 septembre 2026 » #}
+```
+
+Le filtre `format_date` n'est pas dans Twig de base : il vient de
+`twig/intl-extra`, installé avec les autres paquets en phase 01 (comme
+l'extension PHP `intl` sur laquelle il s'appuie) : rien à installer ici.
+
+Deux détails utiles pour le mot de passe :
 
 - **pas de `persist()`** : l'utilisateur vient de la base, Doctrine le suit déjà ;
   `flush()` suffit ;
@@ -276,6 +296,13 @@ Deux détails utiles :
 ---
 
 ## 5. Commandes
+
+### `docker compose exec app php bin/console debug:twig --filter=format_date`
+
+- **Ce qu'elle fait** : vérifie que le filtre `format_date` (paquet
+  `twig/intl-extra`, installé en phase 01) est disponible.
+- **Quand** : « Unknown "format_date" filter ». Tous les paquets sont installés
+  depuis la phase 01 ; s'il en manque un, signalez-le plutôt que d'improviser.
 
 ### `docker compose exec app php bin/console debug:router`
 
@@ -290,7 +317,8 @@ Deux détails utiles :
 
 ### `docker compose exec app php bin/console cache:clear`
 
-- **Quand** : après modification de `security.yaml`.
+- **Quand** : si une nouvelle route ou le nouveau chargement de l'utilisateur
+  semble ignoré.
 
 ### `docker compose exec app php bin/console dbal:run-sql "SELECT id, username, roles FROM users WHERE username IS NOT NULL"`
 
@@ -306,7 +334,7 @@ Deux détails utiles :
 |---|---|
 | **Security** | `UserLoaderInterface`, `_failure_path`, `#[CurrentUser]` |
 | **Doctrine** | relation `OneToOne` parcourue dans les deux sens |
-| **Twig** | layout par espace, `app.request`, mise en évidence du menu |
+| **Twig** | layout par espace, `app.request`, mise en évidence du menu, `format_date` (intl-extra) |
 | **Form** | réutilisation de `MotDePasseType` |
 
 ---
@@ -317,10 +345,11 @@ Deux détails utiles :
 src/
 ├── Controller/
 │   ├── SecurityController.php        + /connexion-enfant
+│   ├── HomeController.php            + redirection ROLE_CHILD → enfant_accueil
 │   └── Enfant/
 │       └── AccueilController.php     /enfant et /enfant/profil
 └── Repository/
-    └── UserRepository.php            + loadUserByIdentifier()
+    └── UserRepository.php            loadUserByIdentifier() : email OU username
 
 templates/
 ├── security/login_enfant.html.twig   page de connexion sans navigation
@@ -481,6 +510,8 @@ dump(get_class($user), $user->getUserIdentifier(), $user->getRoles());
 - [ ] Le résultat attendu est obtenu
 
 ### Aller plus loin
+
+⬅️ [Phase précédente](./phase-05.md)
 
 ➡️ [Phase suivante](./phase-07.md)
 

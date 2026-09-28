@@ -81,8 +81,9 @@ Parent ──► Enfants ──► Compte de connexion de l'enfant
 ```
 
 N'écris **aucune** classe « manager » de suppression, aucune boucle de
-suppression manuelle : si une cascade manque, corrige la configuration de
-l'entité et génère une migration.
+suppression manuelle : les cascades sont en place depuis la phase 02 ;
+si l'une d'elles manque, signale-le avant de toucher à l'entité (et à la
+migration de la phase 02).
 
 ## Contraintes techniques et architecturales
 

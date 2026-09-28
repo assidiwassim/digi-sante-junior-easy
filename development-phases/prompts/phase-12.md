@@ -1,4 +1,4 @@
-# Prompt Claude Code — Phase 12 : Données de démonstration, qualité et tests
+# Prompt Claude Code — Phase 12 : Données de démonstration et qualité
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
 
@@ -18,18 +18,20 @@ Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, MySQL 8, Docker.
 
 Rendre le projet **reprenable par quelqu'un d'autre** : un jeu de données de
 démonstration en une commande, des vérifications automatiques de la
-configuration, et une suite de tests qui protège les règles métier.
+configuration (linters) et une documentation qui permet d'installer le projet
+sans aide. C'est la **dernière phase** du parcours.
 
-> ⚠️ **C'est la seule phase où l'on écrit des tests automatisés.** Les phases
-> précédentes se valident au navigateur ; ici, les tests deviennent le filet de
-> sécurité pour les évolutions futures. C'est une exigence du projet.
+> Comme dans toutes les phases, **aucun test automatisé** : la validation se
+> fait au navigateur, en rejouant les scénarios des phases précédentes sur les
+> données de démonstration.
 
 ## Avant de coder
 
-1. Parcours `src/Entity/`, `src/Controller/`, `src/Service/` et `src/Twig/` pour
-   lister les règles métier à couvrir.
-2. Vérifie quels paquets de développement sont déjà installés.
-3. Propose-moi la liste des fixtures et celle des tests **avant** de les écrire.
+1. Parcours `src/Entity/` pour connaître les champs et les règles de validation
+   à respecter dans les données.
+2. Tous les paquets sont installés depuis la phase 01, dont
+   `doctrine/doctrine-fixtures-bundle` ; s'il en manque un, signale-le.
+3. Propose-moi la liste des fixtures **avant** de les écrire.
 
 ## À implémenter
 
@@ -50,12 +52,19 @@ Un jeu cohérent, réaliste, rechargeable à volonté :
   déclencheuse** (`20-20-20`, `etirement_cervical`, `yoga_yeux`) pour que le
   moteur de conseils ait toujours de quoi proposer.
 
-Contraintes : mots de passe hachés avec `UserPasswordHasherInterface` ; textes
-en français, adaptés aux enfants ; aucune donnée personnelle réelle.
+Contraintes :
+
+- mots de passe hachés avec `UserPasswordHasherInterface` ;
+- textes en français, adaptés aux enfants ; aucune donnée personnelle réelle ;
+- données **reproductibles** : graine aléatoire fixe (`mt_srand()`), et dates de
+  naissance **relatives** à aujourd'hui pour que les âges restent entre 8 et
+  14 ans quel que soit le jour du chargement ;
+- chaque durée d'écran est un multiple de 15 minutes, et le total d'une journée
+  reste sous le plafond de 16 h.
 
 ### 2. Confort et vérifications (`Makefile`)
 
-Ajoute ou complète les cibles :
+Ajoute ou complète les cibles (`migrate` existe déjà depuis la phase 02) :
 
 | Cible | Rôle |
 |---|---|
@@ -63,97 +72,61 @@ Ajoute ou complète les cibles :
 | `fixtures` | recharge les données de démonstration |
 | `reset-db` | supprime, recrée, migre et recharge |
 | `lint` | `lint:twig`, `lint:yaml`, `lint:container`, `doctrine:schema:validate` |
-| `tests` | prépare la base de test **puis** lance PHPUnit |
 
-Chaque cible affiche la commande qu'elle exécute.
+Chaque cible affiche la commande qu'elle exécute. Les fixtures **purgent** la
+base : rappelle-le dans l'aide du `Makefile`.
 
-### 3. Environnement de test
-
-- Installer `phpunit/phpunit`, `symfony/browser-kit`, `symfony/css-selector`,
-  `doctrine/doctrine-fixtures-bundle` et `dama/doctrine-test-bundle` (tous en
-  `--dev`).
-- Base de test **séparée** : `digisante_junior_test`, remplie avec les fixtures.
-- Activer DAMA : chaque test s'exécute dans une transaction **annulée** à la
-  fin. Un test peut donc créer ou supprimer des données librement.
-- ⚠️ Droits MySQL : le script d'initialisation (`docker/mysql/init.sql`) ne
-  s'exécute qu'à la **création du volume**. Assure-toi que l'utilisateur
-  `digisante` a les droits sur `digisante_junior%`, et documente le cas dans le
-  README (`docker compose down -v` puis réinstallation).
-- PHPUnit doit **échouer aussi sur les dépréciations**.
-
-### 4. Les tests
-
-Écris des tests **courts et lisibles**, un fichier par sujet :
-
-| Fichier | Ce qui est couvert |
-|---|---|
-| `tests/Controller/SecuriteTest.php` | pages publiques, connexion parent, échec de connexion enfant, inscription, chaque rôle reste dans son espace |
-| `tests/Controller/ParentEnfantTest.php` | création d'un enfant et de son compte, erreurs de saisie, cloisonnement entre parents (403), suppression avec cascade, suppression refusée sans CSRF |
-| `tests/Controller/JournalTest.php` | parcours complet du journal, curseurs à zéro à l'ouverture, plafond du total, étape 2 impossible sans l'étape 1, données invalides ignorées |
-| `tests/Service/ConseilServiceTest.php` | les cinq règles, seuils inclus (2 h pile, douleur au cou à 2 puis à 3) |
-| `tests/Twig/DureeExtensionTest.php` | le filtre `duree` (« 45 min », « 2 h », « 2 h 30 ») |
-
-Règles d'écriture :
-
-- `WebTestCase` pour un parcours, `KernelTestCase` pour un service, `TestCase`
-  pour une classe pure ;
-- `$client->loginUser()` pour se connecter, **sauf** quand c'est la connexion
-  elle-même qu'on teste ;
-- noms de méthodes en français, explicites
-  (`testUnParentNePeutPasToucherAuxEnfantsDUnAutre`) ;
-- ⚠️ un formulaire invalide renvoie **422**, pas 200 : utilise
-  `assertResponseStatusCodeSame(422)` ;
-- pas de tests redondants : une règle métier, un test.
-
-### 5. Documentation
+### 3. Documentation
 
 Mets à jour le `README.md` : installation, comptes de démonstration, commandes
-utiles, préparation de la base de test, problèmes fréquents.
+utiles, commande pour supprimer le journal du jour (afin de rejouer le parcours
+en 2 étapes), problèmes fréquents (port déjà utilisé, journal déjà rempli,
+erreur après un `git pull` → `make migrate`).
 
 ## Contraintes techniques et architecturales
 
 - Les données de démonstration vont dans `AppFixtures`, **jamais** en dur dans
   le code applicatif ou les gabarits.
-- Ne modifie pas le comportement de l'application pour faire passer un test :
-  si un test échoue, dis-le-moi et propose la correction **séparément**.
-- Les fixtures purgent la base : rappelle-le dans l'aide du `Makefile`.
+- Pas de nouvelle fonctionnalité, pas de refonte de l'existant « au passage ».
+- Si une vérification échoue (linter, parcours au navigateur), dis-le-moi et
+  propose la correction **séparément**.
 
 ## Commandes attendues
 
 ```bash
-docker compose exec app composer require --dev doctrine/doctrine-fixtures-bundle
-docker compose exec app composer require --dev phpunit/phpunit symfony/browser-kit symfony/css-selector
-docker compose exec app composer require --dev dama/doctrine-test-bundle
 make fixtures
+make reset-db
 make lint
-make tests
 ```
 
 ## Ce qui n'est PAS dans cette phase
 
+- Pas de tests automatisés (PHPUnit) : **hors périmètre du parcours**.
 - Pas de nouvelle fonctionnalité métier.
-- Pas de refonte de l'existant « au passage ».
-- Pas de mise en production (phase 13).
+- Pas de mise en production.
 
 ## Scénario de test manuel
 
 1. Lancer `make reset-db` pour repartir d'une base propre remplie par les fixtures.
 2. Se connecter successivement avec les trois comptes de démonstration : administrateur, parent, enfant.
 3. Ouvrir le tableau de bord parent et vérifier que la courbe des 30 derniers jours est remplie.
-4. Lancer `make lint`, puis `make tests`.
-5. **Résultat attendu** : les trois connexions fonctionnent, le graphique contient l'historique des fixtures, les quatre linters affichent `[OK]` et la suite PHPUnit est verte, sans dépréciation.
+4. Supprimer le journal du jour (commande du README), puis remplir un journal complet en tant qu'enfant et lire les conseils.
+5. Lancer `make lint`.
+6. **Résultat attendu** : les trois connexions fonctionnent, le graphique contient l'historique des fixtures, le journal se rejoue sans erreur et les quatre linters affichent `[OK]`.
 
 ## Critères de validation
 
 - [ ] `make install` remonte un environnement complet sur une machine vierge.
 - [ ] Les fixtures créent au moins un contenu par règle déclencheuse.
-- [ ] Les enfants de démonstration ont un journal **du jour** (le parcours en
-      2 étapes se teste après suppression de ce journal — documente la commande).
-- [ ] `make tests` est vert et chaque test échoue si l'on casse volontairement
-      la règle qu'il protège (vérifie-le au moins pour un test).
+- [ ] Les enfants de démonstration ont un journal **du jour** ; la commande pour
+      le supprimer est documentée.
+- [ ] Recharger deux fois les fixtures donne les mêmes données.
+- [ ] `make lint` affiche quatre `[OK]`.
 - [ ] Le README permet à quelqu'un d'autre d'installer le projet sans aide.
 
 ## Enfin
 
-- Termine en me listant les règles métier couvertes par les tests **et** celles
-  qui ne le sont pas, pour que je sache où je marche sans filet.
+- N'écris **aucun test automatisé** : je valide au navigateur.
+- Termine en me donnant une **checklist de vérification manuelle** (10 points
+  maximum) à rejouer au navigateur avant chaque livraison, en reprenant les
+  scénarios les plus importants des phases précédentes.

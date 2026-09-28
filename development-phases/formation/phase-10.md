@@ -1,4 +1,4 @@
-# Formation — Phase 10 : QueryBuilder, paramètres d'URL et graphiques
+# Formation — Phase 10 : Tableau de bord parent et enfant
 
 ## 1. Objectifs pédagogiques
 
@@ -91,7 +91,7 @@ public function getGraphiqueEcran(Enfant $enfant, int $nombreJours): array
 
 **Une** requête, puis du PHP simple. L'alternative — une requête par jour —
 ferait 30 allers-retours en base pour afficher un mois : c'est exactement le
-problème N+1 que l'on étudiera en phase 13.
+problème dit « N+1 » (une requête par ligne affichée), à éviter.
 
 À noter : `DateTimeImmutable` renvoie un **nouvel** objet à chaque `modify()`,
 l'original n'est jamais altéré. C'est pour cela que le projet utilise partout des
@@ -105,15 +105,20 @@ dates immuables.
 `abc`, `-1`, ou l'identifiant de l'enfant de quelqu'un d'autre.
 
 **Comment ça fonctionne ?** `$request->query` donne accès aux paramètres, avec
-des méthodes **typées** qui convertissent et sécurisent.
+des méthodes **typées** (`getString()`, `getInt()`…).
 
 ```php
-$periode = 30 === $request->query->getInt('periode') ? 30 : 7;
+$periode = $request->query->getString('periode') === '30' ? 30 : 7;
 ```
 
-`getInt()` renvoie `0` si le paramètre est absent ou non numérique : le code
-n'échoue jamais, et toute valeur autre que 30 retombe sur 7. Une **liste
-blanche**, en une ligne.
+`getString()` renvoie `''` si le paramètre est absent : on compare donc la
+**chaîne** reçue à la seule valeur acceptée. Toute autre valeur (`abc`, `365`,
+rien du tout) retombe sur 7. Une **liste blanche**, en une ligne.
+
+⚠️ **Piège** : `getInt()` semble plus naturel, mais en Symfony 7 une valeur non
+numérique (`?periode=abc`) lève une `BadRequestException` : la page répond
+**400** au lieu de retomber sur 7. Pour un simple filtre d'affichage, on
+préfère `getString()` et une comparaison de chaînes.
 
 ---
 
@@ -133,14 +138,18 @@ ses propres enfants** :
 
 ```php
 $enfants = $enfantRepository->findByParent($parent);   // uniquement les siens
+$idDemande = $request->query->getString('enfant');
 
 $enfant = $enfants[0];
 foreach ($enfants as $candidat) {
-    if ($candidat->getId() === $request->query->getInt('enfant')) {
+    if ((string) $candidat->getId() === $idDemande) {
         $enfant = $candidat;
     }
 }
 ```
+
+L'identifiant est comparé **en chaîne** (`(string) $candidat->getId()`), pour la
+même raison qu'au Concept 3 : `?enfant=abc` ne doit pas provoquer une 400.
 
 Aucune donnée étrangère ne peut être chargée : l'identifiant demandé n'est
 comparé qu'à une liste sûre. **La sécurité vient de la construction de la
@@ -217,11 +226,11 @@ d'entité déjà existante.
 ```php
 // dans le contrôleur
 'pourcentage' => min(100, (int) round($totalEcran / $limite * 100)),
-'niveau' => JournalEntree::niveauPourMinutes($totalEcran),   // méthode d'entité, phase 07
+'niveau' => JournalEntree::niveauPourMinutes($totalEcran),   // méthode d'entité, phase 02
 ```
 
 ```twig
-<div class="progress-bar niveau-{{ niveau }}" style="width: {{ pourcentage }}%"></div>
+<div class="jauge"><span class="niveau-{{ niveau }}" style="width: {{ pourcentage }}%"></span></div>
 ```
 
 Le gabarit ne fait qu'**afficher**. Bonus : `niveauPourMinutes()` est la même
@@ -250,7 +259,7 @@ public function index(
 
     // … sélection de l'enfant (voir Concept 4)
 
-    $periode = 30 === $request->query->getInt('periode') ? 30 : 7;
+    $periode = $request->query->getString('periode') === '30' ? 30 : 7;
     $journalDuJour = $journalRepository->findAujourdhui($enfant);
 
     return $this->render('parent/dashboard.html.twig', [
@@ -267,6 +276,12 @@ public function index(
 
 Le contrôleur reste **simple** : il lit la requête, appelle des repositories et
 un service, rend un gabarit. Aucun calcul métier, aucune requête écrite ici.
+
+Ce `TableauDeBordController` **remplace** la page d'attente
+`Parent\DashboardController` de la phase 04 : il reprend le même nom de route,
+`parent_dashboard`. Supprimez l'ancien contrôleur (et son gabarit), sinon deux
+routes portent le même nom. L'accueil de l'enfant lit sa période de la même
+façon, avec `getString()`.
 
 Notez aussi l'écran dédié quand le parent n'a pas encore d'enfant : un tableau de
 bord vide serait une impasse. Traiter le **cas zéro** fait partie du travail.
@@ -299,7 +314,8 @@ nouvelle**, pas comme un vide.
 - **Ce qu'elle fait** : liste **toutes** les requêtes SQL de la page, avec leur
   durée.
 - **À observer** : le tableau de bord doit exécuter une poignée de requêtes. Si
-  vous en voyez trente, c'est un problème N+1 (phase 13).
+  vous en voyez trente, c'est un problème N+1 : une requête par ligne affichée,
+  à remplacer par une jointure (`->addSelect(…)->join(…)`) dans le repository.
 - **Astuce** : cliquez sur « Explain » pour voir la requête réellement envoyée à
   MySQL.
 
@@ -320,7 +336,7 @@ nouvelle**, pas comme un vide.
 | Composant | Rôle ici |
 |---|---|
 | **Doctrine (QueryBuilder)** | requêtes sur mesure dans les repositories |
-| **HttpFoundation** | `$request->query->getInt()` |
+| **HttpFoundation** | `$request->query->getString()` |
 | **Twig** | `json_encode`, `asset()`, bloc `javascripts` |
 | **DependencyInjection** | `ConseilService` injecté dans un second contrôleur |
 
@@ -331,7 +347,8 @@ nouvelle**, pas comme un vide.
 ```text
 src/
 ├── Controller/Parent/
-│   └── TableauDeBordController.php    la page /parent
+│   ├── DashboardController.php        ❌ supprimé (page d'attente de la phase 04)
+│   └── TableauDeBordController.php    la page /parent (route parent_dashboard)
 └── Repository/
     └── JournalEntreeRepository.php    + getGraphiqueEcran()
 
@@ -395,8 +412,8 @@ injection de dépendances.
 - **Chart.js par CDN** : cohérent avec le choix « pas de bundler » du projet.
 
 **Ce qui n'est pas là** : l'historique des douleurs sur plusieurs jours. Seules
-celles du jour s'affichent — c'est une limite connue, notée comme évolution
-possible dans le cahier des charges.
+celles du jour s'affichent — c'est une limite connue, et une évolution
+possible.
 
 ---
 
@@ -426,6 +443,11 @@ envoyés.
 → Les journaux sont chargés un par un.
 → Solution : une seule requête sur la période, remplissage en PHP.
 
+**`?periode=abc` ou `?enfant=abc` renvoie une erreur 400**
+→ Le paramètre est lu avec `getInt()`, qui lève une `BadRequestException` sur
+une valeur non numérique.
+→ Solution : `getString()` et une comparaison de chaînes (Concepts 3 et 4).
+
 **`?enfant=999` provoque une erreur**
 → L'identifiant est cherché en base au lieu d'être comparé à la liste des
 enfants du parent.
@@ -438,7 +460,7 @@ enfants du parent.
 - **Aucune requête dans un contrôleur** : tout dans un repository, avec un nom
   explicite.
 - **Toujours `setParameter()`**, jamais de concaténation dans une requête.
-- **Ne faites jamais confiance à un paramètre d'URL** : `getInt()` + liste
+- **Ne faites jamais confiance à un paramètre d'URL** : `getString()` + liste
   blanche, et ne cherchez que dans des données déjà filtrées.
 - **Traitez le cas zéro** (aucun enfant, aucun journal, aucune douleur) : c'est
   souvent le premier état que verra un vrai utilisateur.
@@ -456,9 +478,12 @@ enfants du parent.
 2. Supprimez le journal d'hier en SQL, rechargez le graphique : le point doit
    tomber à 0, pas disparaître. Quelle ligne produit ce comportement ?
 3. Essayez `?periode=abc`, puis `?periode=365` : dans les deux cas, la période
-   doit retomber à 7 jours. Expliquez pourquoi.
-4. Essayez `?enfant=999` : vous devez voir votre premier enfant, sans erreur.
-   Comparez avec `/parent/enfants/999/modifier`, qui renvoie 403 (ou 404).
+   doit retomber à 7 jours. Expliquez pourquoi. Remplacez temporairement
+   `getString()` par `getInt()` et réessayez `?periode=abc` : observez la
+   400, puis remettez `getString()`.
+4. Essayez `?enfant=999` puis `?enfant=abc` : vous devez voir votre premier enfant, sans erreur.
+   Comparez avec `/parent/enfants/{id}/modifier` : un id inexistant → 404 ;
+   l'id d'un enfant d'un autre parent → 403 (voter).
    Expliquez la différence de traitement.
 5. Dans la console du navigateur, tapez `donnees` — il n'existe pas. Ajoutez
    temporairement `console.log({{ graphique|json_encode|raw }})` dans le gabarit
@@ -469,10 +494,11 @@ enfants du parent.
 ## 13. Scénario de test manuel
 
 1. Se connecter en parent et ouvrir `/parent`.
-2. Vérifier le temps d'écran du jour, la jauge colorée et les douleurs signalées.
+2. Vérifier le temps d'écran du jour, la jauge colorée, les douleurs signalées et les conseils reçus par l'enfant.
 3. Basculer sur « 30 derniers jours » et vérifier que la courbe change.
 4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas (`/parent?enfant=999`).
-5. **Résultat attendu** : les deux périodes s'affichent avec la ligne de limite en pointillés, et l'identifiant étranger affiche simplement votre premier enfant.
+5. Se connecter en enfant : la même courbe s'affiche sur l'accueil.
+6. **Résultat attendu** : les deux périodes s'affichent avec la ligne de limite en pointillés, l'identifiant étranger affiche simplement votre premier enfant, et l'enfant voit sa courbe.
 
 ---
 
@@ -488,8 +514,10 @@ enfants du parent.
 
 ### Aller plus loin
 
+⬅️ [Phase précédente](./phase-09.md)
+
 ➡️ [Phase suivante](./phase-11.md)
 
-➡️ [Phase de développement](../README.md#phase-10--tableau-de-bord-parent-et-graphiques)
+➡️ [Phase de développement](../README.md#phase-10--tableau-de-bord-parent-et-enfant)
 
 ➡️ [Prompt Claude Code](../prompts/phase-10.md)

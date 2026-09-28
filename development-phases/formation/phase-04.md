@@ -1,4 +1,4 @@
-# Formation — Phase 04 : Inscription, connexion et rôles
+# Formation — Phase 04 : Authentification, rôles, inscription et connexion parent
 
 ## 1. Objectifs pédagogiques
 
@@ -17,7 +17,9 @@
 
 ## 2. Prérequis
 
-- Phases 01 à 03 terminées : l'entité `User` existe en base.
+- Phases 01 à 03 terminées : tous les paquets sont installés (phase 01),
+  l'entité `User` et son `UserRepository` existent en base depuis la phase 02,
+  et `base.html.twig` affiche les pages (phase 03).
 - Comprendre ce qu'est un cookie et une session HTTP (les bases suffisent).
 
 ---
@@ -85,6 +87,25 @@ providers:
 `property: email`. Ici on ne le fait pas, car en phase 06 un enfant se
 connectera avec son **identifiant** : le repository prendra en charge la
 recherche sur les deux colonnes.
+
+Conséquence **immédiate** : sans `property`, Symfony demande au repository de
+trouver l'utilisateur. `UserRepository` doit donc implémenter
+`UserLoaderInterface` **dès cette phase**, sinon toute connexion renvoie une
+erreur 500. Pour l'instant, la recherche se fait par **email** ; la phase 06
+étendra la même méthode à l'identifiant.
+
+```php
+use Symfony\Bridge\Doctrine\Security\User\UserLoaderInterface;
+
+class UserRepository extends ServiceEntityRepository implements UserLoaderInterface
+{
+    public function loadUserByIdentifier(string $identifier): ?User
+    {
+        // Même normalisation que setEmail() : minuscules, sans espaces autour.
+        return $this->findOneBy(['email' => mb_strtolower(trim($identifier))]);
+    }
+}
+```
 
 ---
 
@@ -198,6 +219,16 @@ moment du `isValid()`.
 | Règle propre à **un formulaire** | dans le `*Type` | email obligatoire à l'inscription |
 | Champ **non mappé** | dans le `*Type` | `plainPassword`, `conditions` |
 
+**Les contraintes de la phase 02 prennent vie.** En phase 02, vous avez posé des
+`#[Assert\…]` et un `#[UniqueEntity]` sur les entités, sans rien voir se passer :
+une contrainte ne fait rien toute seule. C'est `$form->isValid()` qui appelle le
+**validateur** : il lit les contraintes de l'entité liée au formulaire, **et**
+celles déclarées dans le `*Type`, puis attache chaque message d'erreur au champ
+concerné. Inscrivez-vous deux fois avec le même email : le message « Cette
+adresse email est déjà utilisée. » vient directement de `#[UniqueEntity]` sur
+`User`. Les phases suivantes profitent du même mécanisme : âge 8-14 ans et
+limite d'écran (`Enfant`, phase 05), URL et titre (`ContenuBienEtre`, phase 08).
+
 ---
 
 ### Concept 8 — La protection CSRF
@@ -214,8 +245,20 @@ deviner.
 Avec les formulaires Symfony, c'est **automatique**. Pour un bouton hors
 formulaire (la suppression, phase 05), on le fait à la main.
 
-**Dans ce projet.** Le jeton est **adossé à la session** (`config/packages/csrf.yaml`) :
-ne revenez pas à la variante « stateless » par défaut.
+**Dans ce projet.** Le jeton est **adossé à la session**. La recette Symfony
+7.2+ génère pourtant la variante **stateless** (`stateless_token_ids`) : il faut
+**remplacer** tout le contenu de `config/packages/csrf.yaml` par :
+
+```yaml
+framework:
+    csrf_protection:
+        enabled: true
+    form:
+        csrf_protection:
+            enabled: true
+```
+
+Ne revenez jamais à la variante « stateless ».
 
 ---
 
@@ -232,7 +275,7 @@ $this->addFlash('success', 'Votre compte est créé ! Connectez-vous pour ajoute
 return $this->redirectToRoute('app_login');
 ```
 
-Le gabarit `base.html.twig` (phase 02) les affiche déjà pour toutes les pages.
+Le gabarit `base.html.twig` (phase 03) les affiche déjà pour toutes les pages.
 
 ---
 
@@ -292,13 +335,17 @@ automatiquement. C'est la convention du projet.
 #[Route('/', name: 'app_home', methods: ['GET'])]
 public function index(): Response
 {
-    if ($this->isGranted(User::ROLE_ADMIN))  { return $this->redirectToRoute('admin_contenus'); }
+    if ($this->isGranted(User::ROLE_ADMIN))  { return $this->redirectToRoute('admin_accueil'); }
     if ($this->isGranted(User::ROLE_PARENT)) { return $this->redirectToRoute('parent_dashboard'); }
-    if ($this->isGranted(User::ROLE_CHILD))  { return $this->redirectToRoute('enfant_accueil'); }
 
     return $this->render('home/index.html.twig');
 }
 ```
+
+`admin_accueil` (`/admin`, `Admin\AccueilController`) et `parent_dashboard`
+(`/parent`, `Parent\DashboardController`) sont les deux **pages d'attente** de
+cette phase. L'enfant sera ajouté en phase 06, quand `enfant_accueil` existera :
+on ne redirige **jamais** vers une route qui n'existe pas encore (erreur 500).
 
 Pourquoi ici ? Parce que `security.yaml` renvoie **toujours** vers `app_home`
 après connexion (`default_target_path` + `always_use_default_target_path`).
@@ -309,11 +356,19 @@ Résultat : une seule règle de redirection dans tout le projet, facile à lire 
 
 ## 5. Commandes
 
-### `docker compose exec app composer require symfony/security-bundle symfony/form symfony/validator`
+> Aucun `composer require` dans cette phase : Security, Form, Validator et
+> Translation sont installés depuis la phase 01, et leurs recettes Flex ont créé
+> `security.yaml`, `csrf.yaml`, `translation.yaml` et `twig.yaml`. On se contente
+> maintenant de **configurer** ces fichiers, laissés tels quels jusqu'ici.
 
-- **Ce qu'elle fait** : installe la sécurité, les formulaires et le validateur ;
-  Flex crée `config/packages/security.yaml` avec une configuration de départ.
-- **À observer** : ouvrez le fichier généré et comparez-le à celui attendu.
+### Configurer la traduction et le CSRF
+
+- **Ce qu'il faut faire** : régler `config/packages/translation.yaml` sur
+  `default_locale: fr` et `fallbacks: [fr]` ; remplacer le contenu de
+  `csrf.yaml` (concept 8) ; déclarer le thème `bootstrap_5_layout.html.twig`
+  dans `twig.yaml`.
+- **À observer** : les messages de Symfony (« Identifiants invalides. »,
+  messages de validation par défaut) s'affichent alors en français.
 
 ### `docker compose exec app php bin/console debug:router`
 
@@ -345,6 +400,7 @@ Résultat : une seule règle de redirection dans tout le projet, facile à lire 
 | **Security** | firewall, provider, hachage, `access_control`, `isGranted()` |
 | **Form** | `*Type`, `handleRequest()`, champs mappés/non mappés |
 | **Validator** | contraintes `#[Assert\…]`, messages en français |
+| **Translation** | messages de Symfony traduits en français |
 | **HttpFoundation** | session, cookies, redirections |
 | **Twig** | thème de formulaire Bootstrap, affichage des flash |
 
@@ -355,14 +411,18 @@ Résultat : une seule règle de redirection dans tout le projet, facile à lire 
 ```text
 config/packages/
 ├── security.yaml         firewall, provider, access_control
-├── csrf.yaml             jeton CSRF adossé à la session
+├── csrf.yaml             jeton CSRF adossé à la session (fichier remplacé)
+├── translation.yaml      langue française par défaut
 └── twig.yaml             thème de formulaire Bootstrap
 
 src/
 ├── Controller/
 │   ├── SecurityController.php    /login, /logout, /inscription
-│   └── HomeController.php        redirection par rôle
-├── Entity/User.php               (phase 03)
+│   ├── HomeController.php        redirection par rôle
+│   ├── Admin/AccueilController.php      page d'attente /admin
+│   └── Parent/DashboardController.php   page d'attente /parent
+├── Entity/User.php               (phase 02, inchangée)
+├── Repository/UserRepository.php  (phase 02) + UserLoaderInterface (recherche par email)
 └── Form/
     └── InscriptionType.php       les champs du formulaire d'inscription
 
@@ -419,11 +479,15 @@ access_control : l'URL demande-t-elle un rôle ?
 suivantes n'a de sens : le journal appartient à un enfant, le tableau de bord à
 un parent, la bibliothèque à un administrateur.
 
-**Composants utilisés** : Security, Form, Validator, Twig.
+**Composants utilisés** : Security, Form, Validator, Translation, Twig.
 
-**Fichiers créés** : `security.yaml`, `SecurityController`, `InscriptionType`,
+**Fichiers créés ou modifiés** : `security.yaml`, `csrf.yaml`,
+`translation.yaml`, `twig.yaml`, `SecurityController`, `InscriptionType`,
 les gabarits de connexion et d'inscription, la redirection dans `HomeController`,
-et deux pages d'attente pour `/parent` et `/admin`.
+`UserLoaderInterface` sur `UserRepository`, et deux pages d'attente pour
+`/parent` (`parent_dashboard`) et `/admin` (`admin_accueil`). Sur l'accueil, le
+bouton « Je suis un parent » pointe désormais vers `app_login` ; les boutons de
+connexion enfant restent sur `#` jusqu'en phase 06.
 
 **Pourquoi ces choix ?**
 
@@ -433,6 +497,9 @@ et deux pages d'attente pour `/parent` et `/admin`.
 - Redirection dans `HomeController` : une seule règle, lisible.
 - Case de **consentement** à l'inscription : le projet enregistre des données de
   santé d'enfants, le parent doit l'accepter explicitement.
+
+**Ce qui n'est pas créé ici** : l'entité `User` (déjà là depuis la phase 02) et
+aucun paquet (tous installés en phase 01).
 
 **Ce qui n'est pas encore là** : la connexion enfant (phase 06), les profils
 enfants (phase 05), et tout contenu réel dans `/parent` et `/admin`.
@@ -444,6 +511,11 @@ enfants (phase 05), et tout contenu réel dans `/parent` et `/admin`.
 **Vous êtes redirigé vers `/login` en boucle**
 → La page de connexion est elle-même protégée par `access_control`.
 → Solution : vérifier que `^/login` n'est couvert par aucune règle de rôle.
+
+**Erreur 500 à chaque tentative de connexion**
+→ Le provider n'a pas d'option `property` et `UserRepository` n'implémente pas
+`UserLoaderInterface`.
+→ Solution : ajouter l'interface et `loadUserByIdentifier()` (concept 3).
 
 **403 au lieu d'une redirection vers `/login`**
 → Vous êtes connecté, mais avec le mauvais rôle. C'est le comportement attendu.
@@ -504,8 +576,13 @@ attribué à l'inscription.
    le code.
 4. Ouvrez la barre de debug en bas de page, onglet « Security » : relevez
    l'utilisateur connecté, ses rôles et le firewall actif.
-5. Passez temporairement `ROLE_ADMIN` à votre compte en base, rechargez `/` et
-   observez la redirection. Remettez `ROLE_PARENT` ensuite.
+5. Créez le compte administrateur de test : **d'abord** inscrivez-vous via
+   `/inscription` avec `admin@digisante.local` / `admin123`, **puis** donnez-lui
+   le rôle en base :
+   `docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '[\"ROLE_ADMIN\"]' WHERE email = 'admin@digisante.local'"`.
+   Si vous étiez connecté avec ce compte, Symfony détecte que les rôles ont
+   changé et vous **déconnecte** : reconnectez-vous, puis observez la
+   redirection vers `/admin`.
 
 Vous devez savoir expliquer la différence entre authentification et autorisation,
 et pourquoi `plainPassword` n'est pas une propriété de `User`.
@@ -518,7 +595,12 @@ et pourquoi `plainPassword` n'est pas une propriété de `User`.
 2. Se connecter sur `/login` avec ce compte.
 3. Vérifier la redirection automatique vers `/parent`.
 4. Se déconnecter, puis ouvrir `/parent` directement dans la barre d'adresse.
-5. **Résultat attendu** : l'inscription et la connexion fonctionnent, et l'accès à `/parent` déconnecté renvoie vers `/login`.
+5. Créer le compte administrateur : **d'abord** s'inscrire via `/inscription`
+   avec `admin@digisante.local` / `admin123`, **puis** le promouvoir :
+   `docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '[\"ROLE_ADMIN\"]' WHERE email = 'admin@digisante.local'"`.
+   Si vous étiez connecté avec ce compte, Symfony vous **déconnecte** (rôle
+   changé) : reconnectez-vous, vous arrivez sur `/admin`.
+6. **Résultat attendu** : l'inscription et la connexion fonctionnent, l'accès à `/parent` déconnecté renvoie vers `/login`, et l'admin est redirigé vers `/admin`.
 
 ---
 
@@ -534,8 +616,10 @@ et pourquoi `plainPassword` n'est pas une propriété de `User`.
 
 ### Aller plus loin
 
+⬅️ [Phase précédente](./phase-03.md)
+
 ➡️ [Phase suivante](./phase-05.md)
 
-➡️ [Phase de développement](../README.md#phase-04--inscription-connexion-et-rôles)
+➡️ [Phase de développement](../README.md#phase-04--authentification-rôles-inscription-et-connexion-parent)
 
 ➡️ [Prompt Claude Code](../prompts/phase-04.md)

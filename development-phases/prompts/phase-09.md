@@ -93,8 +93,8 @@ Compléter `/enfant/journal/conseils` :
 - deux boutons : « 🏠 Retour à l'accueil » et « 📚 Découvrir d'autres conseils » ;
 - sans journal du jour, rediriger vers le formulaire.
 
-Sur l'accueil enfant, le bouton « 💡 Revoir mes conseils » doit mener ici quand
-le journal est déjà rempli.
+Sur l'accueil enfant, **ajoute**, quand le journal est rempli, un bouton
+« 💡 Revoir mes conseils » vers `enfant_journal_conseils`.
 
 ## Contraintes techniques et architecturales
 
@@ -113,7 +113,7 @@ le journal est déjà rempli.
 ## Commandes attendues
 
 ```bash
-docker compose exec app php bin/console debug:autowiring | grep -i conseil
+docker compose exec app php bin/console debug:autowiring Conseil --all
 docker compose exec app php bin/console cache:clear
 docker compose exec app php bin/console lint:container
 ```
@@ -133,7 +133,7 @@ docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree
 
 ## Scénario de test manuel
 
-1. Supprimer le journal du jour de l'enfant (commande ci-dessus), puis vérifier qu'un contenu de la bibliothèque est bien rattaché à la règle « Yoga des yeux ».
+1. Supprimer le journal du jour de l'enfant (commande ci-dessus). Dans l'administration, créer si besoin un contenu rattaché à chaque règle (« Règle du 20-20-20 », « Étirements du cou », « Yoga des yeux »).
 2. Remplir un nouveau journal avec un temps d'écran **supérieur à la limite** du profil, et signaler une douleur aux yeux.
 3. Lire la page de conseils affichée à la fin du parcours.
 4. Revenir à l'accueil et cliquer sur « 💡 Revoir mes conseils ».
@@ -141,10 +141,12 @@ docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree
 
 ## Critères de validation
 
-- [ ] Un journal sous les 2 h et sans douleur affiche **uniquement**
-      « Super journée ! » en vert.
+- [ ] Un journal sous les 2 h, sous la limite et sans douleur affiche
+      **uniquement** « Super journée ! » en vert.
 - [ ] Un journal à **exactement 2 h** affiche le conseil 20-20-20 (cohérence
-      avec la jauge orange).
+      avec la jauge orange). ⚠️ Teste-le avec un enfant dont la limite est
+      **d'au moins 2 h** (monte-la à 3 h au besoin) : avec la limite de 1 h 30
+      de la phase 05, c'est le dépassement qui s'affiche, et c'est normal.
 - [ ] Un dépassement de limite **remplace** le conseil 20-20-20 au lieu de
       s'ajouter.
 - [ ] Une douleur au cou d'intensité 2 ne déclenche **pas** les étirements ;

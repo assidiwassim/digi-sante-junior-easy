@@ -1,4 +1,4 @@
-# Prompt Claude Code — Phase 07 : Journal quotidien en 2 étapes
+# Prompt Claude Code — Phase 07 : Espace enfant : journal quotidien en 2 étapes
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
 
@@ -10,8 +10,8 @@
 enfants de 8 à 14 ans. L'enfant se connecte avec un identifiant, le parent avec
 son email.
 
-Déjà en place : entités `User` et `Enfant` (avec avatar et limite quotidienne
-d'écran), espace parent (CRUD des enfants), espace enfant (connexion, accueil,
+Déjà en place : les cinq entités depuis la phase 02 (dont `JournalEntree` et
+`DouleurZone`), espace parent (CRUD des enfants), espace enfant (connexion, accueil,
 profil), filtre Twig `duree`, charte Bootstrap 5.3 par CDN.
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, MySQL 8, Docker.
@@ -25,7 +25,8 @@ son temps d'écran (étape 1) puis les endroits où il a mal sur un schéma du c
 
 ## Avant de coder
 
-1. Lis `src/Entity/Enfant.php`, `src/Controller/Enfant/AccueilController.php`,
+1. Lis `src/Entity/Enfant.php`, `src/Entity/JournalEntree.php`,
+   `src/Entity/DouleurZone.php`, `src/Controller/Enfant/AccueilController.php`,
    `src/Twig/DureeExtension.php` et `templates/enfant/layout.html.twig`.
 2. Vérifie le fuseau horaire : PHP et MySQL doivent tous deux être en
    `Europe/Paris` (variable `TZ` du service `database`).
@@ -33,47 +34,41 @@ son temps d'écran (étape 1) puis les endroits où il a mal sur un schéma du c
 
 ## À implémenter
 
-### 1. Entités
+### 1. Entités `JournalEntree` et `DouleurZone` (déjà en place)
 
-**`JournalEntree`**
+Ces entités existent depuis la phase 02 : lis-les, ne les recrée pas et ne
+génère **aucune migration** dans cette phase. Rappels utiles pour la suite :
 
-| Propriété | Type | Règles |
-|---|---|---|
-| `enfant` | `ManyToOne` vers `Enfant` | non nullable, `onDelete: 'CASCADE'` |
-| `date` | `date_immutable` | jour seul (minuit), initialisé à « today » |
-| `ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`, `ecranConsole`, `ecranAutre` | `int` | minutes, défaut 0 |
-| `douleurs` | `OneToMany` vers `DouleurZone` | `cascade: ['persist', 'remove']` |
-
+- `JournalEntree` : `enfant` (`ManyToOne`, `onDelete: 'CASCADE'`), `date`
+  (`date_immutable`, initialisée à « today »), six durées en minutes
+  (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
+  `ecranConsole`, `ecranAutre`, défaut 0), `douleurs` (`OneToMany`,
+  `cascade: ['persist', 'remove']` : persister le journal persiste ses douleurs).
 - **Index unique sur `(enfant_id, date)`** : un seul journal par enfant et par
   jour, garanti **en base**.
 - Constante `JournalEntree::ECRANS` : nom de propriété → libellé affiché
-  (`'ecranTv' => '📺 Télévision'`, etc.), utilisée par le formulaire.
-- `getTotalEcran()` : somme des six durées.
-- `niveauPourMinutes(int $minutes): string` (statique) : `vert` sous 2 h,
-  `orange` de 2 h à 4 h, `rouge` au-delà — plus `getNiveauEcran()`.
+  (`'ecranTv' => '📺 Télévision'`, etc.), à utiliser dans le formulaire.
+- `getTotalEcran()`, `niveauPourMinutes(int $minutes)` (statique : `vert` sous
+  2 h, `orange` de 2 h à 4 h, `rouge` au-delà) et `getNiveauEcran()`.
+- `DouleurZone` : constructeur `__construct(string $zone, int $intensite)`,
+  intensité 1 à 5, constante `DouleurZone::ZONES` (`yeux`, `cou`, `epaule`,
+  `dos`, `poignet`, `main`, avec libellé et emoji) dont les clés correspondent à
+  l'attribut `data-zone` du SVG ; getters `getZoneLabel()` et `getZoneEmoji()`.
+- `Enfant::journalEntrees` (`cascade: ['remove']`) : supprimer un enfant
+  supprime ses journaux, et chaque journal ses douleurs.
 
-**`DouleurZone`**
-
-- `journalEntree` (`ManyToOne`, `onDelete: 'CASCADE'`), `zone` (string),
-  `intensite` (int, 1 à 5), constructeur `__construct(string $zone, int $intensite)`.
-- Constante `DouleurZone::ZONES` : 6 zones avec leur libellé et leur emoji —
-  `yeux`, `cou`, `epaule`, `dos`, `poignet`, `main`. Les clés correspondent à
-  l'attribut `data-zone` du SVG.
-- Getters d'affichage `getZoneLabel()` et `getZoneEmoji()`.
-
-Génère la migration, fais-la-moi relire, applique-la, puis
-`doctrine:schema:validate`.
+Si une propriété ou une constante citée ici manque, signale-le avant de coder.
 
 ### 2. Contrôleur `Enfant\JournalController` (préfixe `/enfant/journal`)
 
-- `enfant_journal` : point d'entrée. Si le journal du jour existe déjà →
+- `enfant_journal` (`/enfant/journal`) : point d'entrée. Si le journal du jour existe déjà →
   rediriger vers l'écran de fin ; sinon vider la session et aller à l'étape 1.
-- `enfant_journal_etape1` (GET + POST) : formulaire des écrans. À la validation,
+- `enfant_journal_etape1` (`/enfant/journal/etape-1`, GET + POST) : formulaire des écrans. À la validation,
   ranger les valeurs **en session** et rediriger vers l'étape 2.
-- `enfant_journal_etape2` (GET + POST) : schéma corporel. Sans données d'étape 1
+- `enfant_journal_etape2` (`/enfant/journal/etape-2`, GET + POST) : schéma corporel. Sans données d'étape 1
   en session → rediriger vers l'étape 1. À la validation, créer le
   `JournalEntree` complet, ajouter les douleurs, enregistrer, vider la session.
-- Un écran de fin `enfant_journal_conseils` : pour l'instant, un récapitulatif
+- Un écran de fin `enfant_journal_conseils` (`/enfant/journal/conseils`, GET) : pour l'instant, un récapitulatif
   (temps total et douleurs signalées) et un bouton de retour à l'accueil. Les
   vrais conseils arrivent en phase 09.
 
@@ -158,11 +153,8 @@ Ajoute l'entrée **📔 Mon journal** au menu du layout enfant.
 ## Commandes attendues
 
 ```bash
-docker compose exec app php bin/console make:entity JournalEntree
-docker compose exec app php bin/console make:entity DouleurZone
-docker compose exec app php bin/console make:migration
-docker compose exec app php bin/console doctrine:migrations:migrate --no-interaction
 docker compose exec app php bin/console doctrine:schema:validate
+docker compose exec app php bin/console lint:twig templates
 ```
 
 Pour recommencer un journal pendant les essais :
@@ -173,6 +165,7 @@ docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree
 
 ## Ce qui n'est PAS dans cette phase
 
+- Pas de création d'entité ni de migration (tout le schéma date de la phase 02).
 - Pas de moteur de conseils : l'écran de fin n'affiche qu'un récapitulatif
   (phase 09).
 - Pas de bibliothèque de contenus (phase 08).
@@ -194,7 +187,8 @@ docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree
 - [ ] Un total supérieur à 16 h est refusé avec un message compréhensible.
 - [ ] Une zone inconnue envoyée à la main (outils de développement) est ignorée,
       sans erreur 500.
-- [ ] `doctrine:schema:validate` et `lint:twig templates` sont au vert.
+- [ ] Aucune nouvelle migration : `doctrine:schema:validate` reste au vert
+      (schéma synchronisé), comme `lint:twig templates`.
 
 ## Enfin
 

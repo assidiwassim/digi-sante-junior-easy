@@ -1,4 +1,4 @@
-# Prompt Claude Code — Phase 10 : Tableau de bord parent et graphiques
+# Prompt Claude Code — Phase 10 : Tableau de bord parent et enfant
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
 
@@ -28,8 +28,9 @@ choisi, les conseils qu'il a reçus, et la courbe de son temps d'écran sur 7 ou
 1. Lis `src/Controller/Parent/`, `src/Repository/JournalEntreeRepository.php`,
    `src/Service/ConseilService.php`, `templates/parent/layout.html.twig` et
    `templates/enfant/accueil.html.twig`.
-2. Repère la page d'attente de `/parent` créée en phase 04 : c'est elle que tu
-   remplaces.
+2. Repère la page d'attente de `/parent` créée en phase 04
+   (`Parent\DashboardController`, route `parent_dashboard`) : c'est elle que tu
+   remplaces — supprime-la, le nouveau contrôleur reprend le même nom de route.
 3. Annonce-moi le plan avant de coder.
 
 ## À implémenter
@@ -95,7 +96,14 @@ jours** (`?periode=`), sous la jauge du jour existante.
 
 - Contrôleurs simples : lire la requête, appeler le repository ou le service,
   rendre le gabarit. Aucune requête Doctrine dans le contrôleur.
-- Lire les paramètres d'URL avec `$request->query->getInt(…)`.
+- Lire les paramètres d'URL **sans** `getInt()` : en Symfony 7, une valeur non
+  numérique (`?periode=abc`) lève une `BadRequestException` → erreur **400**, elle
+  ne renvoie pas 0. Compare plutôt des chaînes :
+  ```php
+  $periode = $request->query->getString('periode') === '30' ? 30 : 7;
+  $idDemande = $request->query->getString('enfant'); // comparé à (string) $enfant->getId()
+  ```
+  Ainsi toute valeur inattendue retombe sur le comportement par défaut.
 - Pas de logique métier dans Twig : le pourcentage de la jauge et le niveau de
   couleur sont calculés côté PHP (ou par une méthode d'entité existante).
 - Réutilise les classes maison (`jauge`, `niveau-*`, `stat-valeur`, `pastille`,
@@ -128,7 +136,8 @@ journaux de jours passés en SQL, ou attends la phase 12 (fixtures).
 2. Vérifier le temps d'écran du jour, la jauge colorée, les douleurs signalées et les conseils reçus par l'enfant.
 3. Cliquer sur « 30 derniers jours » et vérifier que la courbe et la ligne de limite changent d'échelle.
 4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas, par exemple `/parent?enfant=999`.
-5. **Résultat attendu** : les deux périodes s'affichent correctement, les jours sans journal valent 0, et l'identifiant étranger affiche simplement votre premier enfant, sans erreur ni donnée d'un autre foyer.
+5. Se connecter en enfant : la même courbe s'affiche sur l'accueil.
+6. **Résultat attendu** : les deux périodes s'affichent correctement, les jours sans journal valent 0, l'identifiant étranger affiche simplement votre premier enfant, sans erreur ni donnée d'un autre foyer, et l'enfant voit sa courbe.
 
 ## Critères de validation
 
@@ -137,6 +146,8 @@ journaux de jours passés en SQL, ou attends la phase 12 (fixtures).
       fichier JS.
 - [ ] Les conseils affichés au parent sont identiques à ceux vus par l'enfant.
 - [ ] La courbe compte bien 7 (ou 30) points, zéros inclus.
+- [ ] `/parent?periode=abc` et `/parent?enfant=abc` s'affichent normalement
+      (7 jours, premier enfant), sans erreur 400.
 - [ ] `lint:twig templates` est au vert et aucune erreur n'apparaît dans la
       console du navigateur.
 

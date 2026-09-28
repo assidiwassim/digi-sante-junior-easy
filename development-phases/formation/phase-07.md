@@ -1,4 +1,4 @@
-# Formation — Phase 07 : Journal quotidien en 2 étapes
+# Formation — Phase 07 : Espace enfant, journal quotidien en 2 étapes
 
 ## 1. Objectifs pédagogiques
 
@@ -8,7 +8,8 @@
   plusieurs étapes ;
 - construire un formulaire **non lié à une entité** ;
 - écrire une contrainte qui porte sur **plusieurs champs à la fois** ;
-- garantir une règle métier **en base** avec un index unique ;
+- s'appuyer sur l'**index unique** déclaré en phase 02 pour garantir une règle
+  métier en base ;
 - faire communiquer du **JavaScript** et un contrôleur Symfony via un champ
   caché ;
 - expliquer pourquoi toute donnée venant du navigateur doit être **revalidée** ;
@@ -17,7 +18,11 @@
 ## 2. Prérequis
 
 - Phases 01 à 06 terminées : l'enfant se connecte et accède à son espace.
-- Savoir créer une entité, une relation et une migration (phases 03 et 05).
+- Connaître les entités `JournalEntree` et `DouleurZone`, leurs constantes
+  (`ECRANS`, `ZONES`), leurs cascades et l'index unique `(enfant_id, date)` :
+  tout cela existe **depuis la phase 02** ([leçon 02](./phase-02.md)). Relisez
+  `src/Entity/JournalEntree.php` et `src/Entity/DouleurZone.php` avant de
+  commencer : cette phase ne modifie aucune entité.
 - Bases de JavaScript : sélectionner un élément, écouter un événement.
 
 ---
@@ -150,16 +155,17 @@ en cas de double clic, d'onglet dupliqué ou de bug futur. Une vérification PHP
 seule laisse une fenêtre : deux requêtes simultanées peuvent passer toutes les
 deux.
 
-**Comment ça fonctionne ?** Un **index unique** sur deux colonnes :
+**Comment ça fonctionne ?** Un **index unique** sur deux colonnes, déclaré en
+phase 02 sur l'entité (rappel) :
 
 ```php
-#[ORM\Entity]
-#[ORM\UniqueConstraint(name: 'un_journal_par_jour', columns: ['enfant_id', 'date'])]
+#[ORM\UniqueConstraint(name: 'journal_unique_par_jour', columns: ['enfant_id', 'date'])]
 class JournalEntree
 ```
 
-MySQL refusera physiquement le doublon. Le contrôleur vérifie **en plus** et
-redirige proprement : le confort côté PHP, la garantie côté base.
+MySQL refuse donc déjà physiquement le doublon. Ce qu'on ajoute dans cette
+phase, c'est la vérification côté contrôleur (`findAujourdhui()`), qui redirige
+proprement : le confort côté PHP, la garantie côté base.
 
 ---
 
@@ -335,15 +341,11 @@ d'écran.
 
 ## 5. Commandes
 
-### `make:entity JournalEntree` puis `make:entity DouleurZone`
+### `docker compose exec app php bin/console dbal:run-sql "SHOW INDEX FROM journal_entree"`
 
-- **À observer** : pensez au type `date_immutable` pour la date (un **jour**,
-  pas un instant) et à la relation `ManyToOne` vers `Enfant`.
-
-### `make:migration` puis `doctrine:migrations:migrate`
-
-- **À observer** : le SQL doit contenir `CREATE UNIQUE INDEX un_journal_par_jour`.
-  S'il manque, l'attribut `#[ORM\UniqueConstraint]` est absent ou mal écrit.
+- **Ce qu'elle fait** : liste les index de la table créée en phase 02.
+- **À observer** : l'index `journal_unique_par_jour` sur `enfant_id` et `date`.
+  Aucune migration n'est attendue dans cette phase : les entités ne changent pas.
 
 ### `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"`
 
@@ -374,7 +376,7 @@ d'écran.
 | **HttpFoundation (Session)** | mémoriser l'étape 1 |
 | **Form** | formulaire sans `data_class`, `HiddenType`, `RangeType` |
 | **Validator** | `Assert\Range` par champ, `Assert\Callback` sur le formulaire |
-| **Doctrine** | entités, index unique, cascade persist/remove |
+| **Doctrine** | entités et index unique de la phase 02, `findAujourdhui()`, cascade persist |
 | **Twig** | `json_encode`, blocs `javascripts` |
 | **Bootstrap (JS)** | la modale de choix d'intensité |
 
@@ -385,15 +387,12 @@ d'écran.
 ```text
 src/
 ├── Controller/Enfant/
-│   └── JournalController.php        /enfant/journal, /etape/1, /etape/2, /conseils
-├── Entity/
-│   ├── JournalEntree.php            6 durées + constante ECRANS + niveaux
-│   └── DouleurZone.php              zone + intensité + constante ZONES
+│   └── JournalController.php        /enfant/journal, /etape-1, /etape-2, /conseils
 ├── Form/
 │   ├── JournalEcransType.php        6 curseurs, total plafonné
 │   └── JournalDouleursType.php      un champ caché + CSRF
 └── Repository/
-    └── JournalEntreeRepository.php  findAujourdhui()
+    └── JournalEntreeRepository.php  + findAujourdhui() (fichier de la phase 02)
 
 templates/enfant/journal/
 ├── _progression.html.twig           « étape 1 sur 2 »
@@ -401,6 +400,9 @@ templates/enfant/journal/
 ├── etape2.html.twig                 SVG + modale
 └── conseils.html.twig               récapitulatif (complété en phase 09)
 ```
+
+Les entités `JournalEntree` et `DouleurZone` ne sont pas dans cette liste : elles
+existent depuis la phase 02.
 
 Le JavaScript reste dans le bloc `javascripts` de **sa** page : il n'est utilisé
 nulle part ailleurs. Règle du projet : un fichier dans `public/js/` seulement
@@ -414,13 +416,13 @@ s'il sert à plusieurs pages (ce sera le cas en phase 10).
 /enfant/journal
     ↓  journal du jour déjà là ?  ── oui ──► /enfant/journal/conseils
     ↓ non
-/enfant/journal/etape/1   (GET)  curseurs à zéro
+/enfant/journal/etape-1   (GET)  curseurs à zéro
     ↓  POST
 Validation : chaque curseur 0-360, total ≤ 16 h
     ↓  valide
 Session ← { ecranTv: 60, … }
     ↓
-/enfant/journal/etape/2   (GET)  SVG + modale
+/enfant/journal/etape-2   (GET)  SVG + modale
     ↓  POST  (champ caché JSON + jeton CSRF)
 Contrôleur : revalide chaque zone et chaque intensité
     ↓
@@ -434,8 +436,8 @@ Session vidée  →  /enfant/journal/conseils
 ## 9. Application au projet
 
 **Pourquoi cette phase ?** C'est le cœur du produit : sans journal, il n'y a ni
-conseils, ni suivi, ni graphique. Tout ce qui suit s'appuie sur ces deux
-entités.
+conseils, ni suivi, ni graphique. Tout ce qui suit s'appuie sur les journaux
+enregistrés ici.
 
 **Composants utilisés** : Session, Form, Validator, Doctrine, Twig, JavaScript
 vanilla.
@@ -450,8 +452,8 @@ vanilla.
   enregistré.
 - **Un seul journal par jour**, garanti en base : la règle métier ne dépend pas
   du code.
-- **Constantes `ECRANS` et `ZONES` dans les entités** : la liste des écrans pilote
-  à la fois le formulaire, l'entité et l'affichage ; les clés de `ZONES`
+- **Constantes `ECRANS` et `ZONES` (phase 02) réutilisées partout** : la liste
+  des écrans pilote à la fois le formulaire et l'affichage ; les clés de `ZONES`
   correspondent aux `data-zone` du SVG.
 - **Le journal n'est pas modifiable** une fois enregistré : c'est un choix du
   projet (hors périmètre), qui évite toute une catégorie de complexité.
@@ -473,7 +475,8 @@ jour, alerte de dépassement, état « journal rempli ou non ».
 → Solution : laisser Symfony rendre les champs.
 
 **Le journal du jour se dédouble**
-→ Index unique absent, ou décalage de fuseau entre PHP et MySQL.
+→ Index unique absent (migration de la phase 02 non appliquée), ou décalage de
+fuseau entre PHP et MySQL.
 → Vérification : `SHOW INDEX FROM journal_entree` et la variable `TZ` du
 conteneur MySQL.
 
@@ -554,8 +557,10 @@ rouge > 4 h).
 
 ### Aller plus loin
 
+⬅️ [Phase précédente](./phase-06.md)
+
 ➡️ [Phase suivante](./phase-08.md)
 
-➡️ [Phase de développement](../README.md#phase-07--journal-quotidien-en-2-étapes)
+➡️ [Phase de développement](../README.md#phase-07--espace-enfant--journal-quotidien-en-2-étapes)
 
 ➡️ [Prompt Claude Code](../prompts/phase-07.md)

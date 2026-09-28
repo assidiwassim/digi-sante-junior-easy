@@ -14,7 +14,8 @@
 ## 2. Prérequis
 
 - Phases 01 à 10 terminées : les trois espaces fonctionnent.
-- Avoir vu les relations et les cascades (phase 05).
+- Avoir vu les relations et les cascades (phase 02), et les avoir utilisées
+  (phase 05).
 - Savoir écrire un CRUD (phase 08).
 
 ---
@@ -51,8 +52,8 @@ dédiée. Ici, avec quelques centaines de comptes, `LIKE` est un compromis
 assumé — et **commenté dans le code**, pour que le lecteur suivant comprenne.
 
 ⚠️ Rappel : le tri utilise `\SortDirection::Descending`. La chaîne `'DESC'` est
-dépréciée dans Doctrine ORM 3, et la suite de tests du projet échoue sur les
-dépréciations.
+dépréciée dans Doctrine ORM 3 et s'affiche dans la barre de debug (onglet
+Logs / Deprecations).
 
 ---
 
@@ -104,7 +105,7 @@ bug esthétique.
 ```sql
 -- après avoir supprimé le parent d'identifiant 5
 SELECT COUNT(*) FROM enfant WHERE parent_id = 5;
-SELECT COUNT(*) FROM users WHERE username = 'lea_test';
+SELECT COUNT(*) FROM users WHERE username = 'lea2';   -- l'identifiant noté avant la suppression
 SELECT COUNT(*) FROM journal_entree je LEFT JOIN enfant e ON e.id = je.enfant_id WHERE e.id IS NULL;
 ```
 
@@ -122,7 +123,7 @@ Parent ──► Enfants ──► Compte de connexion de l'enfant
 
 ### Concept 4 — `cascade: ['remove']` et `onDelete: 'CASCADE'`
 
-On les a croisés en phase 05 ; c'est ici qu'on les départage pour de bon.
+On les a déclarés en phase 02 ; c'est ici qu'on les départage pour de bon.
 
 | | `cascade: ['remove']` | `onDelete: 'CASCADE'` |
 |---|---|---|
@@ -132,19 +133,23 @@ On les a croisés en phase 05 ; c'est ici qu'on les départage pour de bon.
 | Charge les objets ? | **oui**, en mémoire | non, tout se passe en base |
 | Événements Doctrine | déclenchés | **non** déclenchés |
 
-**Quand utiliser lequel ?**
+**Dans ce projet, on utilise les deux**, sur toute la chaîne :
 
-- **Doctrine** quand la suppression doit passer par PHP : peu d'objets, ou des
-  traitements associés. C'est le cas du `OneToOne` enfant → compte.
-- **Base de données** quand le volume peut être important et qu'aucun traitement
-  PHP n'est nécessaire : journaux et douleurs, potentiellement des centaines de
-  lignes.
+- **`cascade: ['remove']` côté Doctrine** : `User` → enfants, `Enfant` →
+  compte, `Enfant` → `journalEntrees`, `JournalEntree` → douleurs. C'est lui qui
+  agit quand on appelle `$entityManager->remove($parent)`. Il est
+  indispensable pour le `OneToOne` enfant → compte : la clé étrangère est portée
+  par l'enfant, donc MySQL seul ne supprimerait jamais le compte.
+- **`onDelete: 'CASCADE'` sur les clés étrangères** : un **filet de sécurité**
+  si une ligne est supprimée hors Doctrine (requête SQL, phpMyAdmin), comme le
+  `DELETE FROM journal_entree` de la phase 07 qui emporte les douleurs.
 
 Utiliser les deux est cohérent, à condition de savoir **pourquoi** à chaque fois.
 
 ⚠️ Règle du projet : **aucune classe « manager » de suppression**, aucune boucle
-`foreach` qui supprime à la main. Si une cascade manque, on corrige le mapping et
-on génère une migration.
+`foreach` qui supprime à la main. Les cascades sont en place depuis la phase 02 :
+si l'une d'elles manque, signalez-le avant de toucher à l'entité (et à la
+migration de la phase 02).
 
 ---
 
@@ -197,8 +202,10 @@ $this->addFlash('success', sprintf(
 ));
 ```
 
-L'ordre compte : après `flush()`, la collection est vide et le message afficherait
-`0`. Détail subtil, conséquence visible.
+Pourquoi compter **avant** ? Après `flush()`, Doctrine ne vide pas la collection
+`enfants` en mémoire : le compte serait encore juste. Mais l'objet `$parent` ne
+représente plus rien en base ; compter avant la suppression est simplement plus
+clair à lire, et ne dépend d'aucun détail interne de Doctrine.
 
 Trois protections, comme partout dans le projet : `methods: ['POST']`, jeton
 CSRF, et un `confirm()` explicite sur le caractère définitif.
@@ -259,7 +266,7 @@ public function supprimer(User $parent, Request $request, EntityManagerInterface
 Remarquez ce qui **n'est pas** dans ce code : aucune boucle sur les enfants,
 aucune suppression manuelle des journaux. Une seule ligne de suppression, et le
 mapping fait le travail. C'est tout l'intérêt d'avoir configuré les cascades
-correctement en phase 05.
+correctement dès la phase 02.
 
 Notez aussi l'ordre des vérifications : d'abord « est-ce bien un parent »
 (404), ensuite le jeton (403). On refuse le plus tôt possible.
@@ -282,9 +289,10 @@ Notez aussi l'ordre des vérifications : d'abord « est-ce bien un parent »
 
 ### `docker compose exec app php bin/console doctrine:schema:validate`
 
-- **Quand** : après avoir ajusté une cascade.
-- **Rappel** : un `ON DELETE CASCADE` modifie la base et exige donc une
-  migration.
+- **Quand** : pour confirmer que le mapping des cascades (phase 02) et la base
+  sont d'accord.
+- **Rappel** : un `ON DELETE CASCADE` vit dans la base : s'il manque,
+  signalez-le avant de toucher à l'entité et à la migration de la phase 02.
 
 ### `docker compose exec app php bin/console debug:router | grep admin`
 
@@ -346,9 +354,9 @@ Comptage des enfants (avant suppression)
 $entityManager->remove($parent) + flush()
     ↓
 Doctrine : cascade remove sur les enfants
-    ↓          puis sur le compte de chaque enfant
-MySQL : ON DELETE CASCADE sur les journaux
-    ↓          puis sur les douleurs
+    ↓          puis sur le compte, les journaux et les douleurs de chaque enfant
+MySQL : ON DELETE CASCADE sur enfant, journal_entree et douleur_zone
+    ↓          (filet de sécurité si une ligne est supprimée hors Doctrine)
     ↓
 flash « … avec 2 profil(s) enfant » → redirection vers la liste
 ```
@@ -388,7 +396,7 @@ autre administrateur (cela se fait en base ou en fixtures).
 → Motif `LIKE` trop large, sans guillemets.
 → Solution : `'%"'.User::ROLE_PARENT.'"%'`.
 
-**Une dépréciation Doctrine apparaît dans les tests**
+**Une dépréciation Doctrine apparaît dans la barre de debug**
 → `'DESC'` passé en chaîne.
 → Solution : `\SortDirection::Descending`.
 
@@ -401,7 +409,9 @@ autre administrateur (cela se fait en base ou en fixtures).
 `ON DELETE CASCADE` (ou une cascade Doctrine).
 
 **Le message annonce « 0 profil(s) enfant »**
-→ Le comptage a été fait **après** `flush()`.
+→ Ce n'est pas l'ordre du comptage (après `flush()`, la collection en mémoire
+est encore remplie) : le parent n'avait vraiment aucun enfant, ou la relation
+`enfants` est mal mappée (`mappedBy` incorrect).
 
 **La fiche parent affiche un enfant cliquable qui mène à une 404**
 → Un lien pointe vers une route supprimée.
@@ -449,11 +459,11 @@ autre administrateur (cela se fait en base ou en fixtures).
 
 ## 13. Scénario de test manuel
 
-1. Créer un compte parent de test via `/inscription`, puis lui ajouter un enfant.
-2. Se connecter en administrateur et ouvrir `/admin/parents`.
-3. Ouvrir la fiche de ce parent et vérifier que son enfant y figure.
-4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `enfant` et `journal_entree`.
-5. **Résultat attendu** : le message indique le nombre de profils enfants supprimés, et plus aucune ligne liée à ce parent ne subsiste en base.
+1. Créer un compte parent de test via `/inscription`, s'y connecter et lui ajouter un enfant, puis remplir un journal pour cet enfant.
+2. Se connecter en administrateur, ouvrir `/admin/parents` et vérifier que le compte de test apparaît avec « 1 » enfant.
+3. Ouvrir sa fiche : l'enfant doit être listé, sans lien ni bouton d'action.
+4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `enfant`, `journal_entree` et `douleur_zone`.
+5. **Résultat attendu** : le message indique le nombre de profils enfants supprimés, et plus aucune ligne liée à ce parent ne subsiste dans les quatre tables.
 
 ---
 
@@ -468,6 +478,8 @@ autre administrateur (cela se fait en base ou en fixtures).
 - [ ] Le résultat attendu est obtenu
 
 ### Aller plus loin
+
+⬅️ [Phase précédente](./phase-10.md)
 
 ➡️ [Phase suivante](./phase-12.md)
 

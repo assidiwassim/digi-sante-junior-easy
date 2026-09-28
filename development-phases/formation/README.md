@@ -1,7 +1,7 @@
 # Formation Symfony — Digi-Santé Junior
 
 Une formation Symfony **progressive**, construite autour d'un vrai projet : la
-plateforme Digi-Santé Junior. Une leçon par phase de développement, 13 au total.
+plateforme Digi-Santé Junior. Une leçon par phase de développement, 12 au total.
 
 Ici, on n'apprend pas Symfony « dans le vide » : chaque notion arrive au moment
 où vous en avez besoin pour construire la fonctionnalité suivante.
@@ -10,7 +10,7 @@ où vous en avez besoin pour construire la fonctionnalité suivante.
 
 ## Objectif de la formation
 
-À la fin des 13 leçons, vous devez être capable de :
+À la fin des 12 leçons, vous devez être capable de :
 
 - expliquer **ce que fait Symfony** à votre place et ce qui reste à votre charge ;
 - lire et écrire un contrôleur, un gabarit Twig, une entité, un repository, un
@@ -54,7 +54,6 @@ notion est expliquée la première fois qu'elle apparaît.
 | Gabarits | Twig |
 | Interface | Bootstrap 5.3 par CDN + `public/css/app.css` |
 | Graphiques | Chart.js par CDN |
-| Tests | PHPUnit 12 + `dama/doctrine-test-bundle` |
 | Environnement | Docker : FrankenPHP, MySQL, phpMyAdmin |
 
 **Ni Node.js, ni npm, ni build front** : c'est un choix du projet pour rester
@@ -105,8 +104,8 @@ décide si la phase est terminée.
 - Chaque prompt demande explicitement d'**analyser l'existant avant de
   modifier**, de respecter les conventions du projet et de **ne pas anticiper**
   les phases suivantes.
-- Aucun prompt ne demande de tests automatisés, **sauf celui de la phase 12**
-  qui leur est consacrée. Partout ailleurs, la validation est manuelle.
+- Aucun prompt ne demande de tests automatisés : la validation est toujours
+  manuelle, au navigateur.
 - Si le code produit vous semble étrange, demandez une explication avant
   d'accepter : c'est un excellent exercice.
 
@@ -116,19 +115,18 @@ décide si la phase est terminée.
 
 | Phase | Formation | Développement | Prompt Claude Code |
 |---|---|---|---|
-| 01 — Environnement Docker et squelette Symfony | [Formation](./phase-01.md) | [Phase 01](../README.md#phase-01--environnement-docker-et-squelette-symfony) | [Prompt](../prompts/phase-01.md) |
-| 02 — Gabarit de base, charte graphique et accueil | [Formation](./phase-02.md) | [Phase 02](../README.md#phase-02--gabarit-de-base-charte-graphique-et-accueil) | [Prompt](../prompts/phase-02.md) |
-| 03 — Base de données, Doctrine et entité `User` | [Formation](./phase-03.md) | [Phase 03](../README.md#phase-03--base-de-données-doctrine-et-entité-user) | [Prompt](../prompts/phase-03.md) |
-| 04 — Inscription, connexion et rôles | [Formation](./phase-04.md) | [Phase 04](../README.md#phase-04--inscription-connexion-et-rôles) | [Prompt](../prompts/phase-04.md) |
+| 01 — Environnement Docker, squelette Symfony et paquets du projet | [Formation](./phase-01.md) | [Phase 01](../README.md#phase-01--environnement-docker-squelette-symfony-et-paquets-du-projet) | [Prompt](../prompts/phase-01.md) |
+| 02 — Base de données et entités | [Formation](./phase-02.md) | [Phase 02](../README.md#phase-02--base-de-données-et-entités) | [Prompt](../prompts/phase-02.md) |
+| 03 — Gabarit de base, charte graphique et page d'accueil | [Formation](./phase-03.md) | [Phase 03](../README.md#phase-03--gabarit-de-base-charte-graphique-et-page-daccueil) | [Prompt](../prompts/phase-03.md) |
+| 04 — Authentification, rôles, inscription et connexion parent | [Formation](./phase-04.md) | [Phase 04](../README.md#phase-04--authentification-rôles-inscription-et-connexion-parent) | [Prompt](../prompts/phase-04.md) |
 | 05 — Espace parent : profils enfants | [Formation](./phase-05.md) | [Phase 05](../README.md#phase-05--espace-parent--profils-enfants) | [Prompt](../prompts/phase-05.md) |
 | 06 — Espace enfant : connexion et accueil | [Formation](./phase-06.md) | [Phase 06](../README.md#phase-06--espace-enfant--connexion-et-accueil) | [Prompt](../prompts/phase-06.md) |
-| 07 — Journal quotidien en 2 étapes | [Formation](./phase-07.md) | [Phase 07](../README.md#phase-07--journal-quotidien-en-2-étapes) | [Prompt](../prompts/phase-07.md) |
+| 07 — Espace enfant : journal quotidien en 2 étapes | [Formation](./phase-07.md) | [Phase 07](../README.md#phase-07--espace-enfant--journal-quotidien-en-2-étapes) | [Prompt](../prompts/phase-07.md) |
 | 08 — Bibliothèque de contenus (admin + enfant) | [Formation](./phase-08.md) | [Phase 08](../README.md#phase-08--bibliothèque-de-contenus-admin--enfant) | [Prompt](../prompts/phase-08.md) |
 | 09 — Moteur de conseils | [Formation](./phase-09.md) | [Phase 09](../README.md#phase-09--moteur-de-conseils) | [Prompt](../prompts/phase-09.md) |
-| 10 — Tableau de bord parent et graphiques | [Formation](./phase-10.md) | [Phase 10](../README.md#phase-10--tableau-de-bord-parent-et-graphiques) | [Prompt](../prompts/phase-10.md) |
+| 10 — Tableau de bord parent et enfant | [Formation](./phase-10.md) | [Phase 10](../README.md#phase-10--tableau-de-bord-parent-et-enfant) | [Prompt](../prompts/phase-10.md) |
 | 11 — Administration des comptes parents | [Formation](./phase-11.md) | [Phase 11](../README.md#phase-11--administration-des-comptes-parents) | [Prompt](../prompts/phase-11.md) |
-| 12 — Données de démonstration, qualité et tests | [Formation](./phase-12.md) | [Phase 12](../README.md#phase-12--données-de-démonstration-qualité-et-tests) | [Prompt](../prompts/phase-12.md) |
-| 13 — Performance, robustesse et mise en production | [Formation](./phase-13.md) | [Phase 13](../README.md#phase-13--performance-robustesse-et-mise-en-production) | [Prompt](../prompts/phase-13.md) |
+| 12 — Données de démonstration et qualité | [Formation](./phase-12.md) | [Phase 12](../README.md#phase-12--données-de-démonstration-et-qualité) | [Prompt](../prompts/phase-12.md) |
 
 ---
 
@@ -138,22 +136,29 @@ Chaque notion apparaît **une seule fois**, au moment où elle sert. Voici où
 chacune est enseignée :
 
 ```text
-Phase 01  Docker, Composer, autoload, front controller, Kernel, requête/réponse,
-          routes et contrôleurs
-Phase 02  Twig : héritage de gabarits, blocs, variables, échappement, assets
-Phase 03  Doctrine : entités, mapping, repositories, migrations, DATABASE_URL
+Phase 01  Docker (app, database, phpMyAdmin), Composer, autoload, paquets et
+          recettes Flex, front controller, Kernel, requête/réponse, routes et
+          contrôleurs, variables d'environnement (.env)
+Phase 02  Doctrine : ORM, entités, mapping, relations (ManyToOne, OneToMany,
+          OneToOne, côté propriétaire/inverse), cascades (Doctrine + ON DELETE),
+          constantes et getters d'affichage, contraintes de validation sur
+          l'entité, index unique, types de dates, repositories, migrations,
+          DATABASE_URL
+Phase 03  Twig : héritage de gabarits, blocs, variables, échappement, path(),
+          asset(), Bootstrap par CDN, barre de debug
 Phase 04  Security : firewall, provider, hachage, access_control
-          Forms + Validator : *Type, handleRequest, contraintes, CSRF, flash
-Phase 05  Relations Doctrine, cascades, Voters, extension Twig, transformers
-Phase 06  Chargement d'utilisateur sur mesure, #[CurrentUser], layouts par espace
+          Forms + Validator : *Type, handleRequest, les contraintes de la
+          phase 02 appliquées, CSRF, flash
+Phase 05  Voters, extension Twig, transformers, CSRF hors formulaire,
+          layouts par espace
+Phase 06  Chargement d'utilisateur sur mesure, #[CurrentUser]
 Phase 07  Session, formulaire multi-étapes, contrainte multi-champs,
-          index unique, JavaScript vanilla, revalidation serveur
+          JavaScript vanilla, revalidation serveur
 Phase 08  CRUD complet, résolution d'entité par l'URL, données métier en base
 Phase 09  Services, injection de dépendances, conteneur de services, autowiring
 Phase 10  QueryBuilder, paramètres d'URL, PHP → JavaScript, code partagé
 Phase 11  Requête sur une colonne JSON, 404 volontaire, cascades vérifiées
-Phase 12  Fixtures, linters, PHPUnit, transactions de test
-Phase 13  Environnement prod, requêtes N+1, profiler, sécurité, exploitation
+Phase 12  Fixtures, données reproductibles, linters, vérification manuelle
 ```
 
 ---

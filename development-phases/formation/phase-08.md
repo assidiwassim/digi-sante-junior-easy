@@ -14,7 +14,11 @@
 ## 2. Prérequis
 
 - Phases 01 à 07 terminées.
-- Savoir créer une entité, une migration, un formulaire (phases 03, 04, 05).
+- Savoir créer un formulaire (phases 04 et 05).
+- Connaître l'entité `ContenuBienEtre`, ses constantes (`TYPES`,
+  `DECLENCHEURS`) et ses contraintes : elle existe **depuis la phase 02**
+  ([leçon 02](./phase-02.md)). Relisez `src/Entity/ContenuBienEtre.php` avant de
+  commencer : cette phase ne modifie aucune entité.
 - Un compte `ROLE_ADMIN` existe en base.
 
 ---
@@ -115,6 +119,22 @@ Options utiles : `'required' => false` (champ facultatif), `'placeholder'`
 (première ligne du `<select>`), `'help'` (texte d'aide sous le champ),
 `'default_protocol' => 'https'` (ajoute `https://` si l'utilisateur l'oublie).
 
+Côté entité, le lien est déjà validé par `Assert\Url`, posé en phase 02
+(rappel) :
+
+```php
+#[Assert\Url(
+    message: 'Merci de saisir une URL valide.',
+    requireTld: true,
+    tldMessage: 'Il manque le domaine du site (par exemple .fr ou .com).',
+)]
+private ?string $url = null;
+```
+
+`requireTld: true` est **obligatoire** : l'omettre est déprécié depuis
+Symfony 7.1, et sans lui le `tldMessage` n'est jamais utilisé. C'est ici, avec
+le formulaire, que ces messages apparaissent enfin à l'écran.
+
 ---
 
 ### Concept 5 — Les données métier en base
@@ -136,26 +156,30 @@ ira chercher ces textes pour les afficher dans les conseils.
 **Pourquoi ?** Quand l'enfant déclenche la règle « yoga des yeux », il faut lui
 proposer **le** contenu correspondant.
 
-**Comment ça fonctionne ?** Une colonne `declencheur` porte la clé de la règle.
-Le moteur de conseils (phase 09) cherchera le premier contenu portant cette clé.
+**Comment ça fonctionne ?** La colonne `declencheur` (phase 02) porte la clé de
+la règle. Le moteur de conseils (phase 09) cherchera le premier contenu portant
+cette clé. Dans cette phase, on se contente de proposer la liste
+`ContenuBienEtre::DECLENCHEURS` dans un `ChoiceType` facultatif, construit comme
+celle des types (Concept 4) :
 
 ```php
-public const DECLENCHEUR_20_20_20 = '20-20-20';
-public const DECLENCHEUR_ETIREMENT = 'etirement_cervical';
-public const DECLENCHEUR_YOGA_YEUX = 'yoga_yeux';
-
-public const DECLENCHEURS = [
-    self::DECLENCHEUR_20_20_20 => 'Règle du 20-20-20',
-    self::DECLENCHEUR_ETIREMENT => 'Étirements du cou',
-    self::DECLENCHEUR_YOGA_YEUX => 'Yoga des yeux',
-];
+$builder->add('declencheur', ChoiceType::class, [
+    'required' => false,
+    'placeholder' => 'Aucune — visible seulement dans la bibliothèque',
+    'choices' => array_flip(ContenuBienEtre::DECLENCHEURS),   // libellé => clé
+    'help' => 'Le premier contenu d\'une règle est celui proposé à l\'enfant quand elle se déclenche.',
+]);
 ```
+
+Les trois constantes (`20-20-20`, `etirement_cervical`, `yoga_yeux`) ont été
+définies en phase 02 ([leçon 02](./phase-02.md)).
 
 ⚠️ **Leçon apprise sur ce projet** : la liste contenait autrefois des règles
 supplémentaires (« Défi sport », « Sommeil », « Posture ») qu'aucun code ne
 déclenchait jamais. Résultat : un administrateur pouvait rattacher un contenu à
-une règle morte, et ce contenu n'était jamais proposé à un enfant. **Ne proposez
-jamais une option qui ne produit aucun effet.**
+une règle morte, et ce contenu n'était jamais proposé à un enfant. C'est pour
+cela que `DECLENCHEURS` n'en compte plus que trois. **Ne proposez jamais une
+option qui ne produit aucun effet.**
 
 ---
 
@@ -192,10 +216,12 @@ public function findGroupesParType(): array
 }
 ```
 
-⚠️ **Piège du projet** : passer `'ASC'` ou `'DESC'` en **chaîne** est déprécié
-dans Doctrine ORM 3. On utilise `\SortDirection::Ascending` / `Descending`, ou on
-ne met rien (croissant par défaut). Les tests du projet échouent sur les
-dépréciations : ce n'est pas un détail cosmétique.
+⚠️ **Piège du projet** : passer `'ASC'` ou `'DESC'` en **chaîne** à
+`QueryBuilder::orderBy()` ou à l'attribut `#[ORM\OrderBy]` est déprécié dans
+Doctrine ORM 3 (`findBy()` accepte encore les chaînes, mais la règle du projet
+est de ne les utiliser nulle part). On utilise `\SortDirection::Ascending` /
+`Descending`, ou on ne met rien (croissant par défaut). La barre de debug
+signale chaque dépréciation (icône jaune) : ce n'est pas un détail cosmétique.
 
 Regrouper en PHP est ici parfaitement acceptable : la bibliothèque contient
 quelques dizaines de lignes, et le code reste lisible.
@@ -262,20 +288,29 @@ un seul endroit, trois espaces.
 
 ### L'affichage groupé, côté enfant
 
+Le contrôleur passe les groupes **et** la constante des types, pour disposer du
+pluriel défini en phase 02 (« Quiz » ne prend pas de « s ») :
+
+```php
+return $this->render('enfant/bibliotheque.html.twig', [
+    'groupes' => $contenuRepository->findGroupesParType(),
+    'types' => ContenuBienEtre::TYPES,
+]);
+```
+
 ```twig
 {% for type, contenus in groupes %}
-    {% set premier = contenus|first %}
     <section>
         <h2>
-            <span>{{ premier.typeEmoji }}</span>
-            {{ premier.typeLabel }}{{ contenus|length > 1 ? 's' }}
+            <span>{{ types[type].emoji }}</span>
+            {{ contenus|length > 1 ? types[type].pluriel : types[type].label }}
             <span class="pastille">{{ contenus|length }}</span>
         </h2>
 
         {% for contenu in contenus %}
             <article class="card card-enfant h-100">
                 <h3>{{ contenu.titre }}</h3>
-                <p class="texte-multiligne">{{ contenu.contenu }}</p>
+                <p class="mt-2 mb-0">{{ contenu.contenu|nl2br }}</p>
                 {% if contenu.url %}
                     <a href="{{ contenu.url }}" target="_blank" rel="noopener" class="btn btn-or btn-sm">▶️ Ouvrir le lien</a>
                 {% endif %}
@@ -293,28 +328,27 @@ Trois points à retenir :
   pas besoin d'un `{% if %}` supplémentaire ;
 - `rel="noopener"` sur un lien `target="_blank"` empêche la page ouverte
   d'accéder à la vôtre — règle de sécurité du projet ;
-- `texte-multiligne` est une classe maison (`white-space: pre-line`) qui conserve
-  les retours à la ligne saisis par l'administrateur, **sans** interpréter de
-  HTML.
+- le filtre `|nl2br` **échappe** d'abord le texte, puis convertit les retours à
+  la ligne saisis par l'administrateur en `<br>` : ils sont conservés **sans**
+  interpréter le HTML saisi.
 
 ---
 
 ## 5. Commandes
 
-### `docker compose exec app php bin/console make:entity ContenuBienEtre`
-
-- **À observer** : le type `text` pour le contenu (long), `string` pour le titre.
-
 ### `docker compose exec app php bin/console make:form ContenuBienEtreType`
 
 - **Ce qu'elle fait** : génère un `*Type` pré-rempli à partir de l'entité.
-- **À observer** : le code généré est un point de départ. Les libellés, les aides
+- **À observer** : l'entité existe depuis la phase 02, le générateur s'en sert
+  pour proposer les champs. Le code généré est un point de départ. Les libellés, les aides
   et les listes de choix sont à écrire à la main.
 
 ### `docker compose exec app php bin/console debug:router | grep admin`
 
 - **Quand** : vérifier les quatre routes du CRUD et leurs méthodes HTTP.
-- **À observer** : la route de suppression doit être en **POST** seul.
+- **À observer** : la route de suppression doit être en **POST** seul, et
+  `admin_accueil` ne doit apparaître **qu'une fois** (page d'attente de la
+  phase 04 supprimée).
 
 ### `docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '[\"ROLE_ADMIN\"]' WHERE email = 'admin@digisante.local'"`
 
@@ -332,9 +366,9 @@ Trois points à retenir :
 | Composant | Rôle ici |
 |---|---|
 | **Routing** | `{id}`, `requirements`, `methods` |
-| **Doctrine** | entité `ContenuBienEtre`, repository, résolution par l'URL |
+| **Doctrine** | entité `ContenuBienEtre` (phase 02), requêtes du repository, résolution par l'URL |
 | **Form** | `ChoiceType`, `TextareaType`, `UrlType`, `help`, `placeholder` |
-| **Validator** | titre et contenu obligatoires, URL valide |
+| **Validator** | contraintes de la phase 02 : titre et contenu obligatoires, URL valide |
 | **Security** | `access_control` sur `^/admin` (déjà en place) |
 | **Twig** | boucle avec `{% else %}`, partiel de suppression réutilisé |
 
@@ -345,13 +379,13 @@ Trois points à retenir :
 ```text
 src/
 ├── Controller/Admin/
-│   └── ContenuController.php        les 4 actions du CRUD
-├── Entity/
-│   └── ContenuBienEtre.php          TYPES, DECLENCHEURS, getters d'affichage
+│   ├── AccueilController.php        ❌ supprimé (page d'attente de la phase 04)
+│   └── ContenuController.php        admin_accueil + les 4 actions du CRUD
 ├── Form/
 │   └── ContenuBienEtreType.php
 └── Repository/
-    └── ContenuBienEtreRepository.php  findTousTries(), findGroupesParType()
+    └── ContenuBienEtreRepository.php  + findTousTries(), findGroupesParType()
+                                       (fichier de la phase 02)
 
 templates/
 ├── admin/
@@ -362,6 +396,13 @@ templates/
 └── enfant/
     └── bibliotheque.html.twig       la page « Découvrir »
 ```
+
+L'entité `ContenuBienEtre` n'apparaît pas : elle existe depuis la phase 02.
+
+`ContenuController` porte désormais la route `admin_accueil` (`/admin`), qui
+redirige vers `admin_contenus`. La page d'attente `Admin\AccueilController` de
+la phase 04 et son gabarit sont donc **supprimés** : sinon deux routes portent
+le même nom, et la dernière déclarée gagne sans prévenir.
 
 Une même entité sert deux publics très différents : un tableau dense pour
 l'administrateur, des cartes colorées pour l'enfant. Les **données** sont
@@ -418,8 +459,10 @@ contenus en base, les conseils n'auraient rien à proposer.
   POST + CSRF. Un développeur qui arrive sur le projet reconnaît immédiatement le
   motif.
 - **Trois déclencheurs seulement**, ceux qui produisent réellement un effet.
-- **Le premier contenu d'une règle** est celui qui sera proposé : simple à
-  expliquer à un administrateur, et il suffit de réordonner pour changer.
+- **Le premier contenu d'une règle** (le plus petit identifiant) est celui qui
+  sera proposé : simple à expliquer à un administrateur. Il n'y a pas de
+  réordonnancement : pour changer, on modifie ce contenu ou on le rattache à
+  une autre règle.
 - **L'administrateur ne gère pas les enfants** : ces profils relèvent de leur
   parent. L'espace admin ne contient donc que les contenus et, en phase 11, les
   comptes parents.
@@ -443,12 +486,14 @@ contenus en base, les conseils n'auraient rien à proposer.
 **Une URL sans domaine est acceptée ou refusée avec un message technique**
 → `Assert\Url` a plusieurs messages : celui de l'URL invalide, et celui du
 domaine manquant (`tldMessage`).
-→ Solution : renseigner les deux, en français, écrits pour l'utilisateur.
+→ Solution : vérifier sur l'entité (phase 02) que les deux sont renseignés, en
+français, et que `requireTld: true` est présent (sans lui, `tldMessage` n'est
+jamais utilisé).
 
 **Les retours à la ligne du contenu disparaissent à l'affichage**
 → Le HTML ignore les retours à la ligne.
-→ Solution : la classe `texte-multiligne` (`white-space: pre-line`) — jamais
-`|raw`, qui exécuterait le HTML saisi.
+→ Solution : le filtre `|nl2br`, qui échappe le texte puis convertit les retours
+à la ligne — jamais `|raw`, qui exécuterait le HTML saisi.
 
 **La suppression renvoie 405 (Method Not Allowed)**
 → Un lien GET a été utilisé au lieu d'un formulaire POST.
@@ -479,8 +524,8 @@ pas encore faite.
    apparaissent **dans l'ordre de la constante `TYPES`**, et non par ordre de
    création.
 2. Créez un contenu avec un texte sur plusieurs paragraphes : vérifiez que les
-   retours à la ligne sont conservés côté enfant. Retirez temporairement la
-   classe `texte-multiligne` pour voir la différence.
+   retours à la ligne sont conservés côté enfant. Retirez temporairement le
+   filtre `|nl2br` pour voir la différence.
 3. Saisissez `exemple` dans le champ lien : lisez le message d'erreur. Puis
    `https://exemple.fr` : il doit être accepté.
 4. Ouvrez `/admin/contenus/99999/modifier` (identifiant inexistant) : vous devez
@@ -494,8 +539,8 @@ pas encore faite.
 
 1. Se connecter avec le compte administrateur et ouvrir `/admin/contenus`.
 2. Créer un contenu de type « Fiche », avec un titre, un texte et un lien.
-3. Se déconnecter, se connecter en enfant et ouvrir « 📚 Découvrir ».
-4. Retourner en admin, modifier le titre du contenu, puis rafraîchir la page enfant.
+3. Ouvrir une **fenêtre de navigation privée** (seconde session, l'admin reste connecté dans la première), s'y connecter en enfant et ouvrir « 📚 Découvrir ».
+4. Dans la fenêtre admin, modifier le titre du contenu, puis rafraîchir la page enfant dans la fenêtre privée.
 5. **Résultat attendu** : le contenu apparaît côté enfant dans le bon groupe, et le titre modifié s'affiche après rafraîchissement.
 
 ---
@@ -511,6 +556,8 @@ pas encore faite.
 - [ ] Le résultat attendu est obtenu
 
 ### Aller plus loin
+
+⬅️ [Phase précédente](./phase-07.md)
 
 ➡️ [Phase suivante](./phase-09.md)
 
