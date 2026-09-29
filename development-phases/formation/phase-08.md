@@ -288,22 +288,22 @@ un seul endroit, trois espaces.
 
 ### L'affichage groupé, côté enfant
 
-Le contrôleur passe les groupes **et** la constante des types (emoji et
-libellé définis en phase 02) :
+Le contrôleur ne passe que les groupes : l'emoji et le libellé du type se
+lisent sur le premier contenu du groupe (getters définis en phase 02).
 
 ```php
 return $this->render('enfant/bibliotheque.html.twig', [
     'groupes' => $contenuRepository->findGroupesParType(),
-    'types' => ContenuBienEtre::TYPES,
 ]);
 ```
 
 ```twig
 {% for type, contenus in groupes %}
+    {% set premier = contenus|first %}
     <section>
         <h2>
-            <span>{{ types[type].emoji }}</span>
-            {{ types[type].label }}{{ contenus|length > 1 ? 's' }}
+            <span>{{ premier.typeEmoji }}</span>
+            {{ premier.typeLabel }}{{ contenus|length > 1 ? 's' }}
             <span class="pastille">{{ contenus|length }}</span>
         </h2>
 
