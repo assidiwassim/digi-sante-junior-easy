@@ -15,9 +15,9 @@
 enfants de 8 à 14 ans. Trois rôles sans hiérarchie : `ROLE_ADMIN`,
 `ROLE_PARENT`, `ROLE_CHILD`.
 
-Déjà en place : entité `User` (email **ou** identifiant), entité `Enfant` avec
+Déjà en place : entité `User` (email **ou** identifiant), entité `Child` avec
 son compte de connexion créé par le parent, espace parent fonctionnel,
-`EnfantVoter`, filtre Twig `duree`, charte Bootstrap. Tous les paquets du
+`ChildVoter`, filtre Twig `duration`, charte Bootstrap. Tous les paquets du
 projet sont installés depuis la phase 01 (dont `twig/extra-bundle` et
 `twig/intl-extra`).
 
@@ -26,7 +26,14 @@ Particularité : les parents et l'administrateur se connectent avec leur
 page qui leur est propre.
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, Bootstrap 5.3 par CDN,
-MySQL 8, Docker. Code simple, en français.
+MySQL 8, Docker. Code simple.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -36,7 +43,7 @@ personnalisé et une page de profil où il peut changer son mot de passe.
 ## Avant de coder
 
 1. Lis `src/Repository/UserRepository.php`, `config/packages/security.yaml`,
-   `src/Entity/Enfant.php` et `templates/security/login.html.twig`.
+   `src/Entity/Child.php` et `templates/security/login.html.twig`.
 2. Vérifie comment le provider de sécurité charge actuellement l'utilisateur.
 3. Dis-moi ce que tu vas modifier dans la sécurité existante **sans casser** la
    connexion des parents.
@@ -76,14 +83,17 @@ minuscules et sans espaces autour. C'est pour cela que le provider de
 
 ### 2. Page de connexion enfant
 
-- Route `/connexion-enfant` (GET, nom `app_enfant_login`), dans
+- Route `/login/child` (GET, nom `app_child_login`), dans
   `SecurityController`, avec `AuthenticationUtils` pour l'erreur et le dernier
   identifiant saisi.
+  ⚠️ N'utilise **pas** une URL qui commence par `/child` (`/child-login`,
+  `/child/login`…) : la règle `access_control` `^/child` la protégerait, et la
+  page de connexion exigerait… d'être déjà connecté en enfant.
 - Le formulaire est **envoyé à `/login`**, comme celui des parents : c'est
   Symfony qui traite l'authentification.
 - Il contient un champ caché `_failure_path` pour revenir sur cette page en cas
   d'erreur.
-  ⚠️ `_failure_path` attend un **chemin** (`path('app_enfant_login')`), pas un
+  ⚠️ `_failure_path` attend un **chemin** (`path('app_child_login')`), pas un
   nom de route.
 - Champs `_username` et `_password`, plus le jeton `csrf_token('authenticate')`.
 - Ton adapté à l'enfant : pas de barre de navigation, mascotte 🦊, titre
@@ -94,11 +104,11 @@ minuscules et sans espaces autour. C'est pour cela que le provider de
   page parent.
 - Les boutons « 🚀 Je suis un enfant » de la page d'accueil et de la page de
   connexion parent pointaient vers `#` : fais-les pointer vers
-  `path('app_enfant_login')`, maintenant que la route existe.
+  `path('app_child_login')`, maintenant que la route existe.
 
 ### 3. Layout de l'espace enfant
 
-`templates/enfant/layout.html.twig` (étend `base.html.twig`) :
+`templates/child/layout.html.twig` (étend `base.html.twig`) :
 
 - fond coloré propre à l'espace enfant (via le bloc `body_class`) ;
 - menu : **🏠 Accueil** seulement ; **📔 Mon journal** (phase 07) et
@@ -109,19 +119,19 @@ minuscules et sans espaces autour. C'est pour cela que le provider de
 Ne crée que les entrées de menu dont les routes existent à la fin de cette
 phase : les autres seront ajoutées par leur propre phase.
 
-### 4. `Enfant\AccueilController`
+### 4. `Child\HomeController`
 
-Préfixe `/enfant`, réservé à `ROLE_CHILD` par `access_control`.
+Préfixe `/child`, réservé à `ROLE_CHILD` par `access_control`.
 
-- `/enfant` (route `enfant_accueil`) : salutation « Salut [prénom] ! 👋 »,
+- `/child` (route `child_home`) : salutation « Salut [prénom] ! 👋 »,
   avatar en grand, date du jour en toutes lettres et en français, et un rappel
-  de sa limite quotidienne avec le filtre `duree`.
-- `/enfant/profil` (route `enfant_profil`) : carte d'identité en lecture seule
+  de sa limite quotidienne avec le filtre `duration`.
+- `/child/profile` (route `child_profile`) : carte d'identité en lecture seule
   (avatar et son nom, prénom, identifiant de connexion, âge, limite d'écran) et
-  un formulaire de **changement de mot de passe** réutilisant `MotDePasseType`
+  un formulaire de **changement de mot de passe** réutilisant `PasswordChangeType`
   (champ `plainPassword`).
 - Le profil enfant se récupère avec `#[CurrentUser] User $user` puis
-  `$user->getProfilEnfant()` ; si aucun profil n'est rattaché, lève une 404
+  `$user->getChildProfile()` ; si aucun profil n'est rattaché, lève une 404
   explicite.
 - Textes au **tutoiement**, encourageants : « Ton nouveau mot de passe est
   enregistré. Pense à bien le retenir ! »
@@ -131,7 +141,7 @@ Préfixe `/enfant`, réservé à `ROLE_CHILD` par `access_control`.
 
 ### 5. Redirection de l'enfant
 
-Complète `HomeController::index()` : `ROLE_CHILD` → `enfant_accueil`. Sans cela,
+Complète `HomeController::index()` : `ROLE_CHILD` → `child_home`. Sans cela,
 un enfant qui vient de se connecter retombe sur la page d'accueil publique.
 
 ## Contraintes techniques et architecturales
@@ -142,8 +152,8 @@ un enfant qui vient de se connecter retombe sur la page d'accueil publique.
 - Les mots de passe sont hachés avec `UserPasswordHasherInterface`, jamais
   affichés ni générés automatiquement.
 - Chaque page étend le layout de son espace, qui étend `base.html.twig`.
-- Réutilise les classes maison de `app.css` (`avatar-bulle`, `pastille`,
-  `profil-ligne`, `texte-doux`…) plutôt que d'en inventer.
+- Réutilise les classes maison de `app.css` (`avatar-bubble`, `chip`,
+  `profile-row`, `text-soft`…) plutôt que d'en inventer.
 - Toujours `{{ form_errors(form) }}` juste après `form_start()`.
 
 ## Commandes attendues
@@ -164,9 +174,9 @@ docker compose exec app php bin/console cache:clear
 
 ## Scénario de test manuel
 
-1. Se déconnecter, puis ouvrir `/connexion-enfant`.
+1. Se déconnecter, puis ouvrir `/login/child`.
 2. Saisir volontairement un mauvais mot de passe et valider.
-3. Vérifier qu'on **revient sur `/connexion-enfant`** (et non sur `/login`) avec le message bienveillant.
+3. Vérifier qu'on **revient sur `/login/child`** (et non sur `/login`) avec le message bienveillant.
 4. Saisir le bon identifiant et le bon mot de passe, puis ouvrir « Mon profil », changer le mot de passe, se déconnecter et se reconnecter avec le nouveau.
 5. **Résultat attendu** : la connexion par identifiant fonctionne, l'échec ramène sur la page enfant, et le nouveau mot de passe est accepté.
 
@@ -175,7 +185,7 @@ docker compose exec app php bin/console cache:clear
 - [ ] La connexion **parent** par email fonctionne toujours.
 - [ ] Un enfant connecté qui ouvre `/parent` ou `/admin` reçoit **403**.
 - [ ] L'identifiant est insensible à la casse (`LEA` fonctionne).
-- [ ] Un enfant qui se connecte arrive directement sur `/enfant`.
+- [ ] Un enfant qui se connecte arrive directement sur `/child`.
 - [ ] La page de connexion enfant n'affiche aucun message technique.
 - [ ] `lint:twig templates` est au vert.
 

@@ -39,12 +39,12 @@ l'email **ou** l'identifiant.
 ```php
 class UserRepository extends ServiceEntityRepository implements UserLoaderInterface
 {
-    /** Appelée par Symfony Security à la connexion. */
+    /** Called by Symfony Security when logging in. */
     public function loadUserByIdentifier(string $identifier): ?User
     {
         return $this->createQueryBuilder('u')
-            ->where('u.email = :identifiant OR u.username = :identifiant')
-            ->setParameter('identifiant', mb_strtolower(trim($identifier)))
+            ->where('u.email = :identifier OR u.username = :identifier')
+            ->setParameter('identifier', mb_strtolower(trim($identifier)))
             ->getQuery()
             ->getOneOrNullResult();
     }
@@ -53,7 +53,7 @@ class UserRepository extends ServiceEntityRepository implements UserLoaderInterf
 
 Trois choses à noter :
 
-- une **seule** valeur liée (`:identifiant`), utilisée deux fois : jamais de
+- une **seule** valeur liée (`:identifier`), utilisée deux fois : jamais de
   concaténation, donc pas d'injection SQL possible ;
 - `mb_strtolower(trim(...))` : cohérent avec la normalisation faite dans les
   setters de `User` (phase 02) — d'où la casse sans importance ;
@@ -75,12 +75,12 @@ mauvaise idée.
 deux l'**envoient** à `/login`, seule adresse traitée par `form_login`.
 
 ```twig
-{# templates/security/login_enfant.html.twig #}
+{# templates/security/child_login.html.twig #}
 <form method="post" action="{{ path('app_login') }}">
     <input type="text" name="_username" value="{{ last_username }}" required autofocus>
     <input type="password" name="_password" required>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-    <input type="hidden" name="_failure_path" value="{{ path('app_enfant_login') }}">
+    <input type="hidden" name="_failure_path" value="{{ path('app_child_login') }}">
     <button type="submit">C'est parti ! 🚀</button>
 </form>
 ```
@@ -98,11 +98,11 @@ retrouverait sur la page de connexion **des parents** : déroutant.
 **Comment ça fonctionne ?** `_failure_path` indique où retourner en cas d'échec.
 
 ```twig
-<input type="hidden" name="_failure_path" value="{{ path('app_enfant_login') }}">
+<input type="hidden" name="_failure_path" value="{{ path('app_child_login') }}">
 ```
 
-⚠️ **Piège du projet** : il faut un **chemin** (`/connexion-enfant`, produit par
-`path()`), pas un **nom de route** (`app_enfant_login`). Avec le nom, la
+⚠️ **Piège du projet** : il faut un **chemin** (`/login/child`, produit par
+`path()`), pas un **nom de route** (`app_child_login`). Avec le nom, la
 redirection échoue silencieusement.
 
 ---
@@ -116,10 +116,10 @@ qui est connecté.
 injecte l'utilisateur.
 
 ```php
-#[Route('/enfant', name: 'enfant_accueil', methods: ['GET'])]
-public function accueil(#[CurrentUser] User $user): Response
+#[Route('/child', name: 'child_home', methods: ['GET'])]
+public function home(#[CurrentUser] User $user): Response
 {
-    $enfant = $user->getProfilEnfant();   // le profil rattaché au compte
+    $child = $user->getChildProfile();   // the profile linked to the account
     // …
 }
 ```
@@ -130,40 +130,40 @@ classe, l'autocomplétion fonctionne, et l'intention est explicite.
 **Dans ce projet.** C'est la convention : `#[CurrentUser] User $user` dans la
 signature, comme les autres dépendances (phase 04).
 
-Maintenant que `enfant_accueil` existe, `HomeController` (phase 04) reçoit sa
+Maintenant que `child_home` existe, `HomeController` (phase 04) reçoit sa
 troisième redirection :
 
 ```php
-if ($this->isGranted(User::ROLE_CHILD)) { return $this->redirectToRoute('enfant_accueil'); }
+if ($this->isGranted(User::ROLE_CHILD)) { return $this->redirectToRoute('child_home'); }
 ```
 
 ---
 
 ### Concept 5 — Du compte au profil
 
-**Pourquoi ?** Le compte (`User`) sert à se connecter ; le profil (`Enfant`)
+**Pourquoi ?** Le compte (`User`) sert à se connecter ; le profil (`Child`)
 porte le prénom, l'avatar, la limite. Deux objets, deux rôles.
 
 **Comment ça fonctionne ?** La relation `OneToOne` déclarée en phase 02 (et
 remplie à la création de l'enfant, phase 05) se lit dans les deux sens :
 
 ```php
-$enfant = $user->getProfilEnfant();   // du compte vers le profil
-$compte = $enfant->getCompte();       // du profil vers le compte
+$child = $user->getChildProfile();   // from the account to the profile
+$account = $child->getAccount();       // from the profile to the account
 ```
 
 Une petite méthode privée évite de répéter la vérification :
 
 ```php
-private function getEnfant(User $user): Enfant
+private function getChild(User $user): Child
 {
-    $enfant = $user->getProfilEnfant();
+    $child = $user->getChildProfile();
 
-    if (null === $enfant) {
+    if (null === $child) {
         throw $this->createNotFoundException('Aucun profil enfant n\'est rattaché à ce compte.');
     }
 
-    return $enfant;
+    return $child;
 }
 ```
 
@@ -182,21 +182,21 @@ ton, ni les couleurs de fond.
 
 ```text
 base.html.twig                    charte, navigation, flash, pied de page
-    └── enfant/layout.html.twig   fond coloré, menu ludique, avatar
-            └── enfant/accueil.html.twig
+    └── child/layout.html.twig   fond coloré, menu ludique, avatar
+            └── child/home.html.twig
 ```
 
 ```twig
 {% extends 'base.html.twig' %}
 
-{% block body_class %}enfant-body{% endblock %}
+{% block body_class %}child-body{% endblock %}
 {% block logo %}🚀{% endblock %}
 
 {% block menu %}
     {% set route = app.request.attributes.get('_route') %}
     <li class="nav-item">
-        <a class="nav-link {{ route == 'enfant_accueil' ? 'active' }}"
-           href="{{ path('enfant_accueil') }}">🏠 Accueil</a>
+        <a class="nav-link {{ route == 'child_home' ? 'active' }}"
+           href="{{ path('child_home') }}">🏠 Accueil</a>
     </li>
 {% endblock %}
 ```
@@ -227,14 +227,14 @@ Sur la page de connexion enfant, la barre de navigation est **retirée**
 ### La page de connexion enfant, côté contrôleur
 
 ```php
-#[Route('/connexion-enfant', name: 'app_enfant_login', methods: ['GET'])]
-public function loginEnfant(AuthenticationUtils $authenticationUtils): Response
+#[Route('/login/child', name: 'app_child_login', methods: ['GET'])]
+public function childLogin(AuthenticationUtils $authenticationUtils): Response
 {
     if ($this->getUser()) {
         return $this->redirectToRoute('app_home');
     }
 
-    return $this->render('security/login_enfant.html.twig', [
+    return $this->render('security/child_login.html.twig', [
         'last_username' => $authenticationUtils->getLastUsername(),
         'error' => $authenticationUtils->getLastAuthenticationError(),
     ]);
@@ -261,23 +261,23 @@ est faux, ce qui est aussi une bonne pratique de sécurité.
 ### Le changement de mot de passe par l'enfant
 
 ```php
-$form = $this->createForm(MotDePasseType::class);   // réutilisé depuis la phase 05
+$form = $this->createForm(PasswordChangeType::class);   // reused from phase 05
 $form->handleRequest($request);
 
 if ($form->isSubmitted() && $form->isValid()) {
     $user->setPassword($passwordHasher->hashPassword($user, $form->get('plainPassword')->getData()));
-    $entityManager->flush();      // pas de persist() : l'objet est déjà suivi par Doctrine
+    $entityManager->flush();      // no persist(): the object is already tracked by Doctrine
 
     $this->addFlash('success', 'Ton nouveau mot de passe est enregistré. Pense à bien le retenir !');
 
-    return $this->redirectToRoute('enfant_profil');
+    return $this->redirectToRoute('child_profile');
 }
 ```
 
 ### La date du jour en français
 
 ```twig
-<p class="texte-doux">{{ 'now'|format_date('full', locale: 'fr') }}</p>
+<p class="text-soft">{{ 'now'|format_date('full', locale: 'fr') }}</p>
 {# « lundi 28 septembre 2026 » #}
 ```
 
@@ -306,8 +306,8 @@ Deux détails utiles pour le mot de passe :
 
 ### `docker compose exec app php bin/console debug:router`
 
-- **Quand** : après avoir ajouté `/connexion-enfant`, `/enfant`, `/enfant/profil`.
-- **À observer** : `app_enfant_login` doit être en **GET** uniquement.
+- **Quand** : après avoir ajouté `/login/child`, `/child`, `/child/profile`.
+- **À observer** : `app_child_login` doit être en **GET** uniquement.
 
 ### `docker compose exec app php bin/console lint:twig templates`
 
@@ -335,7 +335,7 @@ Deux détails utiles pour le mot de passe :
 | **Security** | `UserLoaderInterface`, `_failure_path`, `#[CurrentUser]` |
 | **Doctrine** | relation `OneToOne` parcourue dans les deux sens |
 | **Twig** | layout par espace, `app.request`, mise en évidence du menu, `format_date` (intl-extra) |
-| **Form** | réutilisation de `MotDePasseType` |
+| **Form** | réutilisation de `PasswordChangeType` |
 
 ---
 
@@ -344,22 +344,22 @@ Deux détails utiles pour le mot de passe :
 ```text
 src/
 ├── Controller/
-│   ├── SecurityController.php        + /connexion-enfant
-│   ├── HomeController.php            + redirection ROLE_CHILD → enfant_accueil
-│   └── Enfant/
-│       └── AccueilController.php     /enfant et /enfant/profil
+│   ├── SecurityController.php        + /login/child
+│   ├── HomeController.php            + redirection ROLE_CHILD → child_home
+│   └── Child/
+│       └── AccueilController.php     /child et /child/profile
 └── Repository/
     └── UserRepository.php            loadUserByIdentifier() : email OU username
 
 templates/
-├── security/login_enfant.html.twig   page de connexion sans navigation
-└── enfant/
+├── security/child_login.html.twig   page de connexion sans navigation
+└── child/
     ├── layout.html.twig              fond coloré, menu ludique
-    ├── accueil.html.twig
-    └── profil.html.twig
+    ├── home.html.twig
+    └── profile.html.twig
 ```
 
-Pourquoi `Controller/Enfant/` : un dossier par espace, comme `Controller/Parent/`.
+Pourquoi `Controller/Child/` : un dossier par espace, comme `Controller/Parent/`.
 Quand le projet grandira (journal en phase 07), le contrôleur du journal se
 rangera naturellement à côté.
 
@@ -368,11 +368,11 @@ rangera naturellement à côté.
 ## 8. Flux de fonctionnement
 
 ```text
-Enfant : ouvre /connexion-enfant
+Child : ouvre /login/child
     ↓
-SecurityController::loginEnfant() → affiche le formulaire
+SecurityController::childLogin() → affiche le formulaire
     ↓
-Enfant : saisit « lea » + mot de passe, POST vers /login
+Child : saisit « lea » + mot de passe, POST vers /login
     ↓
 form_login intercepte
     ↓
@@ -381,12 +381,12 @@ UserRepository::loadUserByIdentifier('lea')
 User trouvé → vérification du mot de passe haché
     ↓  échec                              ↓  succès
 retour vers _failure_path                session ouverte
-(/connexion-enfant)                           ↓
+(/login/child)                           ↓
                                          redirection vers app_home
                                               ↓
                                          HomeController : ROLE_CHILD
                                               ↓
-                                         /enfant
+                                         /child
 ```
 
 ---
@@ -427,23 +427,23 @@ n'existent pas encore.
 
 **Après une erreur, l'enfant atterrit sur la page des parents**
 → `_failure_path` absent, ou renseigné avec un **nom de route**.
-→ Solution : `value="{{ path('app_enfant_login') }}"`.
+→ Solution : `value="{{ path('app_child_login') }}"`.
 
 **« Cannot read property … on null » sur l'accueil**
-→ `getProfilEnfant()` renvoie `null` : le compte n'est rattaché à aucun profil.
+→ `getChildProfile()` renvoie `null` : le compte n'est rattaché à aucun profil.
 → Solution : la méthode privée qui lève une 404 explicite ; en base, vérifiez
-`enfant.compte_id`.
+`child.account_id`.
 
 **Un enfant accède à `/parent`**
 → `access_control` mal ordonné, ou une hiérarchie de rôles a été ajoutée.
 → Rappel : dans ce projet, **aucune** hiérarchie.
 
-**« Unable to find template "enfant/layout.html.twig" »**
+**« Unable to find template "child/layout.html.twig" »**
 → Nom ou emplacement erroné (Twig est sensible à la casse).
 
 **Le lien actif du menu ne se met jamais en évidence**
 → Comparaison avec un nom de route inexact.
-→ Astuce : `route starts with 'enfant_journal'` couvre toutes les étapes d'un
+→ Astuce : `route starts with 'child_journal'` couvre toutes les étapes d'un
 même parcours.
 
 ---
@@ -456,7 +456,7 @@ même parcours.
   qui est faux.
 - **Adaptez le vocabulaire au lecteur** : tutoiement côté enfant, vouvoiement
   côté parent. Le projet impose cette cohérence.
-- **Réutilisez les formulaires** (`MotDePasseType`) plutôt que d'en dupliquer un
+- **Réutilisez les formulaires** (`PasswordChangeType`) plutôt que d'en dupliquer un
   presque identique.
 - **N'ajoutez au menu que des routes existantes** : un lien mort est une erreur
   500 au rendu du gabarit.
@@ -471,7 +471,7 @@ même parcours.
    la connexion doit fonctionner. Retrouvez les deux endroits du code qui le
    permettent.
 2. Saisissez volontairement un mauvais mot de passe : vérifiez que vous revenez
-   bien sur `/connexion-enfant`. Remplacez temporairement `path(...)` par le nom
+   bien sur `/login/child`. Remplacez temporairement `path(...)` par le nom
    de route dans `_failure_path`, réessayez, constatez la différence, puis
    remettez le code correct.
 3. Dans `AccueilController`, affichez temporairement le nom de la classe de
@@ -491,9 +491,9 @@ dump(get_class($user), $user->getUserIdentifier(), $user->getRoles());
 
 ## 13. Scénario de test manuel
 
-1. Se déconnecter, puis ouvrir `/connexion-enfant`.
+1. Se déconnecter, puis ouvrir `/login/child`.
 2. Saisir l'identifiant créé en phase 05 et son mot de passe.
-3. Vérifier l'arrivée sur `/enfant` avec le prénom et l'avatar de l'enfant.
+3. Vérifier l'arrivée sur `/child` avec le prénom et l'avatar de l'enfant.
 4. Ouvrir « Mon profil », changer le mot de passe, se déconnecter et se reconnecter avec le nouveau.
 5. **Résultat attendu** : la connexion par identifiant fonctionne et le nouveau mot de passe est accepté.
 

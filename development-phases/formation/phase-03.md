@@ -36,15 +36,15 @@ version compilée : c'est rapide.
 **Exemple.**
 
 ```php
-// Dans le contrôleur : on prépare des données
+// In the controller: the data is prepared
 return $this->render('home/index.html.twig', [
-    'titre' => 'Mieux vivre avec les écrans',
+    'title' => 'Mieux vivre avec les écrans',
 ]);
 ```
 
 ```twig
-{# Dans le gabarit : on affiche #}
-<h1>{{ titre }}</h1>
+{# In the template: it is displayed #}
+<h1>{{ title }}</h1>
 ```
 
 **Dans ce projet.** Toutes les pages sont des gabarits Twig. Règle du projet :
@@ -58,25 +58,25 @@ Trois balises à retenir :
 
 | Balise | Rôle | Exemple |
 |---|---|---|
-| `{{ … }}` | **affiche** une valeur | `{{ enfant.prenom }}` |
+| `{{ … }}` | **affiche** une valeur | `{{ child.firstName }}` |
 | `{% … %}` | **exécute** une instruction | `{% if … %}`, `{% for … %}` |
 | `{# … #}` | **commente** (invisible dans le HTML) | `{# note pour l'équipe #}` |
 
 ```twig
-{% if contenus is empty %}
+{% if contents is empty %}
     <p>La bibliothèque est vide.</p>
 {% else %}
     <ul>
-        {% for contenu in contenus %}
-            <li>{{ contenu.titre }}</li>
+        {% for content in contents %}
+            <li>{{ content.title }}</li>
         {% endfor %}
     </ul>
 {% endif %}
 ```
 
-`{{ enfant.prenom }}` essaie, dans l'ordre : la propriété publique `prenom`,
-puis `getPrenom()`, puis `isPrenom()`. C'est pour cela qu'on peut écrire
-`{{ enfant.avatarEmoji }}` alors que la méthode s'appelle `getAvatarEmoji()`.
+`{{ child.firstName }}` essaie, dans l'ordre : la propriété publique `firstName`,
+puis `getFirstName()`, puis `isPrenom()`. C'est pour cela qu'on peut écrire
+`{{ child.avatarEmoji }}` alors que la méthode s'appelle `getAvatarEmoji()`.
 
 ---
 
@@ -93,7 +93,7 @@ et remplit ces emplacements.
 **Exemple.**
 
 ```twig
-{# templates/base.html.twig — le parent #}
+{# templates/base.html.twig — the parent #}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -128,12 +128,12 @@ Twig blocks ».
 ```text
 base.html.twig                  navigation, polices, flash, pied de page
     ├── parent/layout.html.twig  menu du parent      (phase 05)
-    ├── enfant/layout.html.twig  menu de l'enfant    (phase 06)
+    ├── child/layout.html.twig  menu de l'enfant    (phase 06)
     └── admin/layout.html.twig   menu de l'admin     (phase 08)
 ```
 
 Les blocs exposés par `base.html.twig` sont fixés dès maintenant : `title`,
-`body_class`, `navbar`, `logo`, `marque_suffixe`, `menu`, `menu_utilisateur`,
+`body_class`, `navbar`, `logo`, `brand_suffix`, `menu`, `user_menu`,
 `body`, `javascripts`.
 
 ---
@@ -151,8 +151,8 @@ c'est une faille XSS.
 **Exemple.**
 
 ```twig
-{{ '<b>gras</b>' }}       {# affiche littéralement <b>gras</b>  #}
-{{ '<b>gras</b>'|raw }}   {# affiche du texte en gras — DANGEREUX #}
+{{ '<b>gras</b>' }}       {# displays <b>gras</b> literally #}
+{{ '<b>gras</b>'|raw }}   {# displays bold text — DANGEROUS #}
 ```
 
 **Dans ce projet.** `|raw` n'est utilisé qu'à deux endroits, toujours derrière
@@ -164,7 +164,7 @@ graphique) — **jamais** une saisie d'utilisateur.
 
 ### Concept 5 — `path()` et `asset()`
 
-**Pourquoi ?** Écrire `/parent/enfants/12/modifier` à la main dans vingt
+**Pourquoi ?** Écrire `/parent/children/12/edit` à la main dans vingt
 gabarits, c'est vingt corrections le jour où l'URL change.
 
 **Comment ça fonctionne ?**
@@ -174,7 +174,7 @@ gabarits, c'est vingt corrections le jour où l'URL change.
 
 ```twig
 <a href="{{ path('app_home') }}">Accueil</a>
-<a href="{{ path('parent_enfant_modifier', {id: enfant.id}) }}">Modifier</a>
+<a href="{{ path('parent_child_edit', {id: child.id}) }}">Modifier</a>
 <link href="{{ asset('css/app.css') }}" rel="stylesheet">
 ```
 
@@ -200,8 +200,8 @@ la palette, les polices, et les composants propres au projet.
     --or: #C99A2E;
 }
 
-.btn-marine { background: var(--marine); color: #fff; border-radius: 999px; }
-.pastille   { border-radius: 999px; padding: .15rem .7rem; font-weight: 700; }
+.btn-navy { background: var(--marine); color: #fff; border-radius: 999px; }
+.chip       { border-radius: 999px; padding: .15rem .7rem; font-weight: 700; }
 ```
 
 ⚠️ **Piège du projet** : ne redéfinissez **jamais** la variable Bootstrap
@@ -219,13 +219,13 @@ se pose sur `body`.
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class HomeController extends AbstractController
-//                   ^^^^^^^^^^^^^^^^^^^^^^^^^ donne accès à render(), redirectToRoute()…
+//                   ^^^^^^^^^^^^^^^^^^^^^^^^^ gives access to render(), redirectToRoute()…
 {
     #[Route('/', name: 'app_home', methods: ['GET'])]
     public function index(): Response
     {
         return $this->render('home/index.html.twig');
-        //                    ^^^ chemin relatif au dossier templates/
+        //                    ^^^ path relative to the templates/ folder
     }
 }
 ```
@@ -241,7 +241,7 @@ l'emballe dans une `Response` avec le bon type de contenu.
         <div class="card h-100">
             <div class="card-body">
                 <h3>Des conseils sur mesure</h3>
-                <p class="texte-doux mb-0">Chaque conseil découle de ce que l'enfant a saisi.</p>
+                <p class="text-soft mb-0">Chaque conseil découle de ce que l'enfant a saisi.</p>
             </div>
         </div>
     </div>
@@ -251,7 +251,7 @@ l'emballe dans une `Response` avec le bon type de contenu.
 - `row` + `col-md-4` : trois colonnes sur écran moyen, empilées sur mobile ;
 - `g-3` : l'espace entre les colonnes ;
 - `h-100` : cartes de même hauteur ;
-- `texte-doux` : classe **maison**, définie dans `app.css`.
+- `text-soft` : classe **maison**, définie dans `app.css`.
 
 Le réflexe : **chercher d'abord une classe Bootstrap**, n'écrire du CSS que si
 elle n'existe pas.
@@ -372,7 +372,7 @@ tous installés en phase 01.
 **Pourquoi cette architecture ?** Les blocs de `base.html.twig` sont définis
 **maintenant** parce que les trois espaces (parent, enfant, admin) s'y
 brancheront sans le modifier : l'espace enfant changera `body_class` et `logo`,
-l'admin changera `marque_suffixe`, chacun remplira `menu`.
+l'admin changera `brand_suffix`, chacun remplira `menu`.
 
 **Ce qui n'est pas encore là** : les boutons « Je suis un parent » et « Je suis
 un enfant » pointent vers `#`, car les pages de connexion arrivent en phase 04
@@ -416,8 +416,8 @@ grille Bootstrap empiler les colonnes.
 - **Un gabarit affiche, il ne décide pas.** Un calcul se fait dans le contrôleur
   ou dans une méthode d'entité.
 - **Bootstrap d'abord**, CSS maison ensuite : moins de code, plus de cohérence.
-- **Nommez les classes maison en français**, comme le reste du projet
-  (`carte-titre`, `texte-doux`, `pastille`).
+- **Nommez les classes maison en anglais**, comme le reste du code
+  (`card-heading`, `text-soft`, `chip`).
 - **Jamais d'URL écrite en dur** : toujours `path('nom_de_route')`.
 - **Testez à 400 px de large** à chaque page : le public visé consulte souvent
   sur téléphone.
@@ -431,7 +431,7 @@ grille Bootstrap empiler les colonnes.
    l'année courante :
 
 ```twig
-<footer class="text-center small py-4 texte-doux">
+<footer class="text-center small py-4 text-soft">
     {% block pied_de_page %}
         Digi-Santé Junior — {{ 'now'|date('Y') }}
     {% endblock %}

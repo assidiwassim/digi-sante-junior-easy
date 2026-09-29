@@ -6,7 +6,7 @@
 
 - **utiliser** les relations et les cascades déclarées en phase 02 pour créer,
   modifier et supprimer un enfant et son compte ;
-- écrire une requête de repository (`findByParent()`, `genererUsername()`) ;
+- écrire une requête de repository (`findByParent()`, `generateUsername()`) ;
 - écrire un **voter** et expliquer en quoi il complète `access_control` ;
 - créer une **extension Twig** pour ajouter un filtre d'affichage ;
 - comprendre pourquoi un `RangeType` a besoin d'un **transformer** ;
@@ -16,8 +16,8 @@
 
 - Phases 01 à 04 terminées : un parent peut s'inscrire et se connecter.
 - Savoir ce qu'est une entité, une relation, une cascade et une contrainte de
-  validation (phase 02) : l'entité `Enfant` existe déjà, relisez
-  `src/Entity/Enfant.php` avant de commencer.
+  validation (phase 02) : l'entité `Child` existe déjà, relisez
+  `src/Entity/Child.php` avant de commencer.
 - Savoir ce qu'est un formulaire Symfony et un champ non mappé (phase 04).
 
 ---
@@ -26,7 +26,7 @@
 
 ### Concept 1 — Se servir des entités de la phase 02
 
-**Pourquoi ?** L'entité `Enfant`, ses relations avec `User`, ses cascades, ses
+**Pourquoi ?** L'entité `Child`, ses relations avec `User`, ses cascades, ses
 constantes et ses contraintes existent **depuis la phase 02**
 ([leçon 02](./phase-02.md)). Cette phase ne touche pas au schéma : elle
 **utilise** ce qui a été déclaré.
@@ -35,14 +35,14 @@ constantes et ses contraintes existent **depuis la phase 02**
 
 | Déclaré en phase 02 | Ce qu'on en fait ici |
 |---|---|
-| `Enfant::parent` (`ManyToOne`, `onDelete: 'CASCADE'`) | `$enfant->setParent($parent)` avant `persist()` |
-| `User::enfants` (`OneToMany`, `cascade: ['remove']`) | lister les enfants, supprimer sans boucle |
-| `Enfant::compte` (`OneToOne` non nullable, `cascade: ['persist', 'remove']`) | un seul `persist()` crée l'enfant **et** son compte ; `remove()` supprime les deux |
-| `Enfant::AVATARS`, `getAvatarEmoji()` | la galerie d'avatars et l'affichage des cartes |
-| `#[Assert\…]` (âge 8-14 ans, limite 15-480 par pas de 15) | les messages d'erreur du formulaire `EnfantType` |
+| `Child::parent` (`ManyToOne`, `onDelete: 'CASCADE'`) | `$child->setParent($parent)` avant `persist()` |
+| `User::children` (`OneToMany`, `cascade: ['remove']`) | lister les enfants, supprimer sans boucle |
+| `Child::compte` (`OneToOne` non nullable, `cascade: ['persist', 'remove']`) | un seul `persist()` crée l'enfant **et** son compte ; `remove()` supprime les deux |
+| `Child::AVATARS`, `getAvatarEmoji()` | la galerie d'avatars et l'affichage des cartes |
+| `#[Assert\…]` (âge 8-14 ans, limite 15-480 par pas de 15) | les messages d'erreur du formulaire `ChildType` |
 
 **Dans ce projet.** L'enfant a **deux** relations vers `User` : son `parent`
-(qui le gère) et son `compte` (avec lequel il se connecte). Si un détail vous
+(qui le gère) et son `account` (avec lequel il se connecte). Si un détail vous
 échappe (côté propriétaire, différence `cascade` / `onDelete`, pourquoi des
 constantes plutôt que des enums), relisez la leçon 02 avant de continuer.
 
@@ -54,7 +54,7 @@ sont configurées, on ne les réimplémente pas en PHP.
 ### Concept 2 — Le voter
 
 **Pourquoi ?** `access_control` protège une **URL**. Mais
-`/parent/enfants/12/modifier` est autorisée à **tous** les parents : il faut
+`/parent/children/12/edit` est autorisée à **tous** les parents : il faut
 vérifier que l'enfant 12 appartient **à celui qui est connecté**. C'est une
 décision sur un **objet**, pas sur une URL.
 
@@ -62,14 +62,14 @@ décision sur un **objet**, pas sur une URL.
 a-t-il le droit de faire CETTE action sur CET objet ? ».
 
 ```php
-class EnfantVoter extends Voter
+class ChildVoter extends Voter
 {
-    public const GERER = 'ENFANT_GERER';
+    public const MANAGE = 'CHILD_MANAGE';
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        // Ce voter ne se prononce que sur cette action et ce type d'objet
-        return self::GERER === $attribute && $subject instanceof Enfant;
+        // This voter only decides on this action and this type of object
+        return self::MANAGE === $attribute && $subject instanceof Child;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token): bool
@@ -84,7 +84,7 @@ class EnfantVoter extends Voter
 Utilisation dans le contrôleur :
 
 ```php
-$this->denyAccessUnlessGranted(EnfantVoter::GERER, $enfant);   // sinon : 403
+$this->denyAccessUnlessGranted(ChildVoter::MANAGE, $child);   // sinon : 403
 ```
 
 **À retenir.** `access_control` = grosse maille (par URL).
@@ -102,7 +102,7 @@ fois.
 Twig.
 
 ```php
-class DureeExtension extends AbstractExtension
+class DurationExtension extends AbstractExtension
 {
     public function getFilters(): array
     {
@@ -112,22 +112,22 @@ class DureeExtension extends AbstractExtension
     public static function formater(?int $minutes): string
     {
         $minutes = max(0, (int) $minutes);
-        $heures = intdiv($minutes, 60);
-        $reste = $minutes % 60;
+        $hours = intdiv($minutes, 60);
+        $rest = $minutes % 60;
 
-        if (0 === $heures) { return $reste.' min'; }
-        if (0 === $reste)  { return $heures.' h'; }
+        if (0 === $hours) { return $rest.' min'; }
+        if (0 === $rest)  { return $hours.' h'; }
 
-        return sprintf('%d h %02d', $heures, $reste);
+        return sprintf('%d h %02d', $hours, $rest);
     }
 }
 ```
 
 ```twig
-{{ enfant.maxMinutesJour|duree }}   {# 90 → « 1 h 30 » #}
+{{ child.dailyLimit|duration }}   {# 90 → « 1 h 30 » #}
 ```
 
-La méthode est `static` : le service `ConseilService` (phase 09) la réutilisera
+La méthode est `static` : le service `AdviceService` (phase 09) la réutilisera
 directement, sans passer par Twig.
 
 ---
@@ -135,15 +135,15 @@ directement, sans passer par Twig.
 ### Concept 4 — Le transformer de données
 
 **Pourquoi ?** Un `<input type="range">` renvoie **toujours** une chaîne
-(`"120"`). La propriété `maxMinutesJour` est un `int`. Sans conversion, le
+(`"120"`). La propriété `dailyLimit` est un `int`. Sans conversion, le
 formulaire échoue avec un message incompréhensible.
 
 **Comment ça fonctionne ?** Un transformer convertit dans les deux sens :
 
 ```php
-$builder->get('maxMinutesJour')->addModelTransformer(new CallbackTransformer(
+$builder->get('dailyLimit')->addModelTransformer(new CallbackTransformer(
     fn (?int $minutes) => (string) $minutes,                        // objet → formulaire
-    fn (?string $valeur) => is_numeric($valeur) ? (int) $valeur : null, // formulaire → objet
+    fn (?string $value) => is_numeric($value) ? (int) $value : null, // formulaire → objet
 ));
 ```
 
@@ -161,15 +161,15 @@ c'est une action destructrice : elle doit être protégée comme les autres.
 dans le contrôleur.
 
 ```twig
-<form method="post" action="{{ path('parent_enfant_supprimer', {id: enfant.id}) }}"
+<form method="post" action="{{ path('parent_child_delete', {id: child.id}) }}"
       onsubmit="return confirm('Supprimer définitivement le profil ?');">
-    <input type="hidden" name="_token" value="{{ csrf_token('supprimer-enfant-' ~ enfant.id) }}">
+    <input type="hidden" name="_token" value="{{ csrf_token('supprimer-enfant-' ~ child.id) }}">
     <button type="submit">🗑️ Supprimer</button>
 </form>
 ```
 
 ```php
-if (!$this->isCsrfTokenValid('supprimer-enfant-'.$enfant->getId(), $request->getPayload()->getString('_token'))) {
+if (!$this->isCsrfTokenValid('supprimer-enfant-'.$child->getId(), $request->getPayload()->getString('_token'))) {
     throw $this->createAccessDeniedException('Jeton CSRF invalide.');
 }
 ```
@@ -187,35 +187,35 @@ sont nécessaires.
 ### Créer un enfant **et** son compte, en une seule opération
 
 ```php
-$compte = new User();
-$compte->setUsername($userRepository->genererUsername($enfant->getPrenom())); // « lea », « lea2 »…
-$compte->setRoles([User::ROLE_CHILD]);
-$compte->setPassword($passwordHasher->hashPassword($compte, $form->get('motDePasse')->getData()));
+$account = new User();
+$account->setUsername($userRepository->generateUsername($child->getFirstName())); // « lea », « lea2 »…
+$account->setRoles([User::ROLE_CHILD]);
+$account->setPassword($passwordHasher->hashPassword($account, $form->get('password')->getData()));
 
-$enfant->setCompte($compte);
+$child->setAccount($account);
 
-$entityManager->persist($enfant);   // le compte suit, grâce à cascade: ['persist']
+$entityManager->persist($child);   // the account follows, thanks to cascade: ['persist']
 $entityManager->flush();
 ```
 
 Un seul `persist()` pour deux objets : c'est la cascade qui s'en charge. C'est
-aussi pour cela que `Enfant::compte` est **non nullable** : un profil sans compte
+aussi pour cela que `Child::compte` est **non nullable** : un profil sans compte
 n'existe pas dans ce projet, donc aucun cas particulier à gérer ensuite.
 
 ### Générer un identifiant libre
 
 ```php
-public function genererUsername(string $prenom): string
+public function generateUsername(string $firstName): string
 {
-    $base = (new AsciiSlugger())->slug($prenom, '')->lower()->toString(); // « Léa » → « lea »
-    $base = substr($base, 0, 40) ?: 'enfant';
+    $base = (new AsciiSlugger())->slug($firstName, '')->lower()->toString(); // "Léa" → "lea"
+    $base = substr($base, 0, 40) ?: 'child';
 
     $username = $base;
-    $numero = 1;
+    $number = 1;
 
     while (null !== $this->findOneBy(['username' => $username])) {
-        ++$numero;
-        $username = $base.$numero;      // lea2, lea3…
+        ++$number;
+        $username = $base.$number;      // lea2, lea3…
     }
 
     return $username;
@@ -229,15 +229,15 @@ enfant de 8 ans doit pouvoir **retenir** son identifiant.
 
 ```php
 $resolver->setDefaults([
-    'data_class' => Enfant::class,
-    'creation' => false,        // option personnalisée
+    'data_class' => Child::class,
+    'creation' => false,        // custom option
 ]);
 ```
 
 ```php
 if ($options['creation']) {
-    // TextType (visible) : le parent relit le mot de passe avant de le noter.
-    $builder->add('motDePasse', TextType::class, ['mapped' => false, /* … */]);
+    // TextType (visible): the parent reads the password again before writing it down.
+    $builder->add('password', TextType::class, ['mapped' => false, /* … */]);
 }
 ```
 
@@ -246,19 +246,19 @@ seul `*Type`, un seul partiel Twig, deux comportements.
 
 ### Le profil du parent, et le piège de l'utilisateur connecté
 
-Le menu de l'espace parent mène à `/parent/profil` (`parent_profil`,
-`Parent\ProfilController`) : deux formulaires sur la même page,
-`ProfilParentType` (email obligatoire, pays, ville) et `MotDePasseType` (un
-champ `plainPassword`, `RepeatedType` non mappé, comme dans `InscriptionType`).
+Le menu de l'espace parent mène à `/parent/profile` (`parent_profile`,
+`Parent\ProfileController`) : deux formulaires sur la même page,
+`ParentProfileType` (email obligatoire, pays, ville) et `PasswordChangeType` (un
+champ `plainPassword`, `RepeatedType` non mappé, comme dans `RegistrationType`).
 
 ```php
-$formProfil = $this->createForm(ProfilParentType::class, $parent);
+$formProfil = $this->createForm(ParentProfileType::class, $parent);
 $formProfil->handleRequest($request);
 
 if ($formProfil->isSubmitted() && !$formProfil->isValid()) {
-    // Le formulaire a déjà modifié l'objet User en mémoire. Or c'est
-    // l'utilisateur connecté : un email vide ou faux le déconnecterait
-    // à la requête suivante. On recharge ses vraies valeurs.
+    // The form has already changed the User object in memory. It is
+    // the logged-in user: an empty or wrong email would log them out
+    // on the next request. So their real values are reloaded.
     $entityManager->refresh($parent);
 }
 ```
@@ -267,13 +267,13 @@ if ($formProfil->isSubmitted() && !$formProfil->isValid()) {
 
 ## 5. Commandes
 
-### `docker compose exec app php bin/console make:voter EnfantVoter`
+### `docker compose exec app php bin/console make:voter ChildVoter`
 
 - **Ce qu'elle fait** : génère le squelette d'un voter avec `supports()` et
-  `voteOnAttribute()`, dans `src/Security/Voter/EnfantVoter.php` (espace de noms
+  `voteOnAttribute()`, dans `src/Security/Voter/ChildVoter.php` (espace de noms
   `App\Security\Voter`). Le squelette propose des attributs d'exemple
   (`POST_EDIT`, `POST_VIEW`) : remplacez-les par la seule constante
-  `GERER = 'ENFANT_GERER'`.
+  `MANAGE = 'CHILD_MANAGE'`.
 - **À observer** : le voter est automatiquement enregistré comme service, sans
   configuration.
 
@@ -299,7 +299,7 @@ if ($formProfil->isSubmitted() && !$formProfil->isValid()) {
 | **Security (Voter)** | autorisation sur un objet précis |
 | **Form** | option personnalisée, champ non mappé, transformer |
 | **Validator** | contraintes de la phase 02 (âge 8-14 ans, limite 15-480 par pas de 15) + mot de passe non mappé |
-| **Twig (extension)** | le filtre `duree` |
+| **Twig (extension)** | le filtre `duration` |
 | **String (Slugger)** | génération de l'identifiant |
 
 ---
@@ -309,30 +309,30 @@ if ($formProfil->isSubmitted() && !$formProfil->isValid()) {
 ```text
 src/
 ├── Controller/Parent/
-│   ├── EnfantController.php      liste, création, modification, suppression
-│   └── ProfilController.php      /parent/profil : informations + mot de passe
+│   ├── ChildController.php      liste, création, modification, suppression
+│   └── ProfileController.php      /parent/profile : informations + mot de passe
 ├── Form/
-│   ├── EnfantType.php            option « creation »
-│   ├── ProfilParentType.php      email, pays, ville
-│   └── MotDePasseType.php        réutilisé par le parent ET l'enfant
+│   ├── ChildType.php            option « creation »
+│   ├── ParentProfileType.php      email, pays, ville
+│   └── PasswordChangeType.php        réutilisé par le parent ET l'enfant
 ├── Repository/                   (fichiers existants depuis la phase 02)
-│   ├── EnfantRepository.php      + findByParent()
-│   └── UserRepository.php        + genererUsername()
+│   ├── ChildRepository.php      + findByParent()
+│   └── UserRepository.php        + generateUsername()
 ├── Security/Voter/
-│   └── EnfantVoter.php           ENFANT_GERER (créé par make:voter)
+│   └── ChildVoter.php           CHILD_MANAGE (créé par make:voter)
 └── Twig/
-    └── DureeExtension.php        filtre « duree »
+    └── DurationExtension.php        filtre « duree »
 
 templates/
 ├── parent/
 │   ├── layout.html.twig          menu de l'espace parent
-│   ├── profil.html.twig          les deux formulaires du profil
-│   └── enfants/                  index, nouveau, modifier, _formulaire
+│   ├── profile.html.twig         les deux formulaires du profil
+│   └── children/                 index, new, edit, _form
 ├── form/avatars.html.twig        galerie d'avatars
-└── _partials/bouton_supprimer.html.twig
+└── _partials/delete_button.html.twig
 ```
 
-Les entités `Enfant` et `User` ne sont **pas modifiées** : elles datent de la
+Les entités `Child` et `User` ne sont **pas modifiées** : elles datent de la
 phase 02.
 
 Pourquoi un dossier `Controller/Parent/` : chaque espace a ses contrôleurs, ce
@@ -345,19 +345,19 @@ qui rend la structure lisible dès le premier coup d'œil.
 ### Création d'un enfant
 
 ```text
-Navigateur : POST /parent/enfants/nouveau
+Navigateur : POST /parent/children/new
     ↓
 access_control : ROLE_PARENT requis
     ↓
-EnfantController::nouveau()
+ChildController::nouveau()
     ↓
-EnfantType : remplit l'objet Enfant + le champ non mappé « motDePasse »
+ChildType : remplit l'objet Child + le champ non mappé « password »
     ↓
 Validator : âge 8-14 ans, limite valide, mot de passe ≥ 6 caractères
     ↓
 Contrôleur : crée le User enfant, génère l'identifiant, hache le mot de passe
     ↓
-persist(enfant) + flush()  →  cascade persist : le compte est créé aussi
+persist(child) + flush()  →  cascade persist : le compte est créé aussi
     ↓
 message flash avec l'identifiant  →  redirection vers la liste
 ```
@@ -365,13 +365,13 @@ message flash avec l'identifiant  →  redirection vers la liste
 ### Modification d'un enfant qui n'est pas le vôtre
 
 ```text
-GET /parent/enfants/42/modifier
+GET /parent/children/42/edit
     ↓
 access_control : ROLE_PARENT → OK (c'est bien un parent)
     ↓
 Doctrine : charge l'enfant 42
     ↓
-EnfantVoter : ce parent est-il celui de l'enfant 42 ?  → NON
+ChildVoter : ce parent est-il celui de l'enfant 42 ?  → NON
     ↓
 403 Accès refusé
 ```
@@ -391,7 +391,7 @@ Validator, Twig (extension).
 
 **Pourquoi cette architecture ?**
 
-- **Compte enfant obligatoire** (`compte` non nullable) : un seul cas à gérer,
+- **Compte enfant obligatoire** (`account` non nullable) : un seul cas à gérer,
   jamais de « profil sans compte ».
 - **Le parent choisit le mot de passe** : jamais de génération automatique. Il
   doit pouvoir le transmettre à son enfant et le redonner en cas d'oubli — il
@@ -407,17 +407,17 @@ Validator, Twig (extension).
 
 **`Column 'parent_id' cannot be null`**
 → Le parent n'a pas été affecté avant l'enregistrement.
-→ Solution : `$enfant->setParent($parent)` avant `persist()`.
+→ Solution : `$child->setParent($parent)` avant `persist()`.
 
 **Erreur « A new entity was found through the relationship… »**
-→ Le compte est créé mais `$enfant->setCompte($compte)` a été oublié, ou la
-cascade `persist` de la phase 02 a été retirée de `Enfant::compte`.
+→ Le compte est créé mais `$child->setAccount($account)` a été oublié, ou la
+cascade `persist` de la phase 02 a été retirée de `Child::compte`.
 → Solution : relier le compte à l'enfant avant `persist()` ; vérifier le
 mapping (voir la [leçon 02](./phase-02.md)).
 
 **Supprimer un enfant laisse son compte en base**
 → La suppression a été faite en SQL, ou `cascade: ['remove']` manque sur
-`Enfant::compte` (phase 02).
+`Child::compte` (phase 02).
 → Vérification : après suppression, cherchez le `username` dans la table `users`.
 
 **Le curseur de limite provoque « Cette valeur n'est pas valide »**
@@ -445,7 +445,7 @@ mais invalide.
 
 ## 11. Bonnes pratiques
 
-- **Une requête = une méthode de repository**, nommée en français
+- **Une requête = une méthode de repository**, nommée en anglais
   (`findByParent()`), jamais de DQL dans un contrôleur.
 - **Laissez les cascades faire le travail** ; n'écrivez pas de boucle de
   suppression.
@@ -466,22 +466,22 @@ mais invalide.
 1. Créez deux enfants prénommés « Léa » : vérifiez que les identifiants générés
    sont `lea` puis `lea2`, et expliquez quelle ligne de code produit ce
    comportement.
-2. Dans phpMyAdmin, ouvrez la table `enfant` : repérez les colonnes `parent_id`
-   et `compte_id`, puis retrouvez les deux comptes correspondants dans `users`.
+2. Dans phpMyAdmin, ouvrez la table `child` : repérez les colonnes `parent_id`
+   et `account_id`, puis retrouvez les deux comptes correspondants dans `users`.
 3. Supprimez un enfant depuis l'interface, puis vérifiez dans `users` que son
    compte a bien disparu. Quelle option de mapping, déclarée en phase 02, l'a
    provoqué ?
 4. Connectez-vous avec un **second** compte parent, puis tentez d'ouvrir
-   `/parent/enfants/1/modifier` (l'enfant du premier parent) : vous devez obtenir
+   `/parent/children/1/edit` (l'enfant du premier parent) : vous devez obtenir
    un 403. Retirez temporairement l'appel au voter, rechargez : la page s'affiche.
    **Remettez l'appel** et expliquez ce que vous venez de démontrer.
-5. Affichez `{{ 150|duree }}` dans un gabarit : vous devez lire « 2 h 30 ».
+5. Affichez `{{ 150|duration }}` dans un gabarit : vous devez lire « 2 h 30 ».
 
 ---
 
 ## 13. Scénario de test manuel
 
-1. Connecté en parent, ouvrir `/parent/enfants` puis « Ajouter un enfant ».
+1. Connecté en parent, ouvrir `/parent/children` puis « Ajouter un enfant ».
 2. Saisir un prénom, un nom, une date de naissance d'un enfant de 10 ans, un avatar, une limite de 1 h 30 et un mot de passe.
 3. Valider et lire le message : il annonce l'identifiant généré (ex. « lea »).
 4. Essayer de créer un deuxième enfant avec une date de naissance d'un enfant de 4 ans.

@@ -18,10 +18,17 @@ Déjà en place : comptes et rôles, espace parent (profils enfants avec une lim
 quotidienne d'écran), espace enfant (accueil, profil, **journal quotidien en 2
 étapes** : temps d'écran + douleurs sur un schéma du corps), et une
 **bibliothèque de contenus** administrable dont chaque contenu peut porter une
-règle déclencheuse (`20-20-20`, `etirement_cervical`, `yoga_yeux`).
+règle déclencheuse (`20-20-20`, `neck_stretching`, `eye_yoga`).
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, MySQL 8, Docker. Code
-simple, en français, sans sur-ingénierie.
+simple, sans sur-ingénierie.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -31,9 +38,9 @@ jamais culpabiliser.
 
 ## Avant de coder
 
-1. Lis `src/Entity/JournalEntree.php`, `src/Entity/DouleurZone.php`,
-   `src/Entity/ContenuBienEtre.php`, `src/Controller/Enfant/JournalController.php`
-   et `src/Twig/DureeExtension.php`.
+1. Lis `src/Entity/JournalEntry.php`, `src/Entity/PainZone.php`,
+   `src/Entity/WellnessContent.php`, `src/Controller/Child/JournalController.php`
+   et `src/Twig/DurationExtension.php`.
 2. Repère l'écran de fin provisoire créé en phase 07 : tu vas le compléter, pas
    le réécrire entièrement.
 3. Explique-moi pourquoi ce code mérite un **service** avant de le créer.
@@ -56,38 +63,38 @@ où aucune règle ne se déclenche.
 
 ## À implémenter
 
-### 1. Le service `ConseilService`
+### 1. Le service `AdviceService`
 
 Une seule classe dans `src/Service/`, avec une méthode publique :
 
 ```php
-public function getConseils(JournalEntree $journal): array
+public function getAdvice(JournalEntry $journal): array
 ```
 
 Elle renvoie une **liste de tableaux simples** — surtout pas de DTO, pas
 d'interface, pas de classe de valeur :
 
 ```php
-['titre' => …, 'message' => …, 'emoji' => …, 'couleur' => 'orange'|'vert', 'contenu' => ?ContenuBienEtre]
+['title' => …, 'message' => …, 'emoji' => …, 'color' => 'orange'|'green', 'content' => ?WellnessContent]
 ```
 
 **Les règles**, dans cet ordre :
 
-| # | Condition | `titre` | `message` (exact) | `emoji` | Contenu associé |
+| # | Condition | `title` | `message` (exact) | `emoji` | Contenu associé |
 |---|---|---|---|---|---|
 | 1 | temps d'écran total **≥ 2 h** (et limite non dépassée) | « Repose tes yeux avec le 20-20-20 » | « Tu as passé [total] devant un écran. Toutes les 20 minutes, regarde quelque chose à 20 pieds (environ 6 mètres) pendant 20 secondes. » | 👁️ | déclencheur `20-20-20` |
 | 2 | temps d'écran total **> limite du parent** | « Tu as dépassé ta limite d'écran » | « Aujourd'hui : [total] d'écran pour une limite de [limite]. Ce n'est pas grave, mais demain essaie de faire une pause plus tôt ! 💪 » | 📵 | déclencheur `20-20-20` |
-| 3 | douleur au **cou** ou aux **épaules** d'intensité **≥ 3** | « Détends ton cou et tes épaules » | « Tu as signalé une douleur au niveau du haut du corps. Voici une vidéo d'étirements tout doux à faire assis ou debout. » | 🧘 | `etirement_cervical` |
-| 4 | douleur aux **yeux**, quelle que soit l'intensité | « Un peu de yoga des yeux » | « Tes yeux sont fatigués. Fais-les bouger doucement de haut en bas, de gauche à droite, puis frotte tes mains et pose-les sur tes paupières fermées. » | 👀 | `yoga_yeux` |
+| 3 | douleur au **cou** ou aux **épaules** d'intensité **≥ 3** | « Détends ton cou et tes épaules » | « Tu as signalé une douleur au niveau du haut du corps. Voici une vidéo d'étirements tout doux à faire assis ou debout. » | 🧘 | `neck_stretching` |
+| 4 | douleur aux **yeux**, quelle que soit l'intensité | « Un peu de yoga des yeux » | « Tes yeux sont fatigués. Fais-les bouger doucement de haut en bas, de gauche à droite, puis frotte tes mains et pose-les sur tes paupières fermées. » | 👀 | `eye_yoga` |
 | 5 | aucune règle déclenchée | « Super journée ! » | « Tes écrans sont bien maîtrisés et ton corps va bien. Continue comme ça ! 🌈 » | 🎉 | aucun (`null`) |
 
-Couleur : `orange` pour les règles 1 à 4, `vert` pour la règle 5.
+Couleur : `orange` pour les règles 1 à 4, `green` pour la règle 5.
 
 - Les règles 1 et 2 sont **exclusives** : un seul conseil sur les écrans, jamais
   deux ; la règle 2 est prioritaire.
 - Les règles 3 et 4 peuvent s'ajouter au conseil sur les écrans.
 - Le seuil de 2 h est celui où la jauge passe à l'orange
-  (`JournalEntree::niveauPourMinutes()`) : les deux doivent rester **cohérents**,
+  (`JournalEntry::levelForMinutes()`) : les deux doivent rester **cohérents**,
   d'où le `≥`.
 - Les seuils (120 minutes, intensité 3) sont des **constantes privées** de la
   classe, commentées.
@@ -96,7 +103,7 @@ Couleur : `orange` pour les règles 1 à 4, `vert` pour la règle 5.
 
 ### 2. Le texte des exercices vient de la base
 
-`ContenuBienEtreRepository::findPremierPourDeclencheur(string $declencheur)` :
+`WellnessContentRepository::findFirstForTrigger(string $triggerRule)` :
 renvoie le **premier** contenu (par id) rattaché à cette règle, ou `null`.
 
 Ainsi l'administrateur peut modifier le texte d'un exercice sans toucher au
@@ -105,7 +112,7 @@ associé — jamais d'erreur.
 
 ### 3. L'écran de conseils
 
-Compléter `/enfant/journal/conseils` :
+Compléter `/child/journal/advice` :
 
 - félicitations et récapitulatif : date du journal, temps d'écran total,
   pastilles des douleurs signalées (zone + intensité sur 5) ou message
@@ -117,11 +124,11 @@ Compléter `/enfant/journal/conseils` :
 - sans journal du jour, rediriger vers le formulaire.
 
 Sur l'accueil enfant, **ajoute**, quand le journal est rempli, un bouton
-« 💡 Revoir mes conseils » vers `enfant_journal_conseils`.
+« 💡 Revoir mes conseils » vers `child_journal_advice`.
 
 ## Contraintes techniques et architecturales
 
-- **Un seul service métier** dans ce projet : `ConseilService`. On le crée
+- **Un seul service métier** dans ce projet : `AdviceService`. On le crée
   uniquement parce que le code sera partagé par l'espace enfant **et** par le
   tableau de bord parent (phase 10).
 - Injection par le constructeur pour le service, en argument de l'action pour
@@ -144,7 +151,7 @@ docker compose exec app php bin/console lint:container
 Pour rejouer un journal pendant les essais :
 
 ```bash
-docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"
+docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entry WHERE date = CURDATE()"
 ```
 
 ## Ce qui n'est PAS dans cette phase

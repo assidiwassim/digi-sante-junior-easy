@@ -33,7 +33,7 @@ Pour un volume modeste, une recherche textuelle suffit :
 ```php
 public function findParents(): array
 {
-    // Les rôles sont enregistrés en JSON, par exemple ["ROLE_PARENT"].
+    // Roles are stored as JSON, for example ["ROLE_PARENT"].
     return $this->createQueryBuilder('u')
         ->where('u.roles LIKE :role')
         ->setParameter('role', '%"'.User::ROLE_PARENT.'"%')
@@ -68,12 +68,12 @@ aucun sens.
 ```php
 public function voir(User $parent): Response
 {
-    // L'id peut désigner n'importe quel compte : on n'affiche que les parents.
+    // The id can point to any account: only parents are shown.
     if (!$parent->isParent()) {
         throw $this->createNotFoundException('Ce compte n\'est pas un compte parent.');
     }
 
-    return $this->render('admin/parents/voir.html.twig', ['parent' => $parent]);
+    return $this->render('admin/parents/show.html.twig', ['parent' => $parent]);
 }
 ```
 
@@ -103,10 +103,10 @@ bug esthétique.
 **Comment ça fonctionne ?** On lit le mapping, et surtout **on vérifie** :
 
 ```sql
--- après avoir supprimé le parent d'identifiant 5
-SELECT COUNT(*) FROM enfant WHERE parent_id = 5;
-SELECT COUNT(*) FROM users WHERE username = 'lea2';   -- l'identifiant noté avant la suppression
-SELECT COUNT(*) FROM journal_entree je LEFT JOIN enfant e ON e.id = je.enfant_id WHERE e.id IS NULL;
+-- after deleting the parent with id 5
+SELECT COUNT(*) FROM child WHERE parent_id = 5;
+SELECT COUNT(*) FROM users WHERE username = 'lea2';   -- the username noted before the deletion
+SELECT COUNT(*) FROM journal_entry je LEFT JOIN child e ON e.id = je.child_id WHERE e.id IS NULL;
 ```
 
 La troisième requête cherche les **orphelins** : des journaux dont l'enfant
@@ -135,14 +135,14 @@ On les a déclarés en phase 02 ; c'est ici qu'on les départage pour de bon.
 
 **Dans ce projet, on utilise les deux**, sur toute la chaîne :
 
-- **`cascade: ['remove']` côté Doctrine** : `User` → enfants, `Enfant` →
-  compte, `Enfant` → `journalEntrees`, `JournalEntree` → douleurs. C'est lui qui
+- **`cascade: ['remove']` côté Doctrine** : `User` → enfants, `Child` →
+  compte, `Child` → `journalEntries`, `JournalEntry` → douleurs. C'est lui qui
   agit quand on appelle `$entityManager->remove($parent)`. Il est
   indispensable pour le `OneToOne` enfant → compte : la clé étrangère est portée
   par l'enfant, donc MySQL seul ne supprimerait jamais le compte.
 - **`onDelete: 'CASCADE'` sur les clés étrangères** : un **filet de sécurité**
   si une ligne est supprimée hors Doctrine (requête SQL, phpMyAdmin), comme le
-  `DELETE FROM journal_entree` de la phase 07 qui emporte les douleurs.
+  `DELETE FROM journal_entry` de la phase 07 qui emporte les douleurs.
 
 Utiliser les deux est cohérent, à condition de savoir **pourquoi** à chaque fois.
 
@@ -162,14 +162,14 @@ projet, pas un oubli.
 **Comment ça fonctionne ?** Les lignes ne sont ni des liens, ni des boutons.
 
 ```twig
-{# Les profils enfants sont gérés par leur parent : ici, simple consultation. #}
+{# Child profiles are managed by their parent: read-only here. #}
 <div class="list-group-item d-flex align-items-center gap-3">
-    <span class="avatar-bulle petit">{{ enfant.avatarEmoji }}</span>
+    <span class="avatar-bubble petit">{{ child.avatarEmoji }}</span>
     <span class="flex-fill">
-        <strong>{{ enfant.nomComplet }}</strong>
-        <span class="d-block small texte-doux">{{ enfant.age }} ans · {{ enfant.compte.username }}</span>
+        <strong>{{ child.fullName }}</strong>
+        <span class="d-block small text-soft">{{ child.age }} ans · {{ child.account.username }}</span>
     </span>
-    <span class="pastille">⏱️ {{ enfant.maxMinutesJour|duree }}</span>
+    <span class="chip">⏱️ {{ child.dailyLimit|duration }}</span>
 </div>
 ```
 
@@ -190,20 +190,20 @@ doit **savoir** ce qu'il vient de faire.
 **Comment ça fonctionne ?** On compte **avant**, on informe **après** :
 
 ```php
-$nombreEnfants = $parent->getEnfants()->count();
+$numberOfChildren = $parent->getChildren()->count();
 
 $entityManager->remove($parent);
 $entityManager->flush();
 
 $this->addFlash('success', sprintf(
-    'Le compte %s a été supprimé, avec %d profil(s) enfant.',
+    'Le compte %s a été supprimé, avec %d profil(s) child.',
     $parent->getEmail(),
-    $nombreEnfants,
+    $numberOfChildren,
 ));
 ```
 
 Pourquoi compter **avant** ? Après `flush()`, Doctrine ne vide pas la collection
-`enfants` en mémoire : le compte serait encore juste. Mais l'objet `$parent` ne
+`children` en mémoire : le compte serait encore juste. Mais l'objet `$parent` ne
 représente plus rien en base ; compter avant la suppression est simplement plus
 clair à lire, et ne dépend d'aucun détail interne de Doctrine.
 
@@ -230,7 +230,7 @@ Trois lignes. Toute l'intelligence est dans le repository : c'est exactement ce
 que la convention du projet demande d'un contrôleur.
 
 ```twig
-<td>{{ [parent.ville, parent.pays]|filter(v => v)|join(', ')|default('—') }}</td>
+<td>{{ [parent.city, parent.country]|filter(v => v)|join(', ')|default('—') }}</td>
 ```
 
 Cette ligne Twig mérite une lecture : on met les deux valeurs dans un tableau, on
@@ -241,7 +241,7 @@ place est bien dans le gabarit.
 ### La suppression, action complète
 
 ```php
-#[Route('/{id}/supprimer', name: 'admin_parent_supprimer', requirements: ['id' => '\d+'], methods: ['POST'])]
+#[Route('/{id}/delete', name: 'admin_parent_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
 public function supprimer(User $parent, Request $request, EntityManagerInterface $entityManager): Response
 {
     if (!$parent->isParent()) {
@@ -252,12 +252,12 @@ public function supprimer(User $parent, Request $request, EntityManagerInterface
         throw $this->createAccessDeniedException('Jeton CSRF invalide.');
     }
 
-    $nombreEnfants = $parent->getEnfants()->count();
+    $numberOfChildren = $parent->getChildren()->count();
 
-    $entityManager->remove($parent);   // les cascades font le reste
+    $entityManager->remove($parent);   // the cascades do the rest
     $entityManager->flush();
 
-    $this->addFlash('success', sprintf('Le compte %s a été supprimé, avec %d profil(s) enfant.', $parent->getEmail(), $nombreEnfants));
+    $this->addFlash('success', sprintf('Le compte %s a été supprimé, avec %d profil(s) child.', $parent->getEmail(), $numberOfChildren));
 
     return $this->redirectToRoute('admin_parents');
 }
@@ -281,7 +281,7 @@ Notez aussi l'ordre des vérifications : d'abord « est-ce bien un parent »
 - **À observer** : la forme exacte (`["ROLE_PARENT"]`) — c'est elle que votre
   `LIKE` doit reconnaître.
 
-### `docker compose exec app php bin/console dbal:run-sql "SELECT COUNT(*) FROM journal_entree je LEFT JOIN enfant e ON e.id = je.enfant_id WHERE e.id IS NULL"`
+### `docker compose exec app php bin/console dbal:run-sql "SELECT COUNT(*) FROM journal_entry je LEFT JOIN child e ON e.id = je.child_id WHERE e.id IS NULL"`
 
 - **Ce qu'elle fait** : compte les journaux orphelins.
 - **Quand** : après chaque test de suppression.
@@ -318,7 +318,7 @@ Notez aussi l'ordre des vérifications : d'abord « est-ce bien un parent »
 ```text
 src/
 ├── Controller/Admin/
-│   ├── ContenuController.php       (phase 08)
+│   ├── ContentController.php       (phase 08)
 │   └── ParentController.php        liste, fiche, suppression
 └── Repository/
     └── UserRepository.php          + findParents()
@@ -327,7 +327,7 @@ templates/admin/
 ├── layout.html.twig                + entrée de menu « Parents »
 └── parents/
     ├── index.html.twig             tableau des comptes
-    └── voir.html.twig              fiche + enfants en lecture seule
+    └── show.html.twig              fiche + enfants en lecture seule
 ```
 
 L'espace admin ne contient que **deux** sections : Contenus et Parents. Il n'y a
@@ -342,7 +342,7 @@ sensibles, moins de code à maintenir et à auditer.
 ## 8. Flux de fonctionnement
 
 ```text
-Admin : POST /admin/parents/5/supprimer (avec jeton CSRF)
+Admin : POST /admin/parents/5/delete (avec jeton CSRF)
     ↓
 access_control : ROLE_ADMIN
     ↓
@@ -355,7 +355,7 @@ $entityManager->remove($parent) + flush()
     ↓
 Doctrine : cascade remove sur les enfants
     ↓          puis sur le compte, les journaux et les douleurs de chaque enfant
-MySQL : ON DELETE CASCADE sur enfant, journal_entree et douleur_zone
+MySQL : ON DELETE CASCADE sur child, journal_entry et pain_zone
     ↓          (filet de sécurité si une ligne est supprimée hors Doctrine)
     ↓
 flash « … avec 2 profil(s) enfant » → redirection vers la liste
@@ -400,7 +400,7 @@ autre administrateur (cela se fait en base ou en fixtures).
 → `'DESC'` passé en chaîne.
 → Solution : `\SortDirection::Descending`.
 
-**Après suppression, des lignes subsistent dans `journal_entree`**
+**Après suppression, des lignes subsistent dans `journal_entry`**
 → Une cascade manque dans la chaîne.
 → Diagnostic : la requête d'orphelins de la section Commandes.
 
@@ -411,7 +411,7 @@ autre administrateur (cela se fait en base ou en fixtures).
 **Le message annonce « 0 profil(s) enfant »**
 → Ce n'est pas l'ordre du comptage (après `flush()`, la collection en mémoire
 est encore remplie) : le parent n'avait vraiment aucun enfant, ou la relation
-`enfants` est mal mappée (`mappedBy` incorrect).
+`children` est mal mappée (`mappedBy` incorrect).
 
 **La fiche parent affiche un enfant cliquable qui mène à une 404**
 → Un lien pointe vers une route supprimée.
@@ -443,7 +443,7 @@ est encore remplie) : le parent n'avait vraiment aucun enfant, ou la relation
 
 1. Créez un compte parent de test, ajoutez-lui un enfant, faites remplir un
    journal avec une douleur. Notez les identifiants concernés dans les quatre
-   tables (`users`, `enfant`, `journal_entree`, `douleur_zone`).
+   tables (`users`, `child`, `journal_entry`, `pain_zone`).
 2. Supprimez le compte depuis l'administration, puis vérifiez les quatre tables :
    plus aucune ligne ne doit subsister. Lancez aussi la requête d'orphelins.
 3. Retirez temporairement `cascade: ['remove']` de la relation enfant → compte,
@@ -459,10 +459,10 @@ est encore remplie) : le parent n'avait vraiment aucun enfant, ou la relation
 
 ## 13. Scénario de test manuel
 
-1. Créer un compte parent de test via `/inscription`, s'y connecter et lui ajouter un enfant, puis remplir un journal pour cet enfant.
+1. Créer un compte parent de test via `/register`, s'y connecter et lui ajouter un enfant, puis remplir un journal pour cet enfant.
 2. Se connecter en administrateur, ouvrir `/admin/parents` et vérifier que le compte de test apparaît avec « 1 » enfant.
 3. Ouvrir sa fiche : l'enfant doit être listé, sans lien ni bouton d'action.
-4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `enfant`, `journal_entree` et `douleur_zone`.
+4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `child`, `journal_entry` et `pain_zone`.
 5. **Résultat attendu** : le message indique le nombre de profils enfants supprimés, et plus aucune ligne liée à ce parent ne subsiste dans les quatre tables.
 
 ---

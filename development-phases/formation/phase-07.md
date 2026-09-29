@@ -18,10 +18,10 @@
 ## 2. Prérequis
 
 - Phases 01 à 06 terminées : l'enfant se connecte et accède à son espace.
-- Connaître les entités `JournalEntree` et `DouleurZone`, leurs constantes
-  (`ECRANS`, `ZONES`), leurs cascades et l'index unique `(enfant_id, date)` :
+- Connaître les entités `JournalEntry` et `PainZone`, leurs constantes
+  (`SCREENS`, `ZONES`), leurs cascades et l'index unique `(child_id, date)` :
   tout cela existe **depuis la phase 02** ([leçon 02](./phase-02.md)). Relisez
-  `src/Entity/JournalEntree.php` et `src/Entity/DouleurZone.php` avant de
+  `src/Entity/JournalEntry.php` et `src/Entity/PainZone.php` avant de
   commencer : cette phase ne modifie aucune entité.
 - Bases de JavaScript : sélectionner un élément, écouter un événement.
 
@@ -41,9 +41,9 @@ au navigateur un cookie contenant seulement un **identifiant de session**.
 ```php
 $session = $request->getSession();
 
-$session->set('journal_ecrans', $form->getData());   // écrire
-$ecrans = $session->get('journal_ecrans');           // lire
-$session->remove('journal_ecrans');                  // effacer
+$session->set('journal_screens', $form->getData());   // write
+$screens = $session->get('journal_screens');           // lire
+$session->remove('journal_screens');                  // effacer
 ```
 
 **Dans ce projet.** L'étape 1 range les minutes d'écran en session ; l'étape 2
@@ -59,19 +59,19 @@ comprendre qu'une entité détachée à moitié enregistrée.
 ### Concept 2 — Un formulaire sans entité
 
 **Pourquoi ?** Le formulaire de l'étape 1 ne correspond à **aucun** objet à
-enregistrer : le `JournalEntree` n'existera qu'à la fin de l'étape 2.
+enregistrer : le `JournalEntry` n'existera qu'à la fin de l'étape 2.
 
 **Comment ça fonctionne ?** Un `*Type` sans `data_class` renvoie un simple
 tableau associatif.
 
 ```php
-class JournalEcransType extends AbstractType
+class JournalScreensType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        foreach (JournalEntree::ECRANS as $champ => $libelle) {
-            $builder->add($champ, RangeType::class, [
-                'label' => $libelle,
+        foreach (JournalEntry::SCREENS as $field => $label) {
+            $builder->add($field, RangeType::class, [
+                'label' => $label,
                 'attr' => ['min' => 0, 'max' => 360, 'step' => 15],
                 'constraints' => [new Assert\Range(min: 0, max: 360, /* … */)],
             ]);
@@ -80,9 +80,9 @@ class JournalEcransType extends AbstractType
 }
 ```
 
-`$form->getData()` renvoie alors `['ecranTv' => '30', 'ecranOrdinateur' => '0', …]`.
+`$form->getData()` renvoie alors `['screenTv' => '30', 'screenComputer' => '0', …]`.
 
-Remarquez la boucle sur la constante `JournalEntree::ECRANS` : ajouter un type
+Remarquez la boucle sur la constante `JournalEntry::SCREENS` : ajouter un type
 d'écran se fera **à un seul endroit**, dans l'entité.
 
 ---
@@ -99,7 +99,7 @@ avec 18 h d'écran déjà déclarées.
 public function configureOptions(OptionsResolver $resolver): void
 {
     $resolver->setDefaults([
-        'data' => array_fill_keys(array_keys(JournalEntree::ECRANS), 0),
+        'data' => array_fill_keys(array_keys(JournalEntry::SCREENS), 0),
     ]);
 }
 ```
@@ -127,16 +127,16 @@ le **formulaire entier**.
 public const TOTAL_MAX = 960;   // 16 h
 
 $resolver->setDefaults([
-    'constraints' => [new Assert\Callback([self::class, 'verifierTotal'])],
+    'constraints' => [new Assert\Callback([self::class, 'validateTotal'])],
 ]);
 
-public static function verifierTotal(?array $minutes, ExecutionContextInterface $context): void
+public static function validateTotal(?array $minutes, ExecutionContextInterface $context): void
 {
     $total = array_sum(array_map('intval', $minutes ?? []));
 
     if ($total > self::TOTAL_MAX) {
         $context->buildViolation('En tout, cela fait {{ total }} d\'écran : c\'est impossible en une journée.')
-            ->setParameter('{{ total }}', DureeExtension::formater($total))
+            ->setParameter('{{ total }}', DurationExtension::formater($total))
             ->addViolation();
     }
 }
@@ -159,12 +159,12 @@ deux.
 phase 02 sur l'entité (rappel) :
 
 ```php
-#[ORM\UniqueConstraint(name: 'journal_unique_par_jour', columns: ['enfant_id', 'date'])]
-class JournalEntree
+#[ORM\UniqueConstraint(name: 'journal_unique_par_jour', columns: ['child_id', 'date'])]
+class JournalEntry
 ```
 
 MySQL refuse donc déjà physiquement le doublon. Ce qu'on ajoute dans cette
-phase, c'est la vérification côté contrôleur (`findAujourdhui()`), qui redirige
+phase, c'est la vérification côté contrôleur (`findToday()`), qui redirige
 proprement : le confort côté PHP, la garantie côté base.
 
 ---
@@ -179,8 +179,8 @@ MySQL le 16 (conteneurs en UTC), les journaux se dédoublent autour de minuit.
 `docker/php.ini` pour PHP.
 
 ```php
-new \DateTimeImmutable('today')     // PHP : aujourd'hui à minuit, heure de Paris
-CURDATE()                           // MySQL : la même date
+new \DateTimeImmutable('today')     // PHP: today at midnight, Paris time
+CURDATE()                           // MySQL: the same date
 ```
 
 C'est un **piège connu** du projet, documenté dans `CLAUDE.md`.
@@ -197,18 +197,18 @@ caché**, en JSON. Le formulaire Symfony transporte ce champ, avec la protection
 CSRF qui va avec.
 
 ```php
-class JournalDouleursType extends AbstractType
+class JournalPainsType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $builder->add('douleurs', HiddenType::class, ['required' => false]);
+        $builder->add('pains', HiddenType::class, ['required' => false]);
     }
 }
 ```
 
 ```js
-const douleurs = {};                       // { "cou": 3, "yeux": 2 }
-champCache.value = JSON.stringify(douleurs);
+const pains = {};                       // { "neck": 3, "eyes": 2 }
+hiddenField.value = JSON.stringify(pains);
 ```
 
 Et dans l'autre sens, du PHP vers le JS :
@@ -218,7 +218,7 @@ const zones = {{ zones|json_encode|raw }};
 ```
 
 ⚠️ `|raw` est acceptable **ici** parce que `zones` est une **constante PHP**
-(`DouleurZone::ZONES`), pas une saisie d'utilisateur. C'est la règle du projet.
+(`PainZone::ZONES`), pas une saisie d'utilisateur. C'est la règle du projet.
 
 ---
 
@@ -231,15 +231,15 @@ n'importe quoi.
 **Comment ça fonctionne ?** Le contrôleur **revérifie chaque valeur** :
 
 ```php
-$douleurs = json_decode((string) $form->get('douleurs')->getData(), true);
+$pains = json_decode((string) $form->get('pains')->getData(), true);
 
-if (\is_array($douleurs)) {
-    foreach ($douleurs as $zone => $intensite) {
-        $zoneConnue = isset(DouleurZone::ZONES[$zone]);
-        $intensiteValide = \is_int($intensite) && $intensite >= 1 && $intensite <= 5;
+if (\is_array($pains)) {
+    foreach ($pains as $zone => $intensity) {
+        $knownZone = isset(PainZone::ZONES[$zone]);
+        $validIntensity = \is_int($intensity) && $intensity >= 1 && $intensity <= 5;
 
-        if ($zoneConnue && $intensiteValide) {
-            $journal->addDouleur(new DouleurZone($zone, $intensite));
+        if ($knownZone && $validIntensity) {
+            $journal->addPain(new PainZone($zone, $intensity));
         }
     }
 }
@@ -261,8 +261,8 @@ piégée devient du code exécuté.
 **Comment ça fonctionne ?**
 
 ```js
-element.textContent = zones[zone].label;   // ✅ texte, jamais interprété
-element.innerHTML   = zones[zone].label;   // ❌ à proscrire pour une donnée
+element.textContent = zones[zone].label;   // ✅ text, never interpreted
+element.innerHTML   = zones[zone].label;   // ❌ never for data
 ```
 
 Règle du projet : **insérer du texte avec `textContent`, jamais une donnée dans
@@ -277,15 +277,15 @@ Règle du projet : **insérer du texte avec `textContent`, jamais une donnée da
 Chaque action commence par vérifier où en est l'enfant :
 
 ```php
-// Étapes 1 et 2 : le journal du jour existe déjà ?
-if ($journalRepository->findAujourdhui($enfant)) {
-    return $this->redirectToRoute('enfant_journal_conseils');
+// Steps 1 and 2: does today's journal already exist?
+if ($journalRepository->findToday($child)) {
+    return $this->redirectToRoute('child_journal_advice');
 }
 
-// Étape 2 : l'étape 1 a-t-elle été faite ?
-$ecrans = $session->get(self::SESSION_ECRANS);
-if (null === $ecrans) {
-    return $this->redirectToRoute('enfant_journal_etape1');
+// Step 2: has step 1 been done?
+$screens = $session->get(self::SESSION_SCREENS);
+if (null === $screens) {
+    return $this->redirectToRoute('child_journal_step1');
 }
 ```
 
@@ -296,17 +296,17 @@ parcours **robuste**.
 ### L'enregistrement final
 
 ```php
-$journal = new JournalEntree();
-$journal->setEnfant($enfant);
-$journal->setEcranTv((int) $ecrans['ecranTv']);
-// … les six écrans
+$journal = new JournalEntry();
+$journal->setChild($child);
+$journal->setScreenTv((int) $screens['screenTv']);
+// … the six screens
 
-// puis les douleurs revalidées (voir plus haut)
+// then the pains, checked again (see above)
 
-$entityManager->persist($journal);   // les douleurs suivent : cascade persist
+$entityManager->persist($journal);   // the pains follow: cascade persist
 $entityManager->flush();
 
-$session->remove(self::SESSION_ECRANS);   // le parcours est terminé
+$session->remove(self::SESSION_SCREENS);   // the journey is over
 ```
 
 Un seul `persist()`, un seul `flush()` : tout part ensemble. Si une erreur
@@ -315,21 +315,21 @@ survenait, rien ne serait à moitié enregistré.
 ### Le SVG cliquable
 
 ```twig
-<svg class="schema-corporel" viewBox="0 0 260 460" role="img"
+<svg class="body-map" viewBox="0 0 260 460" role="img"
      aria-label="Schéma du corps : clique sur la zone où tu as mal">
-    <rect data-zone="cou" x="114" y="98" width="32" height="30" rx="12"/>
-    <ellipse data-zone="yeux" cx="115" cy="60" rx="11" ry="8"/>
+    <rect data-zone="neck" x="114" y="98" width="32" height="30" rx="12"/>
+    <ellipse data-zone="eyes" cx="115" cy="60" rx="11" ry="8"/>
 </svg>
 ```
 
-L'attribut `data-zone` porte **exactement** la clé de `DouleurZone::ZONES`. Côté
+L'attribut `data-zone` porte **exactement** la clé de `PainZone::ZONES`. Côté
 JavaScript :
 
 ```js
-document.querySelectorAll('.schema-corporel [data-zone]').forEach(function (forme) {
-    forme.addEventListener('click', function () {
-        zoneEnCours = forme.dataset.zone;   // « cou »
-        modale.show();
+document.querySelectorAll('.body-map [data-zone]').forEach(function (shape) {
+    shape.addEventListener('click', function () {
+        currentZone = shape.dataset.zone;   // "neck"
+        modal.show();
     });
 });
 ```
@@ -341,13 +341,13 @@ d'écran.
 
 ## 5. Commandes
 
-### `docker compose exec app php bin/console dbal:run-sql "SHOW INDEX FROM journal_entree"`
+### `docker compose exec app php bin/console dbal:run-sql "SHOW INDEX FROM journal_entry"`
 
 - **Ce qu'elle fait** : liste les index de la table créée en phase 02.
-- **À observer** : l'index `journal_unique_par_jour` sur `enfant_id` et `date`.
+- **À observer** : l'index `journal_unique_par_jour` sur `child_id` et `date`.
   Aucune migration n'est attendue dans cette phase : les entités ne changent pas.
 
-### `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"`
+### `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entry WHERE date = CURDATE()"`
 
 - **Ce qu'elle fait** : supprime les journaux du jour pour pouvoir recommencer.
 - **Quand** : indispensable pendant les essais, puisqu'un journal par jour est
@@ -355,7 +355,7 @@ d'écran.
 - **À observer** : le nombre de lignes affectées ; les douleurs partent avec,
   grâce au `ON DELETE CASCADE`.
 
-### `docker compose exec app php bin/console dbal:run-sql "SELECT date, ecran_tv, ecran_smartphone FROM journal_entree ORDER BY date DESC LIMIT 5"`
+### `docker compose exec app php bin/console dbal:run-sql "SELECT date, screen_tv, screen_smartphone FROM journal_entry ORDER BY date DESC LIMIT 5"`
 
 - **Quand** : vérifier ce qui a réellement été enregistré, sans passer par
   l'interface.
@@ -376,7 +376,7 @@ d'écran.
 | **HttpFoundation (Session)** | mémoriser l'étape 1 |
 | **Form** | formulaire sans `data_class`, `HiddenType`, `RangeType` |
 | **Validator** | `Assert\Range` par champ, `Assert\Callback` sur le formulaire |
-| **Doctrine** | entités et index unique de la phase 02, `findAujourdhui()`, cascade persist |
+| **Doctrine** | entités et index unique de la phase 02, `findToday()`, cascade persist |
 | **Twig** | `json_encode`, blocs `javascripts` |
 | **Bootstrap (JS)** | la modale de choix d'intensité |
 
@@ -386,22 +386,22 @@ d'écran.
 
 ```text
 src/
-├── Controller/Enfant/
-│   └── JournalController.php        /enfant/journal, /etape/1, /etape/2, /conseils
+├── Controller/Child/
+│   └── JournalController.php        /child/journal, /step/1, /step/2, /advice
 ├── Form/
-│   ├── JournalEcransType.php        6 curseurs, total plafonné
-│   └── JournalDouleursType.php      un champ caché + CSRF
+│   ├── JournalScreensType.php        6 curseurs, total plafonné
+│   └── JournalPainsType.php      un champ caché + CSRF
 └── Repository/
-    └── JournalEntreeRepository.php  + findAujourdhui() (fichier de la phase 02)
+    └── JournalEntryRepository.php  + findToday() (fichier de la phase 02)
 
-templates/enfant/journal/
+templates/child/journal/
 ├── _progression.html.twig           « étape 1 sur 2 »
-├── etape1.html.twig                 curseurs + total en direct
-├── etape2.html.twig                 SVG + modale
-└── conseils.html.twig               récapitulatif (complété en phase 09)
+├── step1.html.twig                  curseurs + total en direct
+├── step2.html.twig                  SVG + modale
+└── advice.html.twig                 récapitulatif (complété en phase 09)
 ```
 
-Les entités `JournalEntree` et `DouleurZone` ne sont pas dans cette liste : elles
+Les entités `JournalEntry` et `PainZone` ne sont pas dans cette liste : elles
 existent depuis la phase 02.
 
 Le JavaScript reste dans le bloc `javascripts` de **sa** page : il n'est utilisé
@@ -413,22 +413,22 @@ s'il sert à plusieurs pages (ce sera le cas en phase 10).
 ## 8. Flux de fonctionnement
 
 ```text
-/enfant/journal
-    ↓  journal du jour déjà là ?  ── oui ──► /enfant/journal/conseils
+/child/journal
+    ↓  journal du jour déjà là ?  ── oui ──► /child/journal/advice
     ↓ non
-/enfant/journal/etape/1   (GET)  curseurs à zéro
+/child/journal/step/1   (GET)  curseurs à zéro
     ↓  POST
 Validation : chaque curseur 0-360, total ≤ 16 h
     ↓  valide
-Session ← { ecranTv: 60, … }
+Session ← { screenTv: 60, … }
     ↓
-/enfant/journal/etape/2   (GET)  SVG + modale
+/child/journal/step/2   (GET)  SVG + modale
     ↓  POST  (champ caché JSON + jeton CSRF)
 Contrôleur : revalide chaque zone et chaque intensité
     ↓
-new JournalEntree + DouleurZone…  →  persist + flush
+new JournalEntry + PainZone…  →  persist + flush
     ↓
-Session vidée  →  /enfant/journal/conseils
+Session vidée  →  /child/journal/advice
 ```
 
 ---
@@ -452,7 +452,7 @@ vanilla.
   enregistré.
 - **Un seul journal par jour**, garanti en base : la règle métier ne dépend pas
   du code.
-- **Constantes `ECRANS` et `ZONES` (phase 02) réutilisées partout** : la liste
+- **Constantes `SCREENS` et `ZONES` (phase 02) réutilisées partout** : la liste
   des écrans pilote à la fois le formulaire et l'affichage ; les clés de `ZONES`
   correspondent aux `data-zone` du SVG.
 - **Le journal n'est pas modifiable** une fois enregistré : c'est un choix du
@@ -477,7 +477,7 @@ jour, alerte de dépassement, état « journal rempli ou non ».
 **Le journal du jour se dédouble**
 → Index unique absent (migration de la phase 02 non appliquée), ou décalage de
 fuseau entre PHP et MySQL.
-→ Vérification : `SHOW INDEX FROM journal_entree` et la variable `TZ` du
+→ Vérification : `SHOW INDEX FROM journal_entry` et la variable `TZ` du
 conteneur MySQL.
 
 **`Integrity constraint violation: Duplicate entry`**
@@ -526,7 +526,7 @@ rouge > 4 h).
 2. Poussez trois curseurs à 6 h et soumettez : lisez le message d'erreur, et
    identifiez la méthode qui l'a produit.
 3. Ouvrez les outils de développement, modifiez le champ caché en
-   `{"genou": 3, "cou": 99}`, puis terminez le journal. Vérifiez en base : aucune
+   `{"genou": 3, "neck": 99}`, puis terminez le journal. Vérifiez en base : aucune
    des deux valeurs ne doit avoir été enregistrée. Expliquez pourquoi.
 4. Remplissez un journal, puis rouvrez « Mon journal » : vous devez être redirigé
    vers les conseils. Quelle ligne de code a provoqué la redirection ?

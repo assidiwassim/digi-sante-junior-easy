@@ -15,9 +15,9 @@
 
 - Phases 01 à 07 terminées.
 - Savoir créer un formulaire (phases 04 et 05).
-- Connaître l'entité `ContenuBienEtre`, ses constantes (`TYPES`,
-  `DECLENCHEURS`) et ses contraintes : elle existe **depuis la phase 02**
-  ([leçon 02](./phase-02.md)). Relisez `src/Entity/ContenuBienEtre.php` avant de
+- Connaître l'entité `WellnessContent`, ses constantes (`TYPES`,
+  `TRIGGERS`) et ses contraintes : elle existe **depuis la phase 02**
+  ([leçon 02](./phase-02.md)). Relisez `src/Entity/WellnessContent.php` avant de
   commencer : cette phase ne modifie aucune entité.
 - Un compte `ROLE_ADMIN` existe en base.
 
@@ -36,10 +36,10 @@ structure.
 
 | Action | Route | Méthode HTTP |
 |---|---|---|
-| Lister | `/admin/contenus` | GET |
-| Créer | `/admin/contenus/nouveau` | GET + POST |
-| Modifier | `/admin/contenus/{id}/modifier` | GET + POST |
-| Supprimer | `/admin/contenus/{id}/supprimer` | **POST uniquement** |
+| Lister | `/admin/contents` | GET |
+| Créer | `/admin/contents/new` | GET + POST |
+| Modifier | `/admin/contents/{id}/edit` | GET + POST |
+| Supprimer | `/admin/contents/{id}/delete` | **POST uniquement** |
 
 ⚠️ La suppression n'est **jamais** en GET : un lien GET peut être déclenché par
 un robot d'indexation, un préchargement de navigateur ou une image piégée.
@@ -56,12 +56,12 @@ et que la route contient `{id}`, Symfony fait la recherche pour vous — et lèv
 une 404 si rien n'est trouvé.
 
 ```php
-#[Route('/contenus/{id}/modifier', name: 'admin_contenu_modifier', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-public function modifier(ContenuBienEtre $contenu, Request $request, EntityManagerInterface $entityManager): Response
-//                       ^^^^^^^^^^^^^^^^^^^^^^^^ chargé automatiquement depuis {id}
+#[Route('/contenus/{id}/edit', name: 'admin_content_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+public function modifier(WellnessContent $content, Request $request, EntityManagerInterface $entityManager): Response
+//                       ^^^^^^^^^^^^^^^^^^^^^^^^ loaded automatically from {id}
 ```
 
-`requirements: ['id' => '\d+']` restreint le paramètre aux chiffres : `/admin/contenus/abc/modifier`
+`requirements: ['id' => '\d+']` restreint le paramètre aux chiffres : `/admin/contents/abc/edit`
 ne correspond alors à aucune route (404 propre) au lieu de provoquer une erreur
 de base de données. C'est une **convention du projet** : toujours l'ajouter.
 
@@ -76,9 +76,9 @@ identiques. Deux fichiers, c'est deux fois les corrections.
 bouton passés en variables.
 
 ```php
-return $this->render('admin/contenus/formulaire.html.twig', [
+return $this->render('admin/contents/form.html.twig', [
     'form' => $form,
-    'titrePage' => 'Nouveau contenu',
+    'pageTitle' => 'Nouveau contenu',
     'bouton' => 'Ajouter le contenu',
 ]);
 ```
@@ -105,8 +105,8 @@ bonne conversion, gratuitement.
 
 ```php
 $types = [];
-foreach (ContenuBienEtre::TYPES as $cle => $type) {
-    $types[$type['emoji'].' '.$type['label']] = $cle;   // libellé => valeur
+foreach (WellnessContent::TYPES as $key => $type) {
+    $types[$type['emoji'].' '.$type['label']] = $key;   // label => value
 }
 
 $builder->add('type', ChoiceType::class, ['label' => 'Type', 'choices' => $types]);
@@ -156,29 +156,29 @@ ira chercher ces textes pour les afficher dans les conseils.
 **Pourquoi ?** Quand l'enfant déclenche la règle « yoga des yeux », il faut lui
 proposer **le** contenu correspondant.
 
-**Comment ça fonctionne ?** La colonne `declencheur` (phase 02) porte la clé de
+**Comment ça fonctionne ?** La colonne `triggerRule` (phase 02) porte la clé de
 la règle. Le moteur de conseils (phase 09) cherchera le premier contenu portant
 cette clé. Dans cette phase, on se contente de proposer la liste
-`ContenuBienEtre::DECLENCHEURS` dans un `ChoiceType` facultatif, construit comme
+`WellnessContent::TRIGGERS` dans un `ChoiceType` facultatif, construit comme
 celle des types (Concept 4) :
 
 ```php
-$builder->add('declencheur', ChoiceType::class, [
+$builder->add('triggerRule', ChoiceType::class, [
     'required' => false,
     'placeholder' => 'Aucune — visible seulement dans la bibliothèque',
-    'choices' => array_flip(ContenuBienEtre::DECLENCHEURS),   // libellé => clé
+    'choices' => array_flip(WellnessContent::TRIGGERS),   // label => key
     'help' => 'Le premier contenu d\'une règle est celui proposé à l\'enfant quand elle se déclenche.',
 ]);
 ```
 
-Les trois constantes (`20-20-20`, `etirement_cervical`, `yoga_yeux`) ont été
+Les trois constantes (`20-20-20`, `neck_stretching`, `eye_yoga`) ont été
 définies en phase 02 ([leçon 02](./phase-02.md)).
 
 ⚠️ **Leçon apprise sur ce projet** : la liste contenait autrefois des règles
 supplémentaires (« Défi sport », « Sommeil », « Posture ») qu'aucun code ne
 déclenchait jamais. Résultat : un administrateur pouvait rattacher un contenu à
 une règle morte, et ce contenu n'était jamais proposé à un enfant. C'est pour
-cela que `DECLENCHEURS` n'en compte plus que trois. **Ne proposez jamais une
+cela que `TRIGGERS` n'en compte plus que trois. **Ne proposez jamais une
 option qui ne produit aucun effet.**
 
 ---
@@ -191,28 +191,30 @@ l'enfant veut les contenus **regroupés** par type.
 **Comment ça fonctionne ?**
 
 ```php
-public function findTousTries(): array
+public function findAllSorted(): array
 {
-    return $this->createQueryBuilder('c')
-        ->orderBy('c.type')          // croissant par défaut
-        ->addOrderBy('c.titre')
-        ->getQuery()
-        ->getResult();
+    $contents = $this->findBy([], ['title' => \SortDirection::Ascending]);
+
+    // The type is sorted on its French label (Exercice, Fiche…), not on its
+    // English code. usort() keeps the title order inside each type.
+    usort($contents, fn (WellnessContent $a, WellnessContent $b) => strcmp($a->getTypeLabel(), $b->getTypeLabel()));
+
+    return $contents;
 }
 
-public function findGroupesParType(): array
+public function findGroupedByType(): array
 {
-    $groupes = [];
+    $groups = [];
 
-    foreach (array_keys(ContenuBienEtre::TYPES) as $type) {
-        $contenus = $this->findBy(['type' => $type], ['titre' => \SortDirection::Ascending]);
+    foreach (array_keys(WellnessContent::TYPES) as $type) {
+        $contents = $this->findBy(['type' => $type], ['title' => \SortDirection::Ascending]);
 
-        if ([] !== $contenus) {
-            $groupes[$type] = $contenus;     // on n'ajoute que les types non vides
+        if ([] !== $contents) {
+            $groups[$type] = $contents;     // only non-empty types are added
         }
     }
 
-    return $groupes;
+    return $groups;
 }
 ```
 
@@ -233,26 +235,26 @@ quelques dizaines de lignes, et le code reste lisible.
 ### Une action de création, de bout en bout
 
 ```php
-#[Route('/contenus/nouveau', name: 'admin_contenu_nouveau', methods: ['GET', 'POST'])]
+#[Route('/contenus/new', name: 'admin_content_new', methods: ['GET', 'POST'])]
 public function nouveau(Request $request, EntityManagerInterface $entityManager): Response
 {
-    $contenu = new ContenuBienEtre();
+    $content = new WellnessContent();
 
-    $form = $this->createForm(ContenuBienEtreType::class, $contenu);
+    $form = $this->createForm(WellnessContentType::class, $content);
     $form->handleRequest($request);
 
     if ($form->isSubmitted() && $form->isValid()) {
-        $entityManager->persist($contenu);
+        $entityManager->persist($content);
         $entityManager->flush();
 
-        $this->addFlash('success', sprintf('Le contenu « %s » a été ajouté.', $contenu->getTitre()));
+        $this->addFlash('success', sprintf('Le contenu « %s » a été ajouté.', $content->getTitle()));
 
-        return $this->redirectToRoute('admin_contenus');
+        return $this->redirectToRoute('admin_contents');
     }
 
-    return $this->render('admin/contenus/formulaire.html.twig', [
+    return $this->render('admin/contents/form.html.twig', [
         'form' => $form,
-        'titrePage' => 'Nouveau contenu',
+        'pageTitle' => 'Nouveau contenu',
         'bouton' => 'Ajouter le contenu',
     ]);
 }
@@ -265,25 +267,25 @@ standard d'un formulaire Symfony ; on l'a déjà vu en phases 04, 05 et 07.
 ### La suppression
 
 ```php
-#[Route('/contenus/{id}/supprimer', name: 'admin_contenu_supprimer', requirements: ['id' => '\d+'], methods: ['POST'])]
-public function supprimer(ContenuBienEtre $contenu, Request $request, EntityManagerInterface $entityManager): Response
+#[Route('/contenus/{id}/delete', name: 'admin_content_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+public function supprimer(WellnessContent $content, Request $request, EntityManagerInterface $entityManager): Response
 {
-    if (!$this->isCsrfTokenValid('supprimer-contenu-'.$contenu->getId(), $request->getPayload()->getString('_token'))) {
+    if (!$this->isCsrfTokenValid('supprimer-contenu-'.$content->getId(), $request->getPayload()->getString('_token'))) {
         throw $this->createAccessDeniedException('Jeton CSRF invalide.');
     }
 
-    $entityManager->remove($contenu);
+    $entityManager->remove($content);
     $entityManager->flush();
 
-    $this->addFlash('success', sprintf('Le contenu « %s » a été supprimé.', $contenu->getTitre()));
+    $this->addFlash('success', sprintf('Le contenu « %s » a été supprimé.', $content->getTitle()));
 
-    return $this->redirectToRoute('admin_contenus');
+    return $this->redirectToRoute('admin_contents');
 }
 ```
 
 Trois protections empilées : `methods: ['POST']`, le jeton CSRF (avec
 l'identifiant dedans), et le `confirm()` du navigateur dans le partiel. On
-réutilise le partiel `_partials/bouton_supprimer.html.twig` écrit en phase 05 :
+réutilise le partiel `_partials/delete_button.html.twig` écrit en phase 05 :
 un seul endroit, trois espaces.
 
 ### L'affichage groupé, côté enfant
@@ -292,27 +294,27 @@ Le contrôleur ne passe que les groupes : l'emoji et le libellé du type se
 lisent sur le premier contenu du groupe (getters définis en phase 02).
 
 ```php
-return $this->render('enfant/bibliotheque.html.twig', [
-    'groupes' => $contenuRepository->findGroupesParType(),
+return $this->render('child/library.html.twig', [
+    'groups' => $contentRepository->findGroupedByType(),
 ]);
 ```
 
 ```twig
-{% for type, contenus in groupes %}
-    {% set premier = contenus|first %}
+{% for type, contents in groups %}
+    {% set first = contents|first %}
     <section>
         <h2>
             <span>{{ premier.typeEmoji }}</span>
-            {{ premier.typeLabel }}{{ contenus|length > 1 ? 's' }}
-            <span class="pastille">{{ contenus|length }}</span>
+            {{ premier.typeLabel }}{{ contents|length > 1 ? 's' }}
+            <span class="chip">{{ contents|length }}</span>
         </h2>
 
-        {% for contenu in contenus %}
-            <article class="card card-enfant h-100">
-                <h3>{{ contenu.titre }}</h3>
-                <p class="mt-2 mb-0">{{ contenu.contenu|nl2br }}</p>
-                {% if contenu.url %}
-                    <a href="{{ contenu.url }}" target="_blank" rel="noopener" class="btn btn-or btn-sm">▶️ Ouvrir le lien</a>
+        {% for content in contents %}
+            <article class="card card-child h-100">
+                <h3>{{ content.title }}</h3>
+                <p class="mt-2 mb-0">{{ content.body|nl2br }}</p>
+                {% if content.url %}
+                    <a href="{{ content.url }}" target="_blank" rel="noopener" class="btn btn-gold btn-sm">▶️ Ouvrir le lien</a>
                 {% endif %}
             </article>
         {% endfor %}
@@ -336,7 +338,7 @@ Trois points à retenir :
 
 ## 5. Commandes
 
-### `docker compose exec app php bin/console make:form ContenuBienEtreType`
+### `docker compose exec app php bin/console make:form WellnessContentType`
 
 - **Ce qu'elle fait** : génère un `*Type` pré-rempli à partir de l'entité.
 - **À observer** : l'entité existe depuis la phase 02, le générateur s'en sert
@@ -347,7 +349,7 @@ Trois points à retenir :
 
 - **Quand** : vérifier les quatre routes du CRUD et leurs méthodes HTTP.
 - **À observer** : la route de suppression doit être en **POST** seul, et
-  `admin_accueil` ne doit apparaître **qu'une fois** (page d'attente de la
+  `admin_home` ne doit apparaître **qu'une fois** (page d'attente de la
   phase 04 supprimée).
 
 ### `docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '[\"ROLE_ADMIN\"]' WHERE email = 'admin@digisante.local'"`
@@ -366,7 +368,7 @@ Trois points à retenir :
 | Composant | Rôle ici |
 |---|---|
 | **Routing** | `{id}`, `requirements`, `methods` |
-| **Doctrine** | entité `ContenuBienEtre` (phase 02), requêtes du repository, résolution par l'URL |
+| **Doctrine** | entité `WellnessContent` (phase 02), requêtes du repository, résolution par l'URL |
 | **Form** | `ChoiceType`, `TextareaType`, `UrlType`, `help`, `placeholder` |
 | **Validator** | contraintes de la phase 02 : titre et contenu obligatoires, URL valide |
 | **Security** | `access_control` sur `^/admin` (déjà en place) |
@@ -380,27 +382,27 @@ Trois points à retenir :
 src/
 ├── Controller/Admin/
 │   ├── AccueilController.php        ❌ supprimé (page d'attente de la phase 04)
-│   └── ContenuController.php        admin_accueil + les 4 actions du CRUD
+│   └── ContentController.php        admin_home + les 4 actions du CRUD
 ├── Form/
-│   └── ContenuBienEtreType.php
+│   └── WellnessContentType.php
 └── Repository/
-    └── ContenuBienEtreRepository.php  + findTousTries(), findGroupesParType()
+    └── WellnessContentRepository.php  + findAllSorted(), findGroupedByType()
                                        (fichier de la phase 02)
 
 templates/
 ├── admin/
 │   ├── layout.html.twig             menu de l'administration
-│   └── contenus/
+│   └── contents/
 │       ├── index.html.twig          le tableau
-│       └── formulaire.html.twig     création ET modification
-└── enfant/
-    └── bibliotheque.html.twig       la page « Découvrir »
+│       └── form.html.twig           création ET modification
+└── child/
+    └── library.html.twig            la page « Découvrir »
 ```
 
-L'entité `ContenuBienEtre` n'apparaît pas : elle existe depuis la phase 02.
+L'entité `WellnessContent` n'apparaît pas : elle existe depuis la phase 02.
 
-`ContenuController` porte désormais la route `admin_accueil` (`/admin`), qui
-redirige vers `admin_contenus`. La page d'attente `Admin\AccueilController` de
+`ContentController` porte désormais la route `admin_home` (`/admin`), qui
+redirige vers `admin_contents`. La page d'attente `Admin\HomeController` de
 la phase 04 et son gabarit sont donc **supprimés** : sinon deux routes portent
 le même nom, et la dernière déclarée gagne sans prévenir.
 
@@ -416,9 +418,9 @@ gabarits.
 ### Création d'un contenu
 
 ```text
-Admin : GET /admin/contenus/nouveau
+Admin : GET /admin/contents/new
     ↓ access_control : ROLE_ADMIN
-ContenuController::nouveau() → formulaire vide
+ContentController::nouveau() → formulaire vide
     ↓ POST
 Validator : titre, contenu, URL
     ↓ valide                    ↓ invalide
@@ -430,15 +432,15 @@ flash + redirection vers la liste
 ### Affichage côté enfant
 
 ```text
-Enfant : GET /enfant/bibliotheque
+Child : GET /child/library
     ↓ access_control : ROLE_CHILD
-AccueilController::bibliotheque()
+Child\HomeController::library()
     ↓
-ContenuBienEtreRepository::findGroupesParType()
+WellnessContentRepository::findGroupedByType()
     ↓
-['fiche' => [...], 'video' => [...]]
+['sheet' => [...], 'video' => [...]]
     ↓
-bibliotheque.html.twig : une section par type
+library.html.twig : une section par type
 ```
 
 ---
@@ -471,11 +473,11 @@ contenus en base, les conseils n'auraient rien à proposer.
 
 ## 10. Erreurs fréquentes
 
-**404 sur `/admin/contenus/5/modifier` alors que le contenu existe**
+**404 sur `/admin/contents/5/edit` alors que le contenu existe**
 → Mauvais identifiant, ou entité supprimée.
-→ Vérification : `SELECT id FROM contenu_bien_etre`.
+→ Vérification : `SELECT id FROM wellness_content`.
 
-**Erreur 500 avec `/admin/contenus/abc/modifier`**
+**Erreur 500 avec `/admin/contents/abc/edit`**
 → Il manque `requirements: ['id' => '\d+']`.
 → Avec, la route ne correspond simplement pas : 404 propre.
 
@@ -528,7 +530,7 @@ pas encore faite.
    filtre `|nl2br` pour voir la différence.
 3. Saisissez `exemple` dans le champ lien : lisez le message d'erreur. Puis
    `https://exemple.fr` : il doit être accepté.
-4. Ouvrez `/admin/contenus/99999/modifier` (identifiant inexistant) : vous devez
+4. Ouvrez `/admin/contents/99999/edit` (identifiant inexistant) : vous devez
    obtenir une 404, pas une erreur 500. Expliquez **qui** a produit cette 404.
 5. Supprimez tous vos contenus de test et vérifiez que la page enfant affiche le
    message « bibliothèque vide » — c'est le `{% else %}` de la boucle.
@@ -537,7 +539,7 @@ pas encore faite.
 
 ## 13. Scénario de test manuel
 
-1. Se connecter avec le compte administrateur et ouvrir `/admin/contenus`.
+1. Se connecter avec le compte administrateur et ouvrir `/admin/contents`.
 2. Créer un contenu de type « Fiche », avec un titre, un texte et un lien.
 3. Ouvrir une **fenêtre de navigation privée** (seconde session, l'admin reste connecté dans la première), s'y connecter en enfant et ouvrir « 📚 Découvrir ».
 4. Dans la fenêtre admin, modifier le titre du contenu, puis rafraîchir la page enfant dans la fenêtre privée.

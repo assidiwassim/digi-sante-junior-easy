@@ -20,7 +20,14 @@ tableau de bord, graphiques), espace enfant complet (journal, conseils,
 bibliothèque), espace admin avec le CRUD des contenus.
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, Bootstrap 5.3 par CDN,
-MySQL 8, Docker. Code simple, en français.
+MySQL 8, Docker. Code simple.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -29,10 +36,10 @@ fiche d'un parent, et supprimer un compte avec **toutes** ses données.
 
 ## Avant de coder
 
-1. Lis `src/Controller/Admin/ContenuController.php`,
+1. Lis `src/Controller/Admin/ContentController.php`,
    `templates/admin/layout.html.twig`, `src/Entity/User.php`,
-   `src/Entity/Enfant.php` (relations et cascades) et
-   `templates/_partials/bouton_supprimer.html.twig`.
+   `src/Entity/Child.php` (relations et cascades) et
+   `templates/_partials/delete_button.html.twig`.
 2. Vérifie **concrètement** quelles cascades sont déjà configurées :
    parent → enfants, enfant → compte, enfant → journaux, journal → douleurs.
    Dis-moi si une cascade manque **avant** d'écrire le code de suppression.
@@ -67,12 +74,12 @@ utilise `\SortDirection::Descending` (passer `'DESC'` en chaîne est déprécié
 - `admin_parents` : tableau des comptes parents — email, localisation (ville,
   pays, ou `—`), nombre d'enfants, date d'inscription, actions (**Voir**,
   **Supprimer**) ; nombre total affiché au-dessus.
-- `admin_parent_voir` : fiche d'un parent — email, ville, pays, date
+- `admin_parent_show` : fiche d'un parent — email, ville, pays, date
   d'inscription, bouton de suppression, et la **liste de ses enfants en lecture
   seule** (avatar, nom complet, âge, identifiant, limite).
   ⚠️ L'administrateur **ne gère pas** les profils enfants : ils relèvent de leur
   parent. Ces lignes ne sont donc **pas cliquables** et n'offrent aucune action.
-- `admin_parent_supprimer` : **POST uniquement**, jeton CSRF vérifié, puis
+- `admin_parent_delete` : **POST uniquement**, jeton CSRF vérifié, puis
   suppression du compte. Le message flash indique **combien de profils enfants**
   ont été supprimés avec lui, exactement : « Le compte [email] a été supprimé,
   avec [n] profil(s) enfant. » ([n] compté **avant** la suppression).
@@ -132,10 +139,10 @@ docker compose exec app php bin/console lint:twig templates
 
 ## Scénario de test manuel
 
-1. Créer un compte parent de test via `/inscription`, s'y connecter et lui ajouter un enfant, puis remplir un journal pour cet enfant.
+1. Créer un compte parent de test via `/register`, s'y connecter et lui ajouter un enfant, puis remplir un journal pour cet enfant.
 2. Se connecter en administrateur, ouvrir `/admin/parents` et vérifier que le compte de test apparaît avec « 1 » enfant.
 3. Ouvrir sa fiche : l'enfant doit être listé, sans lien ni bouton d'action.
-4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `enfant`, `journal_entree` et `douleur_zone`.
+4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `child`, `journal_entry` et `pain_zone`.
 5. **Résultat attendu** : le message indique le nombre de profils enfants supprimés, et plus aucune ligne liée à ce parent ne subsiste dans les quatre tables.
 
 ## Critères de validation

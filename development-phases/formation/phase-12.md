@@ -73,7 +73,7 @@ jamais lancer en production.
 | 2 parents | `parent@digisante.local` et `sofia@digisante.local` / `parent123` |
 | 4 enfants | `lea`, `tom`, `noah`, `ines` / `enfant123` |
 | Journaux | plusieurs semaines par enfant, **dont celui du jour** |
-| Contenus | une quinzaine, **dont un par règle déclencheuse** : `20-20-20`, `etirement_cervical`, `yoga_yeux` |
+| Contenus | une quinzaine, **dont un par règle déclencheuse** : `20-20-20`, `neck_stretching`, `eye_yoga` |
 
 Sans un contenu par règle, les conseils de la phase 09 n'auraient rien à
 proposer ; sans journaux sur plusieurs semaines, la courbe de 30 jours de la
@@ -92,7 +92,7 @@ par leur constructeur (une fixture est un service), exactement comme le
 contrôleur d'inscription.
 
 ```php
-$compte->setPassword($this->passwordHasher->hashPassword($compte, 'enfant123'));
+$account->setPassword($this->passwordHasher->hashPassword($account, 'enfant123'));
 ```
 
 Les mots de passe de démonstration sont connus et documentés ; ils ne sont
@@ -109,12 +109,12 @@ une capture d'écran de la documentation deviendrait fausse.
 **Comment ça fonctionne ?** Deux précautions suffisent.
 
 ```php
-// 1. Une graine fixe : mt_rand() renvoie toujours la même suite de nombres
+// 1. A fixed seed: mt_rand() always returns the same sequence of numbers
 mt_srand(20240912);
 
-// 2. Des dates relatives à aujourd'hui, jamais des dates figées
-$enfant->setDateNaissance(new \DateTimeImmutable('today -10 years'));
-$journal->setDate(new \DateTimeImmutable('today -' . $jour . ' days'));
+// 2. Dates relative to today, never fixed dates
+$child->setBirthDate(new \DateTimeImmutable('today -10 years'));
+$journal->setDate(new \DateTimeImmutable('today -' . $day . ' days'));
 ```
 
 - La graine rend les **valeurs** identiques d'un chargement à l'autre.
@@ -162,7 +162,7 @@ rechargée (`make reset-db`).
 ```text
 Public   : accueil, inscription parent, connexion email, connexion enfant
 Parent   : tableau de bord (jauge, courbe 30 jours), créer / modifier / supprimer un enfant
-Enfant   : journal en 2 étapes, conseils, bibliothèque, profil
+Child   : journal en 2 étapes, conseils, bibliothèque, profil
 Admin    : CRUD des contenus, liste et fiche des parents, suppression en cascade
 Sécurité : un parent ne voit pas l'enfant d'un autre (403), un enfant n'ouvre pas /parent
 ```
@@ -187,7 +187,7 @@ qu'une nouvelle personne se pose, dans l'ordre :
    fixtures ont déjà rempli celui du jour. Pour refaire le parcours :
 
 ```bash
-docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"
+docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entry WHERE date = CURDATE()"
 ```
 
 6. **Problèmes fréquents** : port déjà pris, base inaccessible, journal déjà
@@ -200,26 +200,26 @@ docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree
 ### Créer un enfant et son compte dans les fixtures
 
 ```php
-private function creerEnfant(ObjectManager $manager, User $parent, string $prenom, string $nom, string $identifiant, int $age, string $avatar, int $limite): Enfant
+private function createChild(ObjectManager $manager, User $parent, string $firstName, string $lastName, string $username, int $age, string $avatar, int $limit): Child
 {
-    $compte = new User();
-    $compte->setUsername($identifiant);
-    $compte->setRoles([User::ROLE_CHILD]);
-    $compte->setPassword($this->passwordHasher->hashPassword($compte, 'enfant123'));
+    $account = new User();
+    $account->setUsername($username);
+    $account->setRoles([User::ROLE_CHILD]);
+    $account->setPassword($this->passwordHasher->hashPassword($account, 'enfant123'));
 
-    $enfant = new Enfant();
-    $enfant->setPrenom($prenom);
-    $enfant->setNom($nom);                 // colonne NOT NULL : obligatoire
-    $enfant->setDateNaissance(new \DateTimeImmutable('today -' . $age . ' years'));
-    $enfant->setAvatar($avatar);           // une clé de Enfant::AVATARS
-    $enfant->setMaxMinutesJour($limite);   // multiple de 15, entre 15 et 480
-    $enfant->setParent($parent);
-    $enfant->setCompte($compte);
+    $child = new Child();
+    $child->setFirstName($firstName);
+    $child->setLastName($lastName);                 // colonne NOT NULL : obligatoire
+    $child->setBirthDate(new \DateTimeImmutable('today -' . $age . ' years'));
+    $child->setAvatar($avatar);           // a key of Child::AVATARS
+    $child->setDailyLimit($limit);   // multiple of 15, between 15 and 480
+    $child->setParent($parent);
+    $child->setAccount($account);
 
-    $manager->persist($compte);
-    $manager->persist($enfant);
+    $manager->persist($account);
+    $manager->persist($child);
 
-    return $enfant;
+    return $child;
 }
 ```
 
@@ -232,17 +232,17 @@ obligatoire).
 ```php
 mt_srand(20240912);
 
-for ($jour = 0; $jour < 35; $jour++) {
-    $journal = new JournalEntree();
-    $journal->setEnfant($enfant);
-    $journal->setDate(new \DateTimeImmutable('today -' . $jour . ' days'));
-    $journal->setEcranTv(mt_rand(0, 8) * 15);
-    // … autres écrans
+for ($day = 0; $day < 35; $day++) {
+    $journal = new JournalEntry();
+    $journal->setChild($child);
+    $journal->setDate(new \DateTimeImmutable('today -' . $day . ' days'));
+    $journal->setScreenTv(mt_rand(0, 8) * 15);
+    // … other screens
     $manager->persist($journal);
 }
 ```
 
-- `$jour = 0` correspond à **aujourd'hui** : le tableau de bord affiche tout de
+- `$day = 0` correspond à **aujourd'hui** : le tableau de bord affiche tout de
   suite une journée remplie.
 - 35 jours couvrent largement la courbe de 30 jours.
 - Des multiples de 15 minutes donnent des valeurs réalistes, comme celles des
@@ -251,16 +251,16 @@ for ($jour = 0; $jour < 35; $jour++) {
 ### Un contenu par règle déclencheuse
 
 ```php
-$contenu = new ContenuBienEtre();
-$contenu->setTitre('Repose tes yeux avec le 20-20-20');
-$contenu->setType('exercice');
-$contenu->setContenu('Toutes les 20 minutes, regarde à 20 pieds (6 m) pendant 20 secondes.');
-$contenu->setDeclencheur(ContenuBienEtre::DECLENCHEUR_20_20_20);
-$manager->persist($contenu);
+$content = new WellnessContent();
+$content->setTitle('Repose tes yeux avec le 20-20-20');
+$content->setType('exercise');
+$content->setBody('Toutes les 20 minutes, regarde à 20 pieds (6 m) pendant 20 secondes.');
+$content->setTriggerRule(WellnessContent::TRIGGER_20_20_20);
+$manager->persist($content);
 ```
 
-Les clés (`20-20-20`, `etirement_cervical`, `yoga_yeux`) sont les constantes de
-`ContenuBienEtre::DECLENCHEURS` : les textes des conseils vivent **en base**,
+Les clés (`20-20-20`, `neck_stretching`, `eye_yoga`) sont les constantes de
+`WellnessContent::TRIGGERS` : les textes des conseils vivent **en base**,
 pas dans le code.
 
 ---
@@ -284,22 +284,22 @@ pas dans le code.
   `lint`, et on complète `install` (migrations + fixtures).
 
 ```makefile
-install: ## Démarre les conteneurs, installe les dépendances, applique les migrations, charge les fixtures
+install: ## Full environment: containers, dependencies, database, migrations, fixtures
 	docker compose up -d --build
 	docker compose exec app composer install
 	$(MAKE) migrate
 	$(MAKE) fixtures
 
-fixtures: ## ⚠️ Purge la base et recharge les données de démonstration
+fixtures: ## Reloads the demo data (⚠️ empties the database first)
 	docker compose exec app php bin/console doctrine:fixtures:load --no-interaction
 
-reset-db: ## Supprime et recrée la base, migrations + fixtures
+reset-db: ## Drops, recreates, migrates and reloads the database (⚠️ data lost)
 	docker compose exec app php bin/console doctrine:database:drop --force --if-exists
 	docker compose exec app php bin/console doctrine:database:create
 	$(MAKE) migrate
 	$(MAKE) fixtures
 
-lint: ## Vérifie gabarits, YAML, services et schéma
+lint: ## Checks templates, YAML, container and database schema
 	docker compose exec app php bin/console lint:twig templates
 	docker compose exec app php bin/console lint:yaml config
 	docker compose exec app php bin/console lint:container
@@ -334,7 +334,7 @@ lint: ## Vérifie gabarits, YAML, services et schéma
 - **À observer** : un `[OK]` pour chacune des quatre commandes
   (`schema:validate` en affiche un pour le mapping et un pour la base).
 
-### `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"`
+### `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entry WHERE date = CURDATE()"`
 
 - **Ce qu'elle fait** : supprime les journaux du jour (et leurs douleurs, par la
   clé étrangère).
@@ -445,7 +445,7 @@ dépendances (parent avant enfant, journal avant douleurs).
 **Le tableau de bord n'affiche rien pour aujourd'hui**
 → La boucle des journaux commence à 1 au lieu de 0, ou MySQL et PHP ne sont pas
 sur le même fuseau (`TZ` dans `compose.yaml`).
-→ Solution : démarrer à `$jour = 0` ; vérifier `Europe/Paris` des deux côtés.
+→ Solution : démarrer à `$day = 0` ; vérifier `Europe/Paris` des deux côtés.
 
 **`make: *** missing separator. Stop.`**
 → Une ligne de commande du `Makefile` est indentée avec des espaces.

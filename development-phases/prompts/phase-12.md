@@ -19,6 +19,13 @@ comptes parents).
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, MySQL 8, Docker.
 
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
+
 ## Objectif de la phase
 
 Rendre le projet **reprenable par quelqu'un d'autre** : un jeu de données de
@@ -84,30 +91,30 @@ opérations ci-dessous : la graine fixe ne donne les mêmes valeurs que si
 
    | Prénom | Nom | Identifiant | Parent | Avatar | Naissance | Limite | Profil de journaux |
    |---|---|---|---|---|---|---|---|
-   | Léa | Martin | `lea` | parent@ | `renard` | `today -12 years -4 months` | 120 | beaucoup d'écran |
+   | Léa | Martin | `lea` | parent@ | `fox` | `today -12 years -4 months` | 120 | beaucoup d'écran |
    | Tom | Martin | `tom` | parent@ | `dragon` | `today -9 years -8 months` | 90 | poignets |
    | Noah | Dubois | `noah` | sofia@ | `pingouin` | `today -13 years -7 months` | 150 | épaules |
    | Inès | Dubois | `ines` | sofia@ | `licorne` | `today -11 years -2 months` | 120 | équilibré |
 
 **Journaux** : 15 par enfant, du jour `today -14 days` jusqu'à **aujourd'hui**
-(`$joursAvant` de 14 à 0). Pour chaque journal, les durées sont tirées **dans
-cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
-`ecranConsole`, puis `ecranAutre` s'il est indiqué), puis les douleurs :
+(`$daysAgo` de 14 à 0). Pour chaque journal, les durées sont tirées **dans
+cet ordre** (`screenTv`, `screenComputer`, `screenSmartphone`, `screenTablet`,
+`screenConsole`, puis `screenOther` s'il est indiqué), puis les douleurs :
 
 | Profil | TV | Ordinateur | Téléphone | Tablette | Console | Autre | Douleurs (après les durées) |
 |---|---|---|---|---|---|---|---|
-| beaucoup d'écran | `mt_rand(30, 75)` | `mt_rand(45, 110)` | `mt_rand(50, 120)` | `mt_rand(20, 60)` | `mt_rand(0, 45)` | `mt_rand(0, 20)` | si `$joursAvant % 2 === 0` : `cou`, `mt_rand(3, 5)` ; puis si `$joursAvant % 3 === 0` : `yeux`, `mt_rand(2, 4)` |
-| poignets | `mt_rand(20, 60)` | `mt_rand(10, 40)` | `mt_rand(15, 50)` | `mt_rand(20, 70)` | `mt_rand(20, 80)` | — (0) | si `$joursAvant % 4 === 0` : `poignet`, `mt_rand(1, 3)` |
-| épaules | `mt_rand(30, 70)` | `mt_rand(30, 90)` | `mt_rand(20, 70)` | `mt_rand(10, 50)` | `mt_rand(0, 40)` | — (0) | si `$joursAvant <= 1` : `epaule`, `mt_rand(3, 4)` ; puis si `$joursAvant % 5 === 0` : `dos`, `mt_rand(2, 4)` |
-| équilibré | `mt_rand(15, 40)` | `mt_rand(10, 35)` | `mt_rand(10, 30)` | `mt_rand(0, 25)` | `mt_rand(0, 20)` | — (0) | si `$joursAvant === 7` : `main`, intensité 2 |
+| beaucoup d'écran | `mt_rand(30, 75)` | `mt_rand(45, 110)` | `mt_rand(50, 120)` | `mt_rand(20, 60)` | `mt_rand(0, 45)` | `mt_rand(0, 20)` | si `$daysAgo % 2 === 0` : `neck`, `mt_rand(3, 5)` ; puis si `$daysAgo % 3 === 0` : `eyes`, `mt_rand(2, 4)` |
+| poignets | `mt_rand(20, 60)` | `mt_rand(10, 40)` | `mt_rand(15, 50)` | `mt_rand(20, 70)` | `mt_rand(20, 80)` | — (0) | si `$daysAgo % 4 === 0` : `wrist`, `mt_rand(1, 3)` |
+| épaules | `mt_rand(30, 70)` | `mt_rand(30, 90)` | `mt_rand(20, 70)` | `mt_rand(10, 50)` | `mt_rand(0, 40)` | — (0) | si `$daysAgo <= 1` : `shoulder`, `mt_rand(3, 4)` ; puis si `$daysAgo % 5 === 0` : `back`, `mt_rand(2, 4)` |
+| équilibré | `mt_rand(15, 40)` | `mt_rand(10, 35)` | `mt_rand(10, 30)` | `mt_rand(0, 25)` | `mt_rand(0, 20)` | — (0) | si `$daysAgo === 7` : `hand`, intensité 2 |
 
 **Contenus** : 15 contenus, dans cet ordre, sous la forme
 `[type, titre, texte, lien, règle]` (reprends les textes à l'identique) :
 
 ```php
-    $contenus = [
+    $contents = [
         [
-            'exercice',
+            'exercise',
             'La règle du 20-20-20',
             "Toutes les 20 minutes passées devant un écran :\n"
             ."1. Lève les yeux de ton écran.\n"
@@ -115,7 +122,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             ."3. Garde le regard dessus pendant 20 secondes en clignant tranquillement des yeux.\n\n"
             .'Tes yeux se détendent et la fatigue visuelle diminue nettement.',
             null,
-            ContenuBienEtre::DECLENCHEUR_20_20_20,
+            WellnessContent::TRIGGER_20_20_20,
         ],
         [
             'video',
@@ -126,10 +133,10 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             ."• Rentre le menton pour étirer la nuque, compte jusqu'à 10.\n\n"
             .'À faire chaque fois que tu sens ton cou tout raide.',
             'https://www.youtube.com/results?search_query=etirement+cou+epaules+enfant',
-            ContenuBienEtre::DECLENCHEUR_ETIREMENT,
+            WellnessContent::TRIGGER_STRETCHING,
         ],
         [
-            'exercice',
+            'exercise',
             'Le yoga des yeux',
             "Cinq mouvements pour réveiller tes yeux fatigués :\n"
             ."• Regarde en haut, puis en bas — 10 fois, sans bouger la tête.\n"
@@ -138,10 +145,10 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             ."• Cligne très vite des yeux pendant 15 secondes.\n"
             ."• Frotte tes mains l'une contre l'autre, puis pose-les en coupe sur tes paupières fermées pendant 30 secondes.",
             null,
-            ContenuBienEtre::DECLENCHEUR_YOGA_YEUX,
+            WellnessContent::TRIGGER_EYE_YOGA,
         ],
         [
-            'exercice',
+            'exercise',
             'Le défi des 7 minutes',
             "Sept mouvements, 30 secondes chacun, 10 secondes de pause entre chaque :\n"
             ."1. Sauts avec écart (jumping jacks)\n2. Chaise contre le mur\n3. Pompes sur les genoux\n"
@@ -151,7 +158,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'fiche',
+            'sheet',
             'Bien dormir quand on a beaucoup d\'écran',
             "La lumière des écrans envoie à ton cerveau le message « il fait encore jour ».\n\n"
             ."• Arrête les écrans au moins 1 heure avant de dormir.\n"
@@ -162,7 +169,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'fiche',
+            'sheet',
             'Bien s\'installer devant un écran',
             "Ta position compte autant que la durée !\n\n"
             ."• Le haut de l'écran doit être au niveau de tes yeux.\n"
@@ -173,7 +180,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'fiche',
+            'sheet',
             'Combien de temps d\'écran par jour ?',
             "Les spécialistes recommandent, pour les 8-14 ans, environ 2 heures d'écran "
             ."de loisir par jour au maximum — les devoirs sur ordinateur ne comptent pas.\n\n"
@@ -209,7 +216,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'glossaire',
+            'glossary',
             'Fatigue visuelle',
             'Ce sont tes yeux qui te disent « stop ». Les signes : yeux qui piquent, qui pleurent '
             .'ou qui sont secs, vision floue, mal de tête. C\'est très fréquent après une longue '
@@ -219,7 +226,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'glossaire',
+            'glossary',
             'Lumière bleue',
             'Une lumière émise par les écrans. Le soir, elle trompe ton cerveau qui croit '
             .'qu\'il fait encore jour et retarde l\'endormissement. C\'est pour ça qu\'on '
@@ -228,7 +235,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'glossaire',
+            'glossary',
             'Sédentarité',
             'C\'est le fait de rester assis ou allongé très longtemps sans bouger. '
             .'Bouger au moins 60 minutes par jour aide ton cœur, tes muscles, ton sommeil '
@@ -248,7 +255,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'fiche',
+            'sheet',
             'Les écrans et les émotions',
             "Parfois on va sur un écran parce qu'on s'ennuie, qu'on est triste ou énervé.\n\n"
             ."C'est normal ! Mais l'écran ne fait pas disparaître l'émotion : il la met en pause.\n\n"
@@ -258,7 +265,7 @@ cet ordre** (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
             null,
         ],
         [
-            'exercice',
+            'exercise',
             'La pause « secoue-toi »',
             "Toutes les heures d'écran, lance un chrono d'une minute et enchaîne :\n"
             ."• 10 secondes à secouer les mains et les bras\n"

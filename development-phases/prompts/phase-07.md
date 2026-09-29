@@ -15,12 +15,19 @@
 enfants de 8 à 14 ans. L'enfant se connecte avec un identifiant, le parent avec
 son email.
 
-Déjà en place : les cinq entités depuis la phase 02 (dont `JournalEntree` et
-`DouleurZone`), espace parent (CRUD des enfants), espace enfant (connexion, accueil,
-profil), filtre Twig `duree`, charte Bootstrap 5.3 par CDN.
+Déjà en place : les cinq entités depuis la phase 02 (dont `JournalEntry` et
+`PainZone`), espace parent (CRUD des enfants), espace enfant (connexion, accueil,
+profil), filtre Twig `duration`, charte Bootstrap 5.3 par CDN.
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, MySQL 8, Docker.
 **JavaScript vanilla uniquement**, pas de bundler, pas de npm.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -30,9 +37,9 @@ son temps d'écran (étape 1) puis les endroits où il a mal sur un schéma du c
 
 ## Avant de coder
 
-1. Lis `src/Entity/Enfant.php`, `src/Entity/JournalEntree.php`,
-   `src/Entity/DouleurZone.php`, `src/Controller/Enfant/AccueilController.php`,
-   `src/Twig/DureeExtension.php` et `templates/enfant/layout.html.twig`.
+1. Lis `src/Entity/Child.php`, `src/Entity/JournalEntry.php`,
+   `src/Entity/PainZone.php`, `src/Controller/Child/HomeController.php`,
+   `src/Twig/DurationExtension.php` et `templates/child/layout.html.twig`.
 2. Vérifie le fuseau horaire : PHP et MySQL doivent tous deux être en
    `Europe/Paris` (variable `TZ` du service `database`).
 3. Présente-moi le découpage des fichiers avant de les créer.
@@ -63,41 +70,41 @@ récapitulatif.
 
 ## À implémenter
 
-### 1. Entités `JournalEntree` et `DouleurZone` (déjà en place)
+### 1. Entités `JournalEntry` et `PainZone` (déjà en place)
 
 Ces entités existent depuis la phase 02 : lis-les, ne les recrée pas et ne
 génère **aucune migration** dans cette phase. Rappels utiles pour la suite :
 
-- `JournalEntree` : `enfant` (`ManyToOne`, `onDelete: 'CASCADE'`), `date`
+- `JournalEntry` : `child` (`ManyToOne`, `onDelete: 'CASCADE'`), `date`
   (`date_immutable`, initialisée à « today »), six durées en minutes
-  (`ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`,
-  `ecranConsole`, `ecranAutre`, défaut 0), `douleurs` (`OneToMany`,
+  (`screenTv`, `screenComputer`, `screenSmartphone`, `screenTablet`,
+  `screenConsole`, `screenOther`, défaut 0), `pains` (`OneToMany`,
   `cascade: ['persist', 'remove']` : persister le journal persiste ses douleurs).
-- **Index unique sur `(enfant_id, date)`** : un seul journal par enfant et par
+- **Index unique sur `(child_id, date)`** : un seul journal par enfant et par
   jour, garanti **en base**.
-- Constante `JournalEntree::ECRANS` : nom de propriété → libellé affiché
-  (`'ecranTv' => '📺 Télévision'`, etc.), à utiliser dans le formulaire.
-- `getTotalEcran()`, `niveauPourMinutes(int $minutes)` (statique : `vert` sous
-  2 h, `orange` de 2 h à 4 h, `rouge` au-delà) et `getNiveauEcran()`.
-- `DouleurZone` : constructeur `__construct(string $zone, int $intensite)`,
-  intensité 1 à 5, constante `DouleurZone::ZONES` (`yeux`, `cou`, `epaule`,
-  `dos`, `poignet`, `main`, avec libellé et emoji) dont les clés correspondent à
+- Constante `JournalEntry::SCREENS` : nom de propriété → libellé affiché
+  (`'screenTv' => '📺 Télévision'`, etc.), à utiliser dans le formulaire.
+- `getTotalScreenTime()`, `levelForMinutes(int $minutes)` (statique : `green` sous
+  2 h, `orange` de 2 h à 4 h, `red` au-delà) et `getScreenLevel()`.
+- `PainZone` : constructeur `__construct(string $zone, int $intensity)`,
+  intensité 1 à 5, constante `PainZone::ZONES` (`eyes`, `neck`, `shoulder`,
+  `back`, `wrist`, `hand`, avec libellé et emoji) dont les clés correspondent à
   l'attribut `data-zone` du SVG ; getters `getZoneLabel()` et `getZoneEmoji()`.
-- `Enfant::journalEntrees` (`cascade: ['remove']`) : supprimer un enfant
+- `Child::journalEntries` (`cascade: ['remove']`) : supprimer un enfant
   supprime ses journaux, et chaque journal ses douleurs.
 
 Si une propriété ou une constante citée ici manque, signale-le avant de coder.
 
-### 2. Contrôleur `Enfant\JournalController` (préfixe `/enfant/journal`)
+### 2. Contrôleur `Child\JournalController` (préfixe `/child/journal`)
 
-- `enfant_journal` (`/enfant/journal`) : point d'entrée. Si le journal du jour existe déjà →
+- `child_journal` (`/child/journal`) : point d'entrée. Si le journal du jour existe déjà →
   rediriger vers l'écran de fin ; sinon vider la session et aller à l'étape 1.
-- `enfant_journal_etape1` (`/enfant/journal/etape/1`, GET + POST) : formulaire des écrans. À la validation,
+- `child_journal_step1` (`/child/journal/step/1`, GET + POST) : formulaire des écrans. À la validation,
   ranger les valeurs **en session** et rediriger vers l'étape 2.
-- `enfant_journal_etape2` (`/enfant/journal/etape/2`, GET + POST) : schéma corporel. Sans données d'étape 1
+- `child_journal_step2` (`/child/journal/step/2`, GET + POST) : schéma corporel. Sans données d'étape 1
   en session → rediriger vers l'étape 1. À la validation, créer le
-  `JournalEntree` complet, ajouter les douleurs, enregistrer, vider la session.
-- Un écran de fin `enfant_journal_conseils` (`/enfant/journal/conseils`, GET) : pour l'instant, un récapitulatif
+  `JournalEntry` complet, ajouter les douleurs, enregistrer, vider la session.
+- Un écran de fin `child_journal_advice` (`/child/journal/advice`, GET) : pour l'instant, un récapitulatif
   (temps total et douleurs signalées) et un bouton de retour à l'accueil. Les
   vrais conseils arrivent en phase 09.
 
@@ -106,10 +113,10 @@ abandonne, aucun journal à moitié rempli ne reste enregistré.
 
 ### 3. Formulaires
 
-**`JournalEcransType`** — un `RangeType` par écran, **non lié à une entité** (il
-renvoie un simple tableau `['ecranTv' => '30', …]`) :
+**`JournalScreensType`** — un `RangeType` par écran, **non lié à une entité** (il
+renvoie un simple tableau `['screenTv' => '30', …]`) :
 
-- libellés tirés de `JournalEntree::ECRANS` ; plage 0 à 360 minutes, pas de 15,
+- libellés tirés de `JournalEntry::SCREENS` ; plage 0 à 360 minutes, pas de 15,
   avec une contrainte `Assert\Range(min: 0, max: 360)` par champ (messages
   « Indique une durée entre {{ min }} et {{ max }} minutes. » et « Indique une
   durée avec le curseur. ») ;
@@ -123,10 +130,10 @@ renvoie un simple tableau `['ecranTv' => '30', …]`) :
   du formulaire (règle portant sur plusieurs champs), avec le message « En tout,
   cela fait {{ total }} d'écran : c'est impossible en une journée. Reprends tes
   curseurs (maximum {{ maximum }}). », les deux durées formatées comme le
-  filtre `duree` (« 18 h », « 16 h »), affiché par `{{ form_errors(form) }}`.
+  filtre `duration` (« 18 h », « 16 h »), affiché par `{{ form_errors(form) }}`.
 
-**`JournalDouleursType`** — un seul champ caché `douleurs`, rempli en JSON par
-le JavaScript (`{"cou": 3, "yeux": 2}`). Passer par un formulaire Symfony
+**`JournalPainsType`** — un seul champ caché `pains`, rempli en JSON par
+le JavaScript (`{"neck": 3, "eyes": 2}`). Passer par un formulaire Symfony
 apporte la protection **CSRF**.
 
 ### 4. Étape 1 — l'écran des curseurs
@@ -141,7 +148,7 @@ apporte la protection **CSRF**.
 ### 5. Étape 2 — le schéma corporel
 
 - Un **SVG** dessinant une silhouette, avec 6 zones cliquables portant un
-  attribut `data-zone` correspondant aux clés de `DouleurZone::ZONES`.
+  attribut `data-zone` correspondant aux clés de `PainZone::ZONES`.
 - Au clic sur une zone : une **modale Bootstrap** propose l'intensité de 1 à 5
   (« 1 = un tout petit peu, 5 = très très mal ») et un bouton « Enlever ».
 - La zone choisie se colore selon l'intensité ; la liste « Ce que tu as
@@ -163,7 +170,7 @@ hors formulaire Symfony.
 
 ### 7. Compléter l'accueil enfant
 
-Sur `/enfant`, ajouter :
+Sur `/child`, ajouter :
 
 - la **jauge du jour** : temps d'écran total, pourcentage de la limite, couleur
   selon le niveau, et une alerte si la limite est dépassée ;
@@ -175,8 +182,8 @@ Ajoute l'entrée **📔 Mon journal** au menu du layout enfant.
 
 ## Contraintes techniques et architecturales
 
-- Les requêtes Doctrine vivent dans `JournalEntreeRepository`
-  (`findAujourdhui(Enfant $enfant)`), jamais dans le contrôleur.
+- Les requêtes Doctrine vivent dans `JournalEntryRepository`
+  (`findToday(Child $child)`), jamais dans le contrôleur.
 - Pas d'enum PHP : des constantes d'entité avec des getters d'affichage.
 - Pas de logique métier dans Twig.
 - JavaScript vanilla, dans le bloc `javascripts` de la page concernée (un
@@ -195,7 +202,7 @@ docker compose exec app php bin/console lint:twig templates
 Pour recommencer un journal pendant les essais :
 
 ```bash
-docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"
+docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entry WHERE date = CURDATE()"
 ```
 
 ## Ce qui n'est PAS dans cette phase

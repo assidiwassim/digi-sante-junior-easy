@@ -19,7 +19,7 @@ n'est ni parent ni enfant :
 |---|---|---|
 | `ROLE_ADMIN` | `/admin` | email sur `/login` |
 | `ROLE_PARENT` | `/parent` | email sur `/login` |
-| `ROLE_CHILD` | `/enfant` | identifiant sur `/connexion-enfant` (phase 06) |
+| `ROLE_CHILD` | `/child` | identifiant sur `/login/child` (phase 06) |
 
 Déjà en place : Docker et **tous les paquets du projet** (phase 01), les cinq
 entités dont `User` (email et username nullables, rôles en JSON et en
@@ -30,7 +30,14 @@ page d'accueil (phase 03).
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, Bootstrap 5.3 par CDN,
 MySQL 8, Docker.
 
-Je débute avec Symfony : code simple, en français, sans sur-ingénierie.
+Je débute avec Symfony : code simple, sans sur-ingénierie.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -87,7 +94,7 @@ de capture : garde-les minimales.
   - `logout` vers la page d'accueil ;
   - `remember_me` (secret `%kernel.secret%`, 7 jours) ;
 - `access_control`, dans cet ordre : `^/admin` → `ROLE_ADMIN`,
-  `^/parent` → `ROLE_PARENT`, `^/enfant` → `ROLE_CHILD`.
+  `^/parent` → `ROLE_PARENT`, `^/child` → `ROLE_CHILD`.
 
 ⚠️ **Aucune hiérarchie de rôles** : ne configure pas `role_hierarchy`.
 
@@ -116,7 +123,7 @@ s'affiche en anglais sur la page de connexion).
   identifiant saisi. Un utilisateur déjà connecté est redirigé vers l'accueil.
 - `/logout` (route `app_logout`) : méthode vide, avec un commentaire expliquant
   que Symfony l'intercepte.
-- `/inscription` (GET + POST, route `app_register`) : création d'un compte
+- `/register` (GET + POST, route `app_register`) : création d'un compte
   **parent**.
 
 ⚠️ **N'écris pas d'authenticator maison** : la vérification du mot de passe est
@@ -124,14 +131,14 @@ faite par `form_login`.
 
 ### 3. Formulaire d'inscription
 
-`InscriptionType` lié à `User` :
+`RegistrationType` lié à `User` :
 
 | Champ | Type | Règles |
 |---|---|---|
 | `email` | `EmailType` | obligatoire **dans le formulaire** (l'entité l'autorise vide pour les enfants) |
-| `pays`, `ville` | `TextType` | facultatifs |
+| `country`, `city` | `TextType` | facultatifs |
 | `plainPassword` | `RepeatedType` non mappé | 6 caractères minimum, saisi deux fois |
-| `conditions` | `CheckboxType` non mappé | doit être cochée (`Assert\IsTrue`) |
+| `agreeTerms` | `CheckboxType` non mappé | doit être cochée (`Assert\IsTrue`) |
 
 Le contrôleur hache le mot de passe avec `UserPasswordHasherInterface`, attribue
 `ROLE_PARENT`, enregistre, ajoute le **message flash** `success` « Votre compte
@@ -146,7 +153,7 @@ Messages de validation **exactement** comme ci-dessous :
   pas. », `NotBlank` « Merci de choisir un mot de passe. »,
   `Length(min: 6, max: 4096)` « Le mot de passe doit contenir au moins
   {{ limit }} caractères. » ;
-- `conditions` : `IsTrue` « Vous devez accepter les conditions pour créer un
+- `agreeTerms` : `IsTrue` « Vous devez accepter les conditions pour créer un
   compte. »
 
 ### 4. Redirection par rôle
@@ -160,11 +167,11 @@ de déconnexion) afin que la redirection soit vérifiable dès maintenant :
 
 - `/parent`, route `parent_dashboard`, dans `Parent\DashboardController` (la
   phase 10 la remplacera par le vrai tableau de bord, même nom de route) ;
-- `/admin`, route `admin_accueil`, dans `Admin\AccueilController` (la phase 08
+- `/admin`, route `admin_home`, dans `Admin\HomeController` (la phase 08
   la remplacera).
 
-`ROLE_ADMIN` → `admin_accueil`, `ROLE_PARENT` → `parent_dashboard`. L'enfant
-sera ajouté en phase 06, quand sa route `enfant_accueil` existera : ne redirige
+`ROLE_ADMIN` → `admin_home`, `ROLE_PARENT` → `parent_dashboard`. L'enfant
+sera ajouté en phase 06, quand sa route `child_home` existera : ne redirige
 jamais vers une route qui n'existe pas encore (erreur 500).
 
 ### 5. Gabarits
@@ -172,12 +179,12 @@ jamais vers une route qui n'existe pas encore (erreur 500).
 - `templates/security/login.html.twig` : page sobre, sans barre de navigation,
   avec une case « Se souvenir de moi », un lien vers l'inscription et un bouton
   vers la future connexion enfant, qui pointe vers `#` pour l'instant (la route
-  `app_enfant_login` n'existe qu'à partir de la phase 06 : un `path()` vers elle
+  `app_child_login` n'existe qu'à partir de la phase 06 : un `path()` vers elle
   provoquerait une erreur 500).
 - `templates/home/index.html.twig` : le bouton « Je suis un parent » pointe
   désormais vers `path('app_login')` ; le bouton « Je suis un enfant » reste
   sur `#` jusqu'en phase 06.
-- `templates/security/inscription.html.twig`.
+- `templates/security/register.html.twig`.
 - Thème de formulaire Bootstrap (`bootstrap_5_layout.html.twig`) dans
   `config/packages/twig.yaml`.
 - Toujours `{{ form_errors(form) }}` **juste après** `form_start()`.
@@ -204,7 +211,7 @@ docker compose exec app php bin/console cache:clear
 ```
 
 Pour créer un administrateur de test (aucune interface ne le fait) : inscris
-**d'abord** le compte `admin@digisante.local` / `admin123` sur `/inscription`,
+**d'abord** le compte `admin@digisante.local` / `admin123` sur `/register`,
 puis change son rôle :
 
 ```bash
@@ -213,7 +220,7 @@ docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '
 
 ## Ce qui n'est PAS dans cette phase
 
-- Pas de connexion enfant ni de page `/connexion-enfant` (phase 06).
+- Pas de connexion enfant ni de page `/login/child` (phase 06).
 - Pas de gestion des profils enfants (phase 05) ; aucune entité ni migration
   nouvelle (le modèle est complet depuis la phase 02).
 - Aucune installation de paquet (tout est installé depuis la phase 01).
@@ -222,11 +229,11 @@ docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '
 
 ## Scénario de test manuel
 
-1. Ouvrir `/inscription` et créer un compte parent (email valide, mot de passe de 6 caractères minimum, case cochée).
+1. Ouvrir `/register` et créer un compte parent (email valide, mot de passe de 6 caractères minimum, case cochée).
 2. Vérifier le message de confirmation, puis se connecter sur `/login` avec ce compte.
 3. Vérifier la redirection automatique vers `/parent`.
 4. Se déconnecter, puis saisir directement `/parent` dans la barre d'adresse.
-5. Créer le compte administrateur : **d'abord** s'inscrire via `/inscription` avec `admin@digisante.local` / `admin123`, **puis** le promouvoir avec la commande `dbal:run-sql` ci-dessus. Si vous étiez connecté avec ce compte, Symfony vous **déconnecte** (rôle changé) : se reconnecter.
+5. Créer le compte administrateur : **d'abord** s'inscrire via `/register` avec `admin@digisante.local` / `admin123`, **puis** le promouvoir avec la commande `dbal:run-sql` ci-dessus. Si vous étiez connecté avec ce compte, Symfony vous **déconnecte** (rôle changé) : se reconnecter.
 6. **Résultat attendu** : inscription et connexion fonctionnent, la redirection par rôle amène sur `/parent`, l'accès déconnecté à `/parent` renvoie vers `/login`, et l'admin est redirigé vers `/admin`.
 
 ## Critères de validation

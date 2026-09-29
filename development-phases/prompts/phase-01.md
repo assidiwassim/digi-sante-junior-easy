@@ -23,6 +23,13 @@ La stack imposée : PHP 8.4, Symfony 7.4 (LTS), MySQL 8, Twig, Doctrine ORM 3,
 Docker. **Pas de Node.js, pas de npm, pas de bundler** : les fichiers de
 `public/` seront servis tels quels.
 
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
+
 ## Objectif de la phase
 
 Mettre en place l'environnement Docker (application, base MySQL et phpMyAdmin)

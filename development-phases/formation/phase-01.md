@@ -154,7 +154,7 @@ au-dessus de la méthode.
 **Exemple commenté.**
 
 ```php
-namespace App\Controller;                    // doit correspondre au dossier src/Controller
+namespace App\Controller;                    // must match the src/Controller folder
 
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -162,9 +162,9 @@ use Symfony\Component\Routing\Attribute\Route;
 class HomeController
 {
     #[Route('/', name: 'app_home', methods: ['GET'])]
-    //       │          │                   └── verbes HTTP acceptés
-    //       │          └── nom de la route, utilisé pour générer des liens
-    //       └── chemin de l'URL
+    //       │          │                   └── accepted HTTP verbs
+    //       │          └── route name, used to generate links
+    //       └── URL path
     public function index(): Response
     {
         return new Response('Digi-Santé Junior — bientôt disponible');
@@ -174,7 +174,7 @@ class HomeController
 
 **Dans ce projet.** Toutes les routes sont en attributs (jamais en YAML) et leur
 nom est **préfixé par l'espace** : `app_` pour le public, puis `parent_`,
-`enfant_`, `admin_` dans les phases suivantes.
+`child_`, `admin_` dans les phases suivantes.
 
 ---
 
@@ -210,17 +210,17 @@ l'ajoute comme **troisième service** Docker, avec une image officielle : rien �
 installer.
 
 ```yaml
-  # Outil de développement uniquement : jamais en production.
+  # Development tool only: never in production.
   phpmyadmin:
     image: phpmyadmin:5.2
     depends_on:
       database:
-        condition: service_healthy   # attend que MySQL soit prêt
+        condition: service_healthy   # waits until MySQL is ready
     environment:
-      PMA_HOST: database             # nom du SERVICE MySQL, dans le réseau Docker
-      PMA_PORT: 3306                 # port interne de MySQL (pas 3308)
+      PMA_HOST: database             # name of the MySQL SERVICE, in the Docker network
+      PMA_PORT: 3306                 # MySQL's internal port (not 3308)
       PMA_USER: digisante            # identifiants fournis :
-      PMA_PASSWORD: digisante        # connexion automatique, sans écran de login
+      PMA_PASSWORD: digisante        # automatic login, no login screen
       TZ: Europe/Paris
     ports:
       - '8082:80'
@@ -300,25 +300,25 @@ configuration.
 
 ```dockerfile
 FROM dunglas/frankenphp:1-php8.4-bookworm
-# Image de départ : PHP 8.4 + un serveur web (Caddy) déjà configuré
-# pour servir le dossier public/. Aucun fichier de configuration Apache/Nginx.
+# Base image: PHP 8.4 + a web server (Caddy) already configured
+# to serve the public/ folder. No Apache/Nginx configuration file.
 
 RUN install-php-extensions pdo_mysql intl opcache zip
-# pdo_mysql : parler à MySQL
-# intl      : afficher les dates en français
-# opcache   : garder le PHP compilé en mémoire (performance)
+# pdo_mysql: talk to MySQL
+# intl     : display dates in French
+# opcache  : keep compiled PHP in memory (performance)
 
 COPY --from=composer/composer:2-bin /composer /usr/bin/composer
-# Composer est copié depuis son image officielle : pas d'installation manuelle
+# Composer is copied from its official image: no manual installation
 
 COPY docker/php.ini $PHP_INI_DIR/conf.d/app.ini
-# Réglages PHP de développement (fuseau Europe/Paris, mémoire…)
+# Development PHP settings (Europe/Paris time zone, memory…)
 
 ENV SERVER_NAME=":80"
-# Sans cette ligne, FrankenPHP sert du HTTPS : le port 8081:80 ne répondrait pas
+# Without this line, FrankenPHP serves HTTPS: port 8081:80 would not answer
 
 WORKDIR /app
-# Dossier de travail par défaut dans le conteneur
+# Default working folder in the container
 ```
 
 ### Le fichier `compose.yaml`, service par service
@@ -607,7 +607,7 @@ un éventuel `compose.override.yaml` créé par la recette, régler
   tentation d'installer PHP sur votre machine « juste pour tester ».
 - **Nommez vos routes** dès le départ (`app_home`) : les URL changent, les noms
   restent.
-- **Préfixez les noms de routes par espace** : `app_`, `parent_`, `enfant_`,
+- **Préfixez les noms de routes par espace** : `app_`, `parent_`, `child_`,
   `admin_`. On sait d'un coup d'œil où l'on est.
 - **Ne versionnez ni `vendor/` ni `var/`.**
 - **Écrivez les commandes en clair dans le `Makefile`** : un raccourci qui cache
@@ -624,9 +624,9 @@ un éventuel `compose.override.yaml` créé par la recette, régler
 
 ```php
 #[Route('/bonjour/{prenom}', name: 'app_bonjour', methods: ['GET'])]
-public function bonjour(string $prenom): Response
+public function bonjour(string $firstName): Response
 {
-    return new Response('Bonjour '.$prenom.' !');
+    return new Response('Bonjour '.$firstName.' !');
 }
 ```
 

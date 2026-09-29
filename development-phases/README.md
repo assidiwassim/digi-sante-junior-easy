@@ -29,7 +29,7 @@ Trois rôles **sans hiérarchie** : un administrateur n'est ni parent ni enfant.
 |---|---|---|
 | `ROLE_ADMIN` | `/admin` | email sur `/login` |
 | `ROLE_PARENT` | `/parent` | email sur `/login` |
-| `ROLE_CHILD` | `/enfant` | identifiant sur `/connexion-enfant` |
+| `ROLE_CHILD` | `/child` | identifiant sur `/login/child` |
 
 ---
 
@@ -89,6 +89,10 @@ captures/            →  À QUOI le résultat doit-il ressembler ?
 depuis un CDN, et les fichiers de `public/` sont servis tels quels. C'est un
 choix assumé pour rester simple — il n'y a donc aucune commande NPM dans ce
 parcours.
+
+**Langue** : le **code est en anglais** (classes, méthodes, variables, routes,
+URLs, tables, classes CSS, commentaires) ; tout ce qui s'affiche à l'écran est
+en **français**. Chaque prompt le rappelle.
 
 **Hors périmètre du projet** (à ne pas ajouter) : emails, notifications,
 badges, suivi du sport, du sommeil ou de l'humeur, et **API REST**. L'appli est
@@ -296,8 +300,8 @@ Phase 01 terminée. Les conteneurs `database` et `phpmyadmin` tournent.
   `date_immutable` (un jour), `datetime_immutable` (un instant).
 - Contrainte d'unicité et **index unique**, y compris sur deux colonnes
   (un seul journal par enfant et par jour).
-- Des **constantes d'entité** plutôt que des enums PHP (`Enfant::AVATARS`,
-  `DouleurZone::ZONES`, `ContenuBienEtre::TYPES`…), avec des getters
+- Des **constantes d'entité** plutôt que des enums PHP (`Child::AVATARS`,
+  `PainZone::ZONES`, `WellnessContent::TYPES`…), avec des getters
   d'affichage (`getAvatarEmoji()`, `getZoneLabel()`…).
 - Chaîne de suppression du projet : parent → enfants → compte + journaux → douleurs.
 
@@ -322,36 +326,36 @@ Relisez **chaque** migration générée avant de l'appliquer.
 - Configuration : `DATABASE_URL` vers le conteneur `database`,
   `doctrine.yaml` commenté.
 - Entité **`User`** (table `users`) : `email` (unique, nullable), `username`
-  (unique, nullable), `roles`, `password`, `pays`, `ville`, `createdAt` ;
+  (unique, nullable), `roles`, `password`, `country`, `city`, `createdAt` ;
   constantes de rôles, `isParent()`, `setEmail()` / `setUsername()` qui
   passent en minuscules, `#[UniqueEntity]`, `eraseCredentials()` vide avec
   l'attribut `#[\Deprecated]` (dépréciée depuis Symfony 7.3) ; relations
-  `enfants` (`OneToMany`, `cascade: ['remove']`) et `profilEnfant`
+  `children` (`OneToMany`, `cascade: ['remove']`) et `childProfile`
   (`OneToOne`, côté inverse).
-- Entité **`Enfant`** : `parent` (`ManyToOne`, `onDelete: 'CASCADE'`),
-  `compte` (`OneToOne` **non nullable**, `cascade: ['persist', 'remove']`),
-  prénom, nom, `dateNaissance` (`date_immutable`, 8 à 14 ans), avatar,
-  `maxMinutesJour` (15 à 480 min par pas de 15, 120 par défaut),
-  `journalEntrees` (`OneToMany`, `cascade: ['remove']`) ; constantes
-  `AVATARS` et `LIMITE_*` ; `getNomComplet()`, `getAge()`,
-  `getAvatarEmoji()`, `getAvatarNom()` ; messages de validation en français.
-- Entité **`JournalEntree`** : `enfant` (`ManyToOne`, `onDelete: 'CASCADE'`),
+- Entité **`Child`** : `parent` (`ManyToOne`, `onDelete: 'CASCADE'`),
+  `account` (`OneToOne` **non nullable**, `cascade: ['persist', 'remove']`),
+  prénom, nom, `birthDate` (`date_immutable`, 8 à 14 ans), avatar,
+  `dailyLimit` (15 à 480 min par pas de 15, 120 par défaut),
+  `journalEntries` (`OneToMany`, `cascade: ['remove']`) ; constantes
+  `AVATARS` et `LIMITE_*` ; `getFullName()`, `getAge()`,
+  `getAvatarEmoji()`, `getAvatarName()` ; messages de validation en français.
+- Entité **`JournalEntry`** : `child` (`ManyToOne`, `onDelete: 'CASCADE'`),
   `date` (`date_immutable`, aujourd'hui par défaut), 6 durées d'écran
-  (entiers, 0 par défaut), `douleurs` (`OneToMany`,
-  `cascade: ['persist', 'remove']`), **index unique** `(enfant_id, date)` ;
-  constante `ECRANS`, `getTotalEcran()`, `niveauPourMinutes()` (statique) et
-  `getNiveauEcran()` (seuils 120 et 240 min).
-- Entité **`DouleurZone`** : `journalEntree` (`ManyToOne`,
-  `onDelete: 'CASCADE'`), `zone`, `intensite` (1 à 5), constructeur
+  (entiers, 0 par défaut), `pains` (`OneToMany`,
+  `cascade: ['persist', 'remove']`), **index unique** `(child_id, date)` ;
+  constante `SCREENS`, `getTotalScreenTime()`, `levelForMinutes()` (statique) et
+  `getScreenLevel()` (seuils 120 et 240 min).
+- Entité **`PainZone`** : `journalEntry` (`ManyToOne`,
+  `onDelete: 'CASCADE'`), `zone`, `intensity` (1 à 5), constructeur
   `(zone, intensite)` ; constante `ZONES` (yeux, cou, épaule, dos, poignet,
   main), `getZoneLabel()`, `getZoneEmoji()`.
-- Entité **`ContenuBienEtre`** : `type` (« fiche » par défaut), `titre`
-  (160 caractères, obligatoire), `contenu` (`text`), `url` (500 caractères,
+- Entité **`WellnessContent`** : `type` (« fiche » par défaut), `title`
+  (160 caractères, obligatoire), `body` (`text`), `url` (500 caractères,
   facultative, `#[Assert\Url(requireTld: true, …)]` : l'omettre est déprécié
-  depuis Symfony 7.1), `declencheur` (facultatif), `createdAt` ; constantes
-  `TYPES` et `DECLENCHEURS` (limitées aux 3 règles réellement appliquées :
+  depuis Symfony 7.1), `triggerRule` (facultatif), `createdAt` ; constantes
+  `TYPES` et `TRIGGERS` (limitées aux 3 règles réellement appliquées :
   20-20-20, étirement cervical, yoga des yeux) ; `getTypeLabel()`,
-  `getTypeEmoji()`, `getDeclencheurLabel()`.
+  `getTypeEmoji()`, `getTriggerRuleLabel()`.
 - Les **repositories** générés par `make:entity`, laissés **vides** : chaque
   requête sera écrite dans la phase qui l'utilise.
 - Une ou plusieurs migrations, relues puis appliquées.
@@ -374,9 +378,9 @@ leurs index uniques ; `doctrine:schema:validate` est au vert et
 
 1. Lancer `make migrate`.
 2. Ouvrir phpMyAdmin sur `http://localhost:8082` et sélectionner la base `digisante_junior`.
-3. Vérifier la présence des tables `users`, `enfant`, `journal_entree`, `douleur_zone` et `contenu_bien_etre`.
-4. Ouvrir l'onglet « Structure » puis « Vue relationnelle » de `enfant`, `journal_entree` et `douleur_zone` : `parent_id`, `enfant_id` et `journal_entree_id` sont en `ON DELETE CASCADE` ; `compte_id` ne l'est pas (le compte est supprimé par la cascade Doctrine `Enfant::compte`).
-5. Vérifier les index uniques : `email` et `username` sur `users`, `compte_id` sur `enfant`, `(enfant_id, date)` sur `journal_entree`.
+3. Vérifier la présence des tables `users`, `child`, `journal_entry`, `pain_zone` et `wellness_content`.
+4. Ouvrir l'onglet « Structure » puis « Vue relationnelle » de `child`, `journal_entry` et `pain_zone` : `parent_id`, `child_id` et `journal_entry_id` sont en `ON DELETE CASCADE` ; `account_id` ne l'est pas (le compte est supprimé par la cascade Doctrine `Child::compte`).
+5. Vérifier les index uniques : `email` et `username` sur `users`, `account_id` sur `child`, `(child_id, date)` sur `journal_entry`.
 6. **Résultat attendu** : les 5 tables existent avec les bonnes colonnes, `doctrine:schema:validate` affiche deux `[OK]` et `doctrine:mapping:info` liste 5 entités.
 
 ### Formation
@@ -413,7 +417,7 @@ Phase 02 terminée (l'appli répond sur le port 8081, la base est en place).
 
 - Bootstrap 5.3 par CDN : grille, `card`, `btn`, `navbar`, utilitaires.
 - Variables CSS sur `:root` pour la palette ; classes maison du projet
-  (`btn-marine`, `pastille`, `carte-titre`, `avatar-bulle`, `texte-doux`…).
+  (`btn-navy`, `chip`, `card-heading`, `avatar-bubble`, `text-soft`…).
 - Polices Google Fonts : **Baloo 2** pour les titres, **Nunito** pour le texte.
 - La barre de debug (profiler installé en phase 01) apparaît dès la première
   page HTML.
@@ -432,7 +436,7 @@ docker compose exec app php bin/console cache:clear
 ### Modules à développer
 
 - `templates/base.html.twig` avec les blocs `title`, `body_class`, `navbar`,
-  `logo`, `marque_suffixe`, `menu`, `menu_utilisateur`, `body`, `javascripts`.
+  `logo`, `brand_suffix`, `menu`, `user_menu`, `body`, `javascripts`.
 - `public/css/app.css` : palette, boutons en pilule, cartes arrondies.
 - Page d'accueil publique : accroche, 3 arguments, deux boutons
   « Je suis un enfant » / « Je suis un parent » (ils pointent vers `#`
@@ -505,7 +509,7 @@ docker compose exec app php bin/console lint:yaml config
 
 - `config/packages/security.yaml` : hachage auto, provider sur l'entité `User`,
   `form_login`, `logout`, `remember_me` (7 jours), `access_control` sur
-  `/admin`, `/parent`, `/enfant`.
+  `/admin`, `/parent`, `/child`.
 - `config/packages/csrf.yaml` : la recette génère la variante **stateless** ;
   **remplacer** le fichier par `csrf_protection: { enabled: true }` et
   `form: { csrf_protection: { enabled: true } }` (CSRF adossé à la session).
@@ -515,11 +519,11 @@ docker compose exec app php bin/console lint:yaml config
 - `UserRepository` implémente `UserLoaderInterface` : `loadUserByIdentifier()`
   cherche par **email** (minuscules, sans espaces) ; sinon toute connexion
   renvoie une erreur 500. La phase 06 l'étendra à l'identifiant.
-- `SecurityController` : `/login`, `/logout`, `/inscription`.
-- `InscriptionType` : email, pays, ville, mot de passe répété, case de consentement.
+- `SecurityController` : `/login`, `/logout`, `/register`.
+- `RegistrationType` : email, pays, ville, mot de passe répété, case de consentement.
 - Pages d'attente `Parent\DashboardController` (`/parent`, route
-  `parent_dashboard`) et `Admin\AccueilController` (`/admin`, route `admin_accueil`).
-- `HomeController` : redirige ADMIN → `admin_accueil`, PARENT →
+  `parent_dashboard`) et `Admin\HomeController` (`/admin`, route `admin_home`).
+- `HomeController` : redirige ADMIN → `admin_home`, PARENT →
   `parent_dashboard` (l'enfant viendra en phase 06 : jamais de redirection vers
   une route qui n'existe pas encore).
 - Page d'accueil : le bouton « Je suis un parent » pointe désormais vers
@@ -533,11 +537,11 @@ se déconnecter. Un visiteur non connecté est renvoyé vers `/login`.
 
 ### Scénario de test manuel
 
-1. Ouvrir `/inscription` et créer un compte avec un email et un mot de passe de 6 caractères minimum.
+1. Ouvrir `/register` et créer un compte avec un email et un mot de passe de 6 caractères minimum.
 2. Se connecter sur `/login` avec ce compte.
 3. Vérifier la redirection automatique vers `/parent`.
 4. Se déconnecter, puis ouvrir `/parent` directement dans la barre d'adresse.
-5. Créer le compte administrateur : **d'abord** s'inscrire via `/inscription`
+5. Créer le compte administrateur : **d'abord** s'inscrire via `/register`
    avec `admin@digisante.local` / `admin123`, **puis** le promouvoir :
    `docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '[\"ROLE_ADMIN\"]' WHERE email = 'admin@digisante.local'"`.
    Si vous étiez connecté avec ce compte, Symfony vous **déconnecte** (rôle
@@ -564,7 +568,7 @@ chacun avec son compte de connexion et sa limite d'écran quotidienne.
 
 ### Prérequis
 
-Phase 04 terminée (un parent peut se connecter). L'entité `Enfant` et ses
+Phase 04 terminée (un parent peut se connecter). L'entité `Child` et ses
 relations existent depuis la phase 02.
 
 ### À apprendre
@@ -572,7 +576,7 @@ relations existent depuis la phase 02.
 - **Utiliser** les relations créées en phase 02 : un enfant et son compte
   enregistrés ensemble grâce à `cascade: ['persist']`.
 - Le **Voter** : autoriser une action sur **un objet précis**.
-- Une **extension Twig** : créer le filtre `duree` (« 2 h 30 »).
+- Une **extension Twig** : créer le filtre `duration` (« 2 h 30 »).
 - Le `CallbackTransformer` : un curseur envoie du texte, l'entité attend un entier.
 
 ### Concepts techniques
@@ -593,22 +597,22 @@ Aucune (installées en phase 01).
 ### Commandes
 
 ```bash
-docker compose exec app php bin/console make:voter EnfantVoter
+docker compose exec app php bin/console make:voter ChildVoter
 docker compose exec app php bin/console debug:router | grep parent
 ```
 
 ### Modules à développer
 
-- `UserRepository::genererUsername()` et `EnfantRepository::findByParent()`.
-- `Parent\EnfantController` : liste, création, modification, suppression.
-- `EnfantType` (option `creation` pour le mot de passe, galerie d'avatars),
-  `MotDePasseType`.
-- `Parent\ProfilController` : `/parent/profil` (route `parent_profil`, vers
-  laquelle mène le menu), `ProfilParentType` (email obligatoire, pays, ville)
-  + `MotDePasseType` sur la même page ; après une saisie invalide,
+- `UserRepository::generateUsername()` et `ChildRepository::findByParent()`.
+- `Parent\ChildController` : liste, création, modification, suppression.
+- `ChildType` (option `creation` pour le mot de passe, galerie d'avatars),
+  `PasswordChangeType`.
+- `Parent\ProfileController` : `/parent/profile` (route `parent_profile`, vers
+  laquelle mène le menu), `ParentProfileType` (email obligatoire, pays, ville)
+  + `PasswordChangeType` sur la même page ; après une saisie invalide,
   `$entityManager->refresh($user)`, sinon le parent est déconnecté.
-- `EnfantVoter` (`ENFANT_GERER`), `Twig\DureeExtension`, partiel
-  `_partials/bouton_supprimer.html.twig`, `templates/parent/layout.html.twig`.
+- `ChildVoter` (`CHILD_MANAGE`), `Twig\DurationExtension`, partiel
+  `_partials/delete_button.html.twig`, `templates/parent/layout.html.twig`.
 
 ### Résultat attendu
 
@@ -617,7 +621,7 @@ d'un autre parent renvoie une erreur 403.
 
 ### Scénario de test manuel
 
-1. Connecté en parent, ouvrir `/parent/enfants` puis « Ajouter un enfant ».
+1. Connecté en parent, ouvrir `/parent/children` puis « Ajouter un enfant ».
 2. Saisir un prénom, un nom, une date de naissance d'un enfant de 10 ans, un avatar, une limite de 1 h 30 et un mot de passe.
 3. Valider et lire le message : il annonce l'identifiant généré (ex. « lea »).
 4. Essayer de créer un deuxième enfant avec une date de naissance d'un enfant de 4 ans.
@@ -657,7 +661,7 @@ Phase 05 terminée (un profil enfant existe avec son compte).
 
 - Adapter le ton et l'ergonomie à l'enfant : tutoiement, emojis, gros boutons,
   messages bienveillants.
-- Un layout par espace (`enfant/layout.html.twig`) et un fond de page dédié.
+- Un layout par espace (`child/layout.html.twig`) et un fond de page dédié.
 - Changement de mot de passe par l'enfant lui-même.
 - La date du jour en français avec `twig/intl-extra` :
   `{{ 'now'|format_date('full', locale: 'fr') }}`.
@@ -669,7 +673,7 @@ Aucune (installées en phase 01).
 ### Commandes
 
 ```bash
-docker compose exec app php bin/console debug:router | grep enfant
+docker compose exec app php bin/console debug:router | grep child
 docker compose exec app php bin/console lint:twig templates
 ```
 
@@ -677,11 +681,11 @@ docker compose exec app php bin/console lint:twig templates
 
 - `UserRepository::loadUserByIdentifier()` : on étend la méthode de la
   phase 04 (email **ou** username).
-- `HomeController` : ajout de la redirection ROLE_CHILD → `enfant_accueil`.
-- Page `/connexion-enfant` (sans barre de navigation, message d'erreur bienveillant).
-- `Enfant\AccueilController` : `/enfant` (salutation, avatar, limite du jour),
-  `/enfant/profil` (carte d'identité + changement de mot de passe).
-- `templates/enfant/layout.html.twig`.
+- `HomeController` : ajout de la redirection ROLE_CHILD → `child_home`.
+- Page `/login/child` (sans barre de navigation, message d'erreur bienveillant).
+- `Child\HomeController` : `/child` (salutation, avatar, limite du jour),
+  `/child/profile` (carte d'identité + changement de mot de passe).
+- `templates/child/layout.html.twig`.
 
 ### Résultat attendu
 
@@ -690,9 +694,9 @@ jauge du jour et le journal arrivent en phase 07, le graphique en phase 10.
 
 ### Scénario de test manuel
 
-1. Se déconnecter, puis ouvrir `/connexion-enfant`.
+1. Se déconnecter, puis ouvrir `/login/child`.
 2. Saisir l'identifiant créé en phase 05 et son mot de passe.
-3. Vérifier l'arrivée sur `/enfant` avec le prénom et l'avatar de l'enfant.
+3. Vérifier l'arrivée sur `/child` avec le prénom et l'avatar de l'enfant.
 4. Ouvrir « Mon profil », changer le mot de passe, se déconnecter et se reconnecter avec le nouveau.
 5. **Résultat attendu** : la connexion par identifiant fonctionne et le nouveau mot de passe est accepté.
 
@@ -717,7 +721,7 @@ zones où il a mal, en moins d'une minute.
 ### Prérequis
 
 Phase 06 terminée (l'enfant se connecte à son espace). Les entités
-`JournalEntree` et `DouleurZone` existent depuis la phase 02.
+`JournalEntry` et `PainZone` existent depuis la phase 02.
 
 ### À apprendre
 
@@ -726,7 +730,7 @@ Phase 06 terminée (l'enfant se connecte à son espace). Les entités
 - Un formulaire **non lié à une entité** (il renvoie un simple tableau).
 - Une contrainte portant sur **plusieurs champs** : `Assert\Callback` dans
   l'option `constraints` du formulaire.
-- Profiter de l'**index unique** `(enfant_id, date)` de la phase 02 : un seul
+- Profiter de l'**index unique** `(child_id, date)` de la phase 02 : un seul
   journal par enfant et par jour.
 
 ### Concepts techniques
@@ -746,16 +750,16 @@ Aucune (installées en phase 01).
 
 ```bash
 docker compose exec app php bin/console debug:router | grep journal
-docker compose exec app php bin/console dbal:run-sql "SELECT * FROM journal_entree"
+docker compose exec app php bin/console dbal:run-sql "SELECT * FROM journal_entry"
 ```
 
 ### Modules à développer
 
-- `JournalEntreeRepository::findAujourdhui()`.
-- `Enfant\JournalController` : `/enfant/journal`, `/enfant/journal/etape/1`,
-  `/enfant/journal/etape/2`, `/enfant/journal/conseils`.
-- `JournalEcransType` (6 curseurs, total plafonné à 16 h, valeurs à zéro au
-  départ) et `JournalDouleursType` (champ caché + CSRF).
+- `JournalEntryRepository::findToday()`.
+- `Child\JournalController` : `/child/journal`, `/child/journal/step/1`,
+  `/child/journal/step/2`, `/child/journal/advice`.
+- `JournalScreensType` (6 curseurs, total plafonné à 16 h, valeurs à zéro au
+  départ) et `JournalPainsType` (champ caché + CSRF).
 - Schéma corporel SVG avec ses 6 zones et la fenêtre de choix d'intensité.
 
 ### Résultat attendu
@@ -792,12 +796,12 @@ l'enfant une page pour les découvrir.
 ### Prérequis
 
 Phase 07 terminée. Le compte `ROLE_ADMIN` créé en phase 04 existe en base.
-L'entité `ContenuBienEtre` existe depuis la phase 02.
+L'entité `WellnessContent` existe depuis la phase 02.
 
 ### À apprendre
 
 - Un **CRUD complet** en Symfony : liste, création, édition, suppression.
-- Le **param converter** : `#[Route('/{id}')]` + argument typé `ContenuBienEtre $contenu`.
+- Le **param converter** : `#[Route('/{id}')]` + argument typé `WellnessContent $content`.
 - `ChoiceType`, `TextareaType`, `UrlType` et l'option `help`.
 - Restreindre une section entière par `access_control`.
 
@@ -822,13 +826,13 @@ docker compose exec app php bin/console debug:router | grep admin
 
 ### Modules à développer
 
-- `ContenuBienEtreRepository::findTousTries()` (type puis titre, pas de
-  réordonnancement par l'admin) et `findGroupesParType()`.
-- `Admin\ContenuController` + `ContenuBienEtreType` + `admin/layout.html.twig`.
-  Il porte désormais la route `admin_accueil` (`/admin` → redirection vers
-  `admin_contenus`) : **supprimer** la page d'attente `Admin\AccueilController`
+- `WellnessContentRepository::findAllSorted()` (type — par libellé affiché —
+  puis titre, pas de réordonnancement par l'admin) et `findGroupedByType()`.
+- `Admin\ContentController` + `WellnessContentType` + `admin/layout.html.twig`.
+  Il porte désormais la route `admin_home` (`/admin` → redirection vers
+  `admin_contents`) : **supprimer** la page d'attente `Admin\HomeController`
   de la phase 04 et son gabarit (sinon deux routes du même nom).
-- Page enfant `/enfant/bibliotheque`, contenus groupés par type.
+- Page enfant `/child/library`, contenus groupés par type.
 
 ### Résultat attendu
 
@@ -836,7 +840,7 @@ L'admin publie un contenu ; l'enfant le voit aussitôt dans « Découvrir ».
 
 ### Scénario de test manuel
 
-1. Se connecter avec le compte administrateur et ouvrir `/admin/contenus`.
+1. Se connecter avec le compte administrateur et ouvrir `/admin/contents`.
 2. Créer un contenu de type « Fiche », avec un titre, un texte et un lien.
 3. Dans une **fenêtre de navigation privée** (deuxième session), se connecter en enfant et ouvrir « 📚 Découvrir ».
 4. Dans la fenêtre admin, modifier le titre du contenu, puis rafraîchir la page enfant.
@@ -890,7 +894,7 @@ Aucune (installées en phase 01).
 ### Commandes
 
 ```bash
-docker compose exec app php bin/console debug:container ConseilService
+docker compose exec app php bin/console debug:container AdviceService
 docker compose exec app php bin/console debug:autowiring Conseil --all
 ```
 
@@ -898,11 +902,11 @@ Sans `--all`, `debug:autowiring` n'affiche pas les services `App\`.
 
 ### Modules à développer
 
-- `Service\ConseilService` avec ses seuils en constantes.
-- `ContenuBienEtreRepository::findPremierPourDeclencheur()`.
-- Page `/enfant/journal/conseils` : récapitulatif du jour + conseils + contenu associé.
+- `Service\AdviceService` avec ses seuils en constantes.
+- `WellnessContentRepository::findFirstForTrigger()`.
+- Page `/child/journal/advice` : récapitulatif du jour + conseils + contenu associé.
 - Sur l'accueil enfant, quand le journal est rempli, un bouton « 💡 Revoir mes
-  conseils » vers `enfant_journal_conseils` (à ajouter dans cette phase).
+  conseils » vers `child_journal_advice` (à ajouter dans cette phase).
 
 ### Résultat attendu
 
@@ -914,7 +918,7 @@ saisi, et peut les revoir toute la journée depuis son accueil.
 1. Préparer : dans l'admin, créer un contenu rattaché à la règle « Yoga des
    yeux » (idéalement un par règle), puis supprimer le journal du jour de
    l'enfant pour pouvoir recommencer :
-   `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"`.
+   `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entry WHERE date = CURDATE()"`.
 2. Remplir un journal avec **plus de temps d'écran que la limite** du profil et
    une douleur aux yeux. Pour vérifier aussi le seuil « 2 h pile » (20-20-20),
    utiliser un enfant dont la limite est **≥ 2 h** (sinon c'est le dépassement
@@ -950,11 +954,11 @@ Phase 09 terminée (journaux et conseils disponibles).
 
 - Écrire des **requêtes dans le repository** avec le QueryBuilder, jamais dans
   le contrôleur.
-- Lire des paramètres d'URL (`?enfant=…&periode=…`) avec `$request->query`,
+- Lire des paramètres d'URL (`?child=…&period=…`) avec `$request->query`,
   via `getInt()` et une liste blanche :
-  `30 === $request->query->getInt('periode') ? 30 : 7`, et l'identifiant
-  demandé comparé à `$enfant->getId()`. Même chose sur l'accueil enfant. En
-  Symfony 7, une valeur non numérique (`?periode=abc`) répond **400**.
+  `30 === $request->query->getInt('period') ? 30 : 7`, et l'identifiant
+  demandé comparé à `$child->getId()`. Même chose sur l'accueil enfant. En
+  Symfony 7, une valeur non numérique (`?period=abc`) répond **400**.
 - Passer des données PHP au JavaScript : `{{ donnees|json_encode|raw }}`.
 - Réutiliser un fichier JS dans `public/js/` quand il sert à plusieurs pages.
 
@@ -962,7 +966,7 @@ Phase 09 terminée (journaux et conseils disponibles).
 
 - Construire une série de dates continue : un jour sans journal vaut 0 minute.
 - Jauge colorée : vert sous 2 h, orange de 2 à 4 h, rouge au-delà.
-- Sécurité : un `?enfant=` qui ne vous appartient pas retombe sur votre premier
+- Sécurité : un `?child=` qui ne vous appartient pas retombe sur votre premier
   enfant — aucune donnée d'un autre foyer n'est exposée.
 
 ### Dépendances à installer
@@ -974,18 +978,18 @@ Composer, aucun NPM).
 
 ```bash
 docker compose exec app php bin/console cache:clear
-docker compose exec app php bin/console dbal:run-sql "SELECT date, ecran_tv FROM journal_entree ORDER BY date DESC LIMIT 5"
+docker compose exec app php bin/console dbal:run-sql "SELECT date, screen_tv FROM journal_entry ORDER BY date DESC LIMIT 5"
 ```
 
 ### Modules à développer
 
-- `JournalEntreeRepository::getGraphiqueEcran()` (labels + minutes par jour).
-- `Parent\TableauDeBordController` : sélecteur d'enfant, journal du jour,
-  conseils, graphique ; écran d'accueil dédié si aucun enfant. Il remplace la
-  page d'attente `Parent\DashboardController` de la phase 04 (même route
-  `parent_dashboard`) : supprimer l'ancienne.
-- Graphique 7 / 30 jours sur l'accueil enfant (`Enfant\AccueilController`).
-- `public/js/graphique-ecran.js`, utilisé par le parent **et** par l'accueil enfant.
+- `JournalEntryRepository::getScreenTimeChart()` (labels + minutes par jour).
+- `Parent\DashboardController` : sélecteur d'enfant, journal du jour,
+  conseils, graphique ; écran d'accueil dédié si aucun enfant. C'est le même
+  contrôleur que la page d'attente de la phase 04 (même route
+  `parent_dashboard`) : on le réécrit, sans en créer un second.
+- Graphique 7 / 30 jours sur l'accueil enfant (`Child\HomeController`).
+- `public/js/screen-time-chart.js`, utilisé par le parent **et** par l'accueil enfant.
 
 ### Résultat attendu
 
@@ -997,7 +1001,7 @@ sur son accueil.
 1. Se connecter en parent et ouvrir `/parent`.
 2. Vérifier le temps d'écran du jour, la jauge colorée, les douleurs signalées et les conseils reçus par l'enfant.
 3. Basculer sur « 30 derniers jours » et vérifier que la courbe change.
-4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas (`/parent?enfant=999`).
+4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas (`/parent?child=999`).
 5. Se connecter en enfant : la même courbe s'affiche sur l'accueil.
 6. **Résultat attendu** : les deux périodes s'affichent avec la ligne de limite en pointillés, l'identifiant étranger affiche simplement votre premier enfant, et l'enfant voit sa courbe.
 
@@ -1065,10 +1069,10 @@ les données liées disparaissent avec lui.
 
 ### Scénario de test manuel
 
-1. Créer un compte parent de test via `/inscription`, s'y connecter et lui ajouter un enfant, puis remplir un journal pour cet enfant.
+1. Créer un compte parent de test via `/register`, s'y connecter et lui ajouter un enfant, puis remplir un journal pour cet enfant.
 2. Se connecter en administrateur, ouvrir `/admin/parents` et vérifier que le compte de test apparaît avec « 1 » enfant.
 3. Ouvrir sa fiche : l'enfant doit être listé, sans lien ni bouton d'action.
-4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `enfant`, `journal_entree` et `douleur_zone`.
+4. Supprimer le compte, confirmer, puis vérifier dans phpMyAdmin les tables `users`, `child`, `journal_entry` et `pain_zone`.
 5. **Résultat attendu** : le message indique le nombre de profils enfants supprimés, et plus aucune ligne liée à ce parent ne subsiste dans les quatre tables.
 
 ### Formation
@@ -1160,7 +1164,9 @@ avant (ou pendant) l'implémentation.
 ## Après le parcours
 
 - Reprenez le fichier `CLAUDE.md` du dépôt de référence : il résume les conventions, les
-  pièges connus et l'historique des décisions.
+  pièges connus et l'historique des décisions. Seule différence : ce parcours écrit
+  le **code en anglais** (le dépôt de référence le nomme en français) ; l'interface,
+  elle, est la même, en français.
 - Relisez les [leçons de formation](./formation/README.md) : après avoir
   construit l'application, les concepts se lisent différemment.
 - Comparez votre code avec ce dépôt : les écarts sont des occasions

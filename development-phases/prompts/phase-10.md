@@ -15,12 +15,19 @@
 enfants de 8 à 14 ans.
 
 Déjà en place : comptes et rôles, espace parent (profils enfants, limite
-quotidienne d'écran, `EnfantVoter`), espace enfant (accueil, journal quotidien
-en 2 étapes, bibliothèque), moteur de conseils `ConseilService` et filtre Twig
-`duree`.
+quotidienne d'écran, `ChildVoter`), espace enfant (accueil, journal quotidien
+en 2 étapes, bibliothèque), moteur de conseils `AdviceService` et filtre Twig
+`duration`.
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, Bootstrap 5.3 par CDN,
 **Chart.js par CDN**, MySQL 8, Docker. Pas de bundler, pas de npm.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -30,12 +37,13 @@ choisi, les conseils qu'il a reçus, et la courbe de son temps d'écran sur 7 ou
 
 ## Avant de coder
 
-1. Lis `src/Controller/Parent/`, `src/Repository/JournalEntreeRepository.php`,
-   `src/Service/ConseilService.php`, `templates/parent/layout.html.twig` et
-   `templates/enfant/accueil.html.twig`.
+1. Lis `src/Controller/Parent/`, `src/Repository/JournalEntryRepository.php`,
+   `src/Service/AdviceService.php`, `templates/parent/layout.html.twig` et
+   `templates/child/home.html.twig`.
 2. Repère la page d'attente de `/parent` créée en phase 04
    (`Parent\DashboardController`, route `parent_dashboard`) : c'est elle que tu
-   remplaces — supprime-la, le nouveau contrôleur reprend le même nom de route.
+   remplaces — réécris ce même contrôleur (même classe, même route) et son
+   gabarit `parent/dashboard.html.twig`, sans créer de second contrôleur.
 3. Annonce-moi le plan avant de coder.
 
 ## Captures d'écran de référence
@@ -62,10 +70,10 @@ enfant, seul le graphique « 📊 Mon temps d'écran » est nouveau.
 
 ### 1. Données du graphique (repository)
 
-Dans `JournalEntreeRepository` :
+Dans `JournalEntryRepository` :
 
 ```php
-public function getGraphiqueEcran(Enfant $enfant, int $nombreJours): array
+public function getScreenTimeChart(Child $child, int $numberOfDays): array
 ```
 
 - renvoie `['labels' => ['08/09', …], 'minutes' => [95, …]]` ;
@@ -77,30 +85,30 @@ public function getGraphiqueEcran(Enfant $enfant, int $nombreJours): array
 
 ⚠️ Aucun DQL dans un contrôleur : tout ici.
 
-### 2. `Parent\TableauDeBordController`
+### 2. `Parent\DashboardController` (réécrit)
 
 Route `/parent` (nom `parent_dashboard`), réservée à `ROLE_PARENT` :
 
 - **aucun enfant** → un écran d'accueil dédié qui invite à créer un premier
   profil (gabarit séparé) ;
 - **sélecteur d'enfant** : boutons avatar + prénom, l'enfant courant étant celui
-  passé en `?enfant=<id>`, sinon le premier par ordre alphabétique ;
+  passé en `?child=<id>`, sinon le premier par ordre alphabétique ;
   ⚠️ **sécurité** : ne cherche l'identifiant demandé **que parmi les enfants du
   parent connecté**. Un identifiant étranger retombe silencieusement sur le
   premier enfant — jamais de données d'un autre foyer, jamais d'erreur ;
 - en-tête : nom complet, âge, limite quotidienne, lien « Modifier le profil » ;
 - **journal du jour** : temps d'écran total coloré selon le niveau, rappel de la
   limite, jauge de progression, pastilles des douleurs signalées, et les
-  **mêmes conseils** que ceux reçus par l'enfant (réutilise `ConseilService`,
+  **mêmes conseils** que ceux reçus par l'enfant (réutilise `AdviceService`,
   ne réimplémente rien) ;
 - si le journal n'est pas rempli : « [Prénom] n'a pas encore rempli son journal
   aujourd'hui. » ;
-- **période** : `?periode=7` (défaut) ou `?periode=30`, avec deux boutons.
+- **période** : `?period=7` (défaut) ou `?period=30`, avec deux boutons.
 
 ### 3. Le graphique, partagé entre deux espaces
 
-- `public/js/graphique-ecran.js` : une fonction
-  `afficherGraphiqueEcran(canvasId, donnees, limite, libelles)` qui construit un
+- `public/js/screen-time-chart.js` : une fonction
+  `showScreenTimeChart(canvasId, donnees, limite, libelles)` qui construit un
   graphique en **courbe** avec Chart.js :
   - la série du temps d'écran (minutes) ;
   - une **ligne de limite** en pointillés rouges ;
@@ -109,13 +117,13 @@ Route `/parent` (nom `parent_dashboard`), réservée à `ROLE_PARENT` :
 - Ce fichier va dans `public/js/` **parce qu'il sert à deux pages** ; le reste
   du JavaScript reste dans le bloc `javascripts` de sa page.
 - Chart.js est chargé par CDN dans le bloc `javascripts` des deux pages.
-- Données PHP → JS avec `{{ graphique|json_encode|raw }}` (tableaux de nombres
+- Données PHP → JS avec `{{ chart|json_encode|raw }}` (tableaux de nombres
   et de dates, jamais une saisie utilisateur).
 
 ### 4. Compléter l'accueil enfant
 
-Ajouter le même graphique sur `/enfant`, avec le sélecteur **7 / 30 derniers
-jours** (`?periode=`), sous la jauge du jour existante.
+Ajouter le même graphique sur `/child`, avec le sélecteur **7 / 30 derniers
+jours** (`?period=`), sous la jauge du jour existante.
 
 ## Contraintes techniques et architecturales
 
@@ -123,17 +131,17 @@ jours** (`?periode=`), sous la jauge du jour existante.
   rendre le gabarit. Aucune requête Doctrine dans le contrôleur.
 - Lire les paramètres d'URL avec `getInt()`, en liste blanche :
   ```php
-  $periode = 30 === $request->query->getInt('periode') ? 30 : 7;
-  // l'enfant demandé : $candidat->getId() === $request->query->getInt('enfant')
+  $period = 30 === $request->query->getInt('period') ? 30 : 7;
+  // the requested child: $candidate->getId() === $request->query->getInt('child')
   ```
   Toute valeur **numérique** inattendue (`365`, l'identifiant d'un autre foyer)
   retombe sur le comportement par défaut. Une valeur **non numérique**
-  (`?periode=abc`) lève une `BadRequestException` en Symfony 7 : réponse **400**,
+  (`?period=abc`) lève une `BadRequestException` en Symfony 7 : réponse **400**,
   c'est voulu (URL mal formée).
 - Pas de logique métier dans Twig : le pourcentage de la jauge et le niveau de
   couleur sont calculés côté PHP (ou par une méthode d'entité existante).
-- Réutilise les classes maison (`jauge`, `niveau-*`, `stat-valeur`, `pastille`,
-  `carte-titre`…) plutôt que d'écrire du CSS neuf.
+- Réutilise les classes maison (`gauge`, `level-*`, `stat-value`, `chip`,
+  `card-heading`…) plutôt que d'écrire du CSS neuf.
 - Le graphique doit rester lisible sur mobile (conteneur à hauteur fixe,
   `maintainAspectRatio: false`).
 
@@ -142,7 +150,7 @@ jours** (`?periode=`), sous la jauge du jour existante.
 ```bash
 docker compose exec app php bin/console cache:clear
 docker compose exec app php bin/console lint:twig templates
-docker compose exec app php bin/console dbal:run-sql "SELECT date, ecran_tv FROM journal_entree ORDER BY date DESC LIMIT 5"
+docker compose exec app php bin/console dbal:run-sql "SELECT date, screen_tv FROM journal_entry ORDER BY date DESC LIMIT 5"
 ```
 
 Pour avoir de l'historique à afficher pendant les essais, insère quelques
@@ -161,7 +169,7 @@ journaux de jours passés en SQL, ou attends la phase 12 (fixtures).
 1. Se connecter en parent et ouvrir `/parent`.
 2. Vérifier le temps d'écran du jour, la jauge colorée, les douleurs signalées et les conseils reçus par l'enfant.
 3. Cliquer sur « 30 derniers jours » et vérifier que la courbe et la ligne de limite changent d'échelle.
-4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas, par exemple `/parent?enfant=999`.
+4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas, par exemple `/parent?child=999`.
 5. Se connecter en enfant : la même courbe s'affiche sur l'accueil.
 6. **Résultat attendu** : les deux périodes s'affichent correctement, les jours sans journal valent 0, l'identifiant étranger affiche simplement votre premier enfant, sans erreur ni donnée d'un autre foyer, et l'enfant voit sa courbe.
 
@@ -172,8 +180,8 @@ journaux de jours passés en SQL, ou attends la phase 12 (fixtures).
       fichier JS.
 - [ ] Les conseils affichés au parent sont identiques à ceux vus par l'enfant.
 - [ ] La courbe compte bien 7 (ou 30) points, zéros inclus.
-- [ ] `/parent?periode=365` et `/parent?enfant=[id d'un autre foyer]`
-      s'affichent normalement (7 jours, premier enfant) ; `?periode=abc`
+- [ ] `/parent?period=365` et `/parent?child=[id d'un autre foyer]`
+      s'affichent normalement (7 jours, premier enfant) ; `?period=abc`
       répond 400 (URL mal formée), jamais 500.
 - [ ] `lint:twig templates` est au vert et aucune erreur n'apparaît dans la
       console du navigateur.
@@ -181,6 +189,6 @@ journaux de jours passés en SQL, ou attends la phase 12 (fixtures).
 ## Enfin
 
 - N'écris **aucun test automatisé** : je valide au navigateur.
-- Termine en m'expliquant en quelques lignes pourquoi un `?enfant=` étranger
+- Termine en m'expliquant en quelques lignes pourquoi un `?child=` étranger
   retombe sur le premier enfant ici, alors qu'une modification de profil renvoie
   une 403 via le voter.

@@ -53,9 +53,9 @@ ses règles d'authentification. Il n'a rien à voir avec un pare-feu réseau.
 firewalls:
     dev:
         pattern: ^/(_profiler|_wdt|css|js)/
-        security: false          # zone technique : aucune sécurité
+        security: false          # technical area: no security
     main:
-        lazy: true               # ne charge l'utilisateur que si on en a besoin
+        lazy: true               # only loads the user when needed
         provider: app_user_provider
         form_login:
             login_path: app_login
@@ -101,7 +101,7 @@ class UserRepository extends ServiceEntityRepository implements UserLoaderInterf
 {
     public function loadUserByIdentifier(string $identifier): ?User
     {
-        // Même normalisation que setEmail() : minuscules, sans espaces autour.
+        // Same normalisation as setEmail(): lower case, no surrounding spaces.
         return $this->findOneBy(['email' => mb_strtolower(trim($identifier))]);
     }
 }
@@ -131,7 +131,7 @@ et ajoute un **sel** aléatoire : deux comptes avec le même mot de passe ont de
 empreintes différentes.
 
 ```php
-$parent->setPassword($passwordHasher->hashPassword($parent, $motDePasse));
+$parent->setPassword($passwordHasher->hashPassword($parent, $password));
 ```
 
 **Dans ce projet.** Règle absolue : mots de passe **jamais** stockés ni affichés
@@ -151,7 +151,7 @@ enfant (phase 05).
 access_control:
     - { path: ^/admin, roles: ROLE_ADMIN }
     - { path: ^/parent, roles: ROLE_PARENT }
-    - { path: ^/enfant, roles: ROLE_CHILD }
+    - { path: ^/child, roles: ROLE_CHILD }
 ```
 
 ⚠️ Deux pièges :
@@ -175,11 +175,11 @@ protéger du CSRF. Symfony fait tout cela.
 crée le formulaire, lui passe la requête, et regarde s'il est valide.
 
 ```php
-$form = $this->createForm(InscriptionType::class, $parent);
-$form->handleRequest($request);   // lit la requête et remplit l'objet
+$form = $this->createForm(RegistrationType::class, $parent);
+$form->handleRequest($request);   // reads the request and fills the object
 
 if ($form->isSubmitted() && $form->isValid()) {
-    // ici, $parent contient déjà les données saisies et validées
+    // here, $parent already holds the typed and validated data
 }
 ```
 
@@ -192,8 +192,8 @@ if ($form->isSubmitted() && $form->isValid()) {
 ```php
 ->add('plainPassword', RepeatedType::class, [
     'type' => PasswordType::class,
-    'mapped' => false,        // « password » contient le mot de passe HACHÉ,
-                              // le mot de passe en clair ne doit jamais y aller
+    'mapped' => false,        // "password" holds the HASHED password,
+                              // the plain password must never go there
     'constraints' => [new Assert\Length(min: 6)],
 ])
 ```
@@ -217,7 +217,7 @@ moment du `isValid()`.
 |---|---|---|
 | Règle **permanente** de la donnée | sur l'**entité** | format d'email, unicité |
 | Règle propre à **un formulaire** | dans le `*Type` | email obligatoire à l'inscription |
-| Champ **non mappé** | dans le `*Type` | `plainPassword`, `conditions` |
+| Champ **non mappé** | dans le `*Type` | `plainPassword`, `agreeTerms` |
 
 **Les contraintes de la phase 02 prennent vie.** En phase 02, vous avez posé des
 `#[Assert\…]` et un `#[UniqueEntity]` sur les entités, sans rien voir se passer :
@@ -227,7 +227,7 @@ celles déclarées dans le `*Type`, puis attache chaque message d'erreur au cham
 concerné. Inscrivez-vous deux fois avec le même email : le message « Cette
 adresse email est déjà utilisée. » vient directement de `#[UniqueEntity]` sur
 `User`. Les phases suivantes profitent du même mécanisme : âge 8-14 ans et
-limite d'écran (`Enfant`, phase 05), URL et titre (`ContenuBienEtre`, phase 08).
+limite d'écran (`Child`, phase 05), URL et titre (`WellnessContent`, phase 08).
 
 ---
 
@@ -235,7 +235,7 @@ limite d'écran (`Enfant`, phase 05), URL et titre (`ContenuBienEtre`, phase 08)
 
 **Pourquoi ?** Sans elle, un site malveillant peut faire exécuter une action à
 votre insu : vous êtes connecté sur l'application, une page piégée envoie un
-formulaire vers `/parent/enfants/3/supprimer`, et votre navigateur y joint
+formulaire vers `/parent/children/3/delete`, et votre navigateur y joint
 gentiment votre cookie de session.
 
 **Comment ça fonctionne ?** Le serveur place un **jeton** unique dans chaque
@@ -287,7 +287,7 @@ Le gabarit `base.html.twig` (phase 03) les affiche déjà pour toutes les pages.
 #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
 public function login(AuthenticationUtils $authenticationUtils): Response
 {
-    if ($this->getUser()) {                       // déjà connecté ?
+    if ($this->getUser()) {                       // already logged in?
         return $this->redirectToRoute('app_home');
     }
 
@@ -308,14 +308,14 @@ Règle du projet : **pas d'authenticator maison**.
 
 ```php
 $parent = new User();
-$parent->setRoles([User::ROLE_PARENT]);          // 1. on fixe le rôle
+$parent->setRoles([User::ROLE_PARENT]);          // 1. the role is set
 
-$form = $this->createForm(InscriptionType::class, $parent);
-$form->handleRequest($request);                  // 2. on lit la requête
+$form = $this->createForm(RegistrationType::class, $parent);
+$form->handleRequest($request);                  // 2. the request is read
 
-if ($form->isSubmitted() && $form->isValid()) {  // 3. on valide
-    $motDePasse = $form->get('plainPassword')->getData();          // champ non mappé
-    $parent->setPassword($passwordHasher->hashPassword($parent, $motDePasse)); // 4. hachage
+if ($form->isSubmitted() && $form->isValid()) {  // 3. the form is validated
+    $password = $form->get('plainPassword')->getData();          // unmapped field
+    $parent->setPassword($passwordHasher->hashPassword($parent, $password)); // 4. hachage
 
     $entityManager->persist($parent);             // 5. enregistrement
     $entityManager->flush();
@@ -335,16 +335,16 @@ automatiquement. C'est la convention du projet.
 #[Route('/', name: 'app_home', methods: ['GET'])]
 public function index(): Response
 {
-    if ($this->isGranted(User::ROLE_ADMIN))  { return $this->redirectToRoute('admin_accueil'); }
+    if ($this->isGranted(User::ROLE_ADMIN))  { return $this->redirectToRoute('admin_home'); }
     if ($this->isGranted(User::ROLE_PARENT)) { return $this->redirectToRoute('parent_dashboard'); }
 
     return $this->render('home/index.html.twig');
 }
 ```
 
-`admin_accueil` (`/admin`, `Admin\AccueilController`) et `parent_dashboard`
+`admin_home` (`/admin`, `Admin\HomeController`) et `parent_dashboard`
 (`/parent`, `Parent\DashboardController`) sont les deux **pages d'attente** de
-cette phase. L'enfant sera ajouté en phase 06, quand `enfant_accueil` existera :
+cette phase. L'enfant sera ajouté en phase 06, quand `child_home` existera :
 on ne redirige **jamais** vers une route qui n'existe pas encore (erreur 500).
 
 Pourquoi ici ? Parce que `security.yaml` renvoie **toujours** vers `app_home`
@@ -372,7 +372,7 @@ Résultat : une seule règle de redirection dans tout le projet, facile à lire 
 
 ### `docker compose exec app php bin/console debug:router`
 
-- **Quand** : après avoir ajouté `/login`, `/logout`, `/inscription`.
+- **Quand** : après avoir ajouté `/login`, `/logout`, `/register`.
 - **À observer** : `app_logout` doit exister, même si sa méthode est vide —
   c'est Symfony qui l'intercepte.
 
@@ -417,14 +417,14 @@ config/packages/
 
 src/
 ├── Controller/
-│   ├── SecurityController.php    /login, /logout, /inscription
+│   ├── SecurityController.php    /login, /logout, /register
 │   ├── HomeController.php        redirection par rôle
 │   ├── Admin/AccueilController.php      page d'attente /admin
 │   └── Parent/DashboardController.php   page d'attente /parent
 ├── Entity/User.php               (phase 02, inchangée)
 ├── Repository/UserRepository.php  (phase 02) + UserLoaderInterface (recherche par email)
 └── Form/
-    └── InscriptionType.php       les champs du formulaire d'inscription
+    └── RegistrationType.php       les champs du formulaire d'inscription
 
 templates/security/
 ├── login.html.twig
@@ -432,7 +432,7 @@ templates/security/
 ```
 
 Un `*Type` **par formulaire**, dans `src/Form/` : c'est la convention du projet,
-et elle rend chaque formulaire réutilisable (on le verra avec `MotDePasseType`
+et elle rend chaque formulaire réutilisable (on le verra avec `PasswordChangeType`
 en phase 05).
 
 ---
@@ -482,10 +482,10 @@ un parent, la bibliothèque à un administrateur.
 **Composants utilisés** : Security, Form, Validator, Translation, Twig.
 
 **Fichiers créés ou modifiés** : `security.yaml`, `csrf.yaml`,
-`translation.yaml`, `twig.yaml`, `SecurityController`, `InscriptionType`,
+`translation.yaml`, `twig.yaml`, `SecurityController`, `RegistrationType`,
 les gabarits de connexion et d'inscription, la redirection dans `HomeController`,
 `UserLoaderInterface` sur `UserRepository`, et deux pages d'attente pour
-`/parent` (`parent_dashboard`) et `/admin` (`admin_accueil`). Sur l'accueil, le
+`/parent` (`parent_dashboard`) et `/admin` (`admin_home`). Sur l'accueil, le
 bouton « Je suis un parent » pointe désormais vers `app_login` ; les boutons de
 connexion enfant restent sur `#` jusqu'en phase 06.
 
@@ -565,7 +565,7 @@ attribué à l'inscription.
 
 ## 12. Exercice pratique
 
-1. Créez un compte parent via `/inscription`, puis regardez la colonne
+1. Créez un compte parent via `/register`, puis regardez la colonne
    `password` dans phpMyAdmin : elle doit être illisible et commencer par `$2y$`
    ou `$argon`.
 2. Créez un second compte avec **le même mot de passe** : les deux empreintes
@@ -577,7 +577,7 @@ attribué à l'inscription.
 4. Ouvrez la barre de debug en bas de page, onglet « Security » : relevez
    l'utilisateur connecté, ses rôles et le firewall actif.
 5. Créez le compte administrateur de test : **d'abord** inscrivez-vous via
-   `/inscription` avec `admin@digisante.local` / `admin123`, **puis** donnez-lui
+   `/register` avec `admin@digisante.local` / `admin123`, **puis** donnez-lui
    le rôle en base :
    `docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '[\"ROLE_ADMIN\"]' WHERE email = 'admin@digisante.local'"`.
    Si vous étiez connecté avec ce compte, Symfony détecte que les rôles ont
@@ -591,11 +591,11 @@ et pourquoi `plainPassword` n'est pas une propriété de `User`.
 
 ## 13. Scénario de test manuel
 
-1. Ouvrir `/inscription` et créer un compte avec un email et un mot de passe de 6 caractères minimum.
+1. Ouvrir `/register` et créer un compte avec un email et un mot de passe de 6 caractères minimum.
 2. Se connecter sur `/login` avec ce compte.
 3. Vérifier la redirection automatique vers `/parent`.
 4. Se déconnecter, puis ouvrir `/parent` directement dans la barre d'adresse.
-5. Créer le compte administrateur : **d'abord** s'inscrire via `/inscription`
+5. Créer le compte administrateur : **d'abord** s'inscrire via `/register`
    avec `admin@digisante.local` / `admin123`, **puis** le promouvoir :
    `docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '[\"ROLE_ADMIN\"]' WHERE email = 'admin@digisante.local'"`.
    Si vous étiez connecté avec ce compte, Symfony vous **déconnecte** (rôle

@@ -17,7 +17,7 @@ douleurs, reçoit des conseils ; ses parents suivent l'évolution. Trois rôles
 |---|---|---|
 | `ROLE_ADMIN` | `/admin` | **email** |
 | `ROLE_PARENT` | `/parent` | **email** |
-| `ROLE_CHILD` | `/enfant` | **identifiant** (pas d'email) |
+| `ROLE_CHILD` | `/child` | **identifiant** (pas d'email) |
 
 Déjà en place (phase 01) : Docker (`app`, `database` MySQL 8, `phpmyadmin` sur
 `http://localhost:8082`), squelette Symfony 7.4, et **tous les paquets du
@@ -25,14 +25,21 @@ projet** (Doctrine ORM, Maker, Security, Validator…). Aucune entité n'existe
 encore.
 
 Stack : PHP 8.4, Symfony 7.4, **Doctrine ORM 3**, MySQL 8, Twig, Docker.
-Je débute avec Symfony : code simple, en français, sans sur-ingénierie.
+Je débute avec Symfony : code simple, sans sur-ingénierie.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
 Connecter l'application à MySQL et créer **les cinq entités** du projet, avec
 leurs relations, leurs cascades de suppression, leurs listes fixes et leurs
-règles de validation : `User`, `Enfant`, `JournalEntree`, `DouleurZone`,
-`ContenuBienEtre`. Aucune page dans cette phase : on construit le modèle de
+règles de validation : `User`, `Child`, `JournalEntry`, `PainZone`,
+`WellnessContent`. Aucune page dans cette phase : on construit le modèle de
 données, que les phases suivantes utiliseront sans le recréer.
 
 ## Avant de coder
@@ -54,7 +61,7 @@ données, que les phases suivantes utiliseront sans le recréer.
 ### 1. Doctrine
 
 - Vérifier la configuration générée dans `config/packages/doctrine.yaml` et la
-  commenter en français là où c'est utile.
+  commenter (en anglais) là où c'est utile.
 - Ajoute au `Makefile` la cible `migrate`
   (`php bin/console doctrine:migrations:migrate --no-interaction`) : les
   scénarios de test l'utilisent à partir d'ici.
@@ -86,11 +93,11 @@ Un seul type de compte pour les trois rôles :
 | `username` | `?string(60)` | **unique**, nullable (réservé aux enfants) |
 | `roles` | `json` | liste de rôles |
 | `password` | `string` | mot de passe **haché**, jamais en clair |
-| `pays` | `?string(80)` | facultatif |
-| `ville` | `?string(80)` | facultatif |
+| `country` | `?string(80)` | facultatif |
+| `city` | `?string(80)` | facultatif |
 | `createdAt` | `datetime_immutable` | rempli dans le constructeur |
-| `enfants` | `OneToMany` vers `Enfant` | côté parent, `mappedBy: 'parent'`, `cascade: ['remove']`, **sans tri** (les listes triées passent par le repository) |
-| `profilEnfant` | `OneToOne` inverse vers `Enfant` | côté enfant, `mappedBy: 'compte'` |
+| `children` | `OneToMany` vers `Child` | côté parent, `mappedBy: 'parent'`, `cascade: ['remove']`, **sans tri** (les listes triées passent par le repository) |
+| `childProfile` | `OneToOne` inverse vers `Child` | côté enfant, `mappedBy: 'account'` |
 
 Exigences :
 
@@ -110,17 +117,17 @@ Exigences :
   signale une dépréciation (visible dans la barre de debug à partir de la
   phase 03).
 
-### 4. Entité `Enfant`
+### 4. Entité `Child`
 
 | Propriété | Type | Règles |
 |---|---|---|
 | `parent` | `ManyToOne` vers `User` | non nullable, `onDelete: 'CASCADE'` |
-| `compte` | `OneToOne` vers `User` | **non nullable**, `cascade: ['persist', 'remove']` (le compte part avec le profil) |
-| `prenom`, `nom` | `string(80)` | obligatoires : « Le prénom est obligatoire. », « Le nom est obligatoire. » |
-| `dateNaissance` | `date_immutable` | obligatoire (« La date de naissance est obligatoire. »), l'enfant doit avoir **entre 8 et 14 ans** |
-| `avatar` | `string(20)` | clé de `AVATARS`, défaut `renard`, obligatoire (« Choisissez un avatar. ») |
-| `maxMinutesJour` | `int` | limite quotidienne, **15 à 480 min par pas de 15**, défaut **120** |
-| `journalEntrees` | `OneToMany` vers `JournalEntree` | `mappedBy: 'enfant'`, `cascade: ['remove']` |
+| `account` | `OneToOne` vers `User` | **non nullable**, `cascade: ['persist', 'remove']` (le compte part avec le profil) |
+| `firstName`, `lastName` | `string(80)` | obligatoires : « Le prénom est obligatoire. », « Le nom est obligatoire. » |
+| `birthDate` | `date_immutable` | obligatoire (« La date de naissance est obligatoire. »), l'enfant doit avoir **entre 8 et 14 ans** |
+| `avatar` | `string(20)` | clé de `AVATARS`, défaut `fox`, obligatoire (« Choisissez un avatar. ») |
+| `dailyLimit` | `int` | limite quotidienne, **15 à 480 min par pas de 15**, défaut **120** |
+| `journalEntries` | `OneToMany` vers `JournalEntry` | `mappedBy: 'child'`, `cascade: ['remove']` |
 
 - Constante `AVATARS` — **exactement** ces 12 avatars (clé → emoji, nom,
   couleur), dans cet ordre. Les clés sont enregistrées en base : elles doivent
@@ -128,7 +135,7 @@ Exigences :
 
   | Clé | Emoji | Nom | Couleur |
   |---|---|---|---|
-  | `renard` | 🦊 | Renard malin | `#F59E0B` |
+  | `fox` | 🦊 | Renard malin | `#F59E0B` |
   | `panda` | 🐼 | Panda calme | `#64748B` |
   | `chat` | 🐱 | Chat curieux | `#F472B6` |
   | `chien` | 🐶 | Chien fidèle | `#C99A2E` |
@@ -141,9 +148,9 @@ Exigences :
   | `pingouin` | 🐧 | Pingouin cool | `#1F3864` |
   | `astronaute` | 🧑‍🚀 | Astronaute | `#3B82F6` |
 
-- Constantes `LIMITE_MIN = 15`, `LIMITE_MAX = 480`, `LIMITE_PAS = 15`.
-- Getters d'affichage : `getNomComplet()` (« prénom nom »), `getAge()` (années
-  révolues), `getAvatarEmoji()` (🙂 si la clé est inconnue), `getAvatarNom()`
+- Constantes `LIMIT_MIN = 15`, `LIMIT_MAX = 480`, `LIMIT_STEP = 15`.
+- Getters d'affichage : `getFullName()` (« prénom nom »), `getAge()` (années
+  révolues), `getAvatarEmoji()` (🙂 si la clé est inconnue), `getAvatarName()`
   (« Avatar » si la clé est inconnue).
 - Validation :
   - date de naissance : `Assert\Range` entre `'today -15 years +1 day'` et
@@ -154,64 +161,64 @@ Exigences :
     minutes. ») et `Assert\DivisibleBy(15)` (« La limite se règle par tranches
     de 15 minutes. »).
 
-### 5. Entité `JournalEntree`
+### 5. Entité `JournalEntry`
 
 | Propriété | Type | Règles |
 |---|---|---|
-| `enfant` | `ManyToOne` vers `Enfant` | non nullable, `onDelete: 'CASCADE'` |
+| `child` | `ManyToOne` vers `Child` | non nullable, `onDelete: 'CASCADE'` |
 | `date` | `date_immutable` | jour seul (minuit), initialisé à « today » dans le constructeur |
-| `ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`, `ecranConsole`, `ecranAutre` | `int` | minutes, défaut 0 |
-| `douleurs` | `OneToMany` vers `DouleurZone` | `mappedBy: 'journalEntree'`, `cascade: ['persist', 'remove']` |
+| `screenTv`, `screenComputer`, `screenSmartphone`, `screenTablet`, `screenConsole`, `screenOther` | `int` | minutes, défaut 0 |
+| `pains` | `OneToMany` vers `PainZone` | `mappedBy: 'journalEntry'`, `cascade: ['persist', 'remove']` |
 
-- **Index unique `un_journal_par_jour` sur `(enfant_id, date)`**
+- **Index unique `one_journal_per_day` sur `(child_id, date)`**
   (`#[ORM\UniqueConstraint]`) : un seul journal par enfant et par jour, garanti
   **en base**.
-- Constante `ECRANS` (nom de propriété → libellé affiché), **exactement** :
-  `ecranTv` → « 📺 Télévision », `ecranOrdinateur` → « 💻 Ordinateur »,
-  `ecranSmartphone` → « 📱 Téléphone », `ecranTablette` → « 📲 Tablette »,
-  `ecranConsole` → « 🎮 Console de jeux », `ecranAutre` → « 🖥️ Autre écran ».
+- Constante `SCREENS` (nom de propriété → libellé affiché), **exactement** :
+  `screenTv` → « 📺 Télévision », `screenComputer` → « 💻 Ordinateur »,
+  `screenSmartphone` → « 📱 Téléphone », `screenTablet` → « 📲 Tablette »,
+  `screenConsole` → « 🎮 Console de jeux », `screenOther` → « 🖥️ Autre écran ».
   Elle servira au formulaire du journal.
-- `addDouleur()`, qui rattache aussi la douleur au journal.
-- `getTotalEcran()` : somme des six durées.
-- `niveauPourMinutes(int $minutes): string` (statique) : `vert` sous 120 min,
-  `orange` jusqu'à 240 min inclus, `rouge` au-delà — plus `getNiveauEcran()`.
+- `addPain()`, qui rattache aussi la douleur au journal.
+- `getTotalScreenTime()` : somme des six durées.
+- `levelForMinutes(int $minutes): string` (statique) : `green` sous 120 min,
+  `orange` jusqu'à 240 min inclus, `red` au-delà — plus `getScreenLevel()`.
 
-### 6. Entité `DouleurZone`
+### 6. Entité `PainZone`
 
-- `journalEntree` (`ManyToOne`, non nullable, `onDelete: 'CASCADE'`), `zone`
-  (`string(20)`), `intensite` (`int`, 1 à 5).
-- Constructeur `__construct(string $zone, int $intensite)`.
-- Constante `ZONES` (clé → libellé et emoji), **exactement** : `yeux` → Yeux 👀,
-  `cou` → Cou / nuque 🦴, `epaule` → Épaules 💪, `dos` → Dos 🔙,
-  `poignet` → Poignets 🤚, `main` → Doigts / main ✋. Les clés correspondront à
+- `journalEntry` (`ManyToOne`, non nullable, `onDelete: 'CASCADE'`), `zone`
+  (`string(20)`), `intensity` (`int`, 1 à 5).
+- Constructeur `__construct(string $zone, int $intensity)`.
+- Constante `ZONES` (clé → libellé et emoji), **exactement** : `eyes` → Yeux 👀,
+  `neck` → Cou / nuque 🦴, `shoulder` → Épaules 💪, `back` → Dos 🔙,
+  `wrist` → Poignets 🤚, `hand` → Doigts / main ✋. Les clés correspondront à
   l'attribut `data-zone` du schéma du corps (phase 07).
 - Getters d'affichage `getZoneLabel()` (la clé si elle est inconnue) et
   `getZoneEmoji()` (📍 si elle est inconnue).
 
-### 7. Entité `ContenuBienEtre`
+### 7. Entité `WellnessContent`
 
 | Propriété | Type | Règles |
 |---|---|---|
-| `type` | `string(20)` | obligatoire (« Choisissez un type de contenu. »), défaut `fiche` |
-| `titre` | `string(160)` | obligatoire (« Le titre est obligatoire. ») |
-| `contenu` | `text` | obligatoire (« Le contenu est obligatoire. ») |
+| `type` | `string(20)` | obligatoire (« Choisissez un type de contenu. »), défaut `sheet` |
+| `title` | `string(160)` | obligatoire (« Le titre est obligatoire. ») |
+| `body` | `text` | obligatoire (« Le contenu est obligatoire. ») |
 | `url` | `?string(500)` | facultatif, URL valide |
-| `declencheur` | `?string(40)` | facultatif |
+| `triggerRule` | `?string(40)` | facultatif |
 | `createdAt` | `datetime_immutable` | rempli dans le constructeur |
 
 - Constantes :
   - `TYPES` (clé → libellé et emoji), dans cet ordre, qui sera celui des groupes
-    de la page « Découvrir » : `fiche` → Fiche 📄, `video` → Vidéo 🎬,
-    `quiz` → Quiz ❓, `glossaire` → Glossaire 📚, `exercice` → Exercice 🤸 ;
-  - `DECLENCHEURS` : **uniquement** les trois règles qu'appliquera le moteur de
+    de la page « Découvrir » : `sheet` → Fiche 📄, `video` → Vidéo 🎬,
+    `quiz` → Quiz ❓, `glossary` → Glossaire 📚, `exercise` → Exercice 🤸 ;
+  - `TRIGGERS` : **uniquement** les trois règles qu'appliquera le moteur de
     conseils (phase 09) — `20-20-20` (« Règle du 20-20-20 »),
-    `etirement_cervical` (« Étirements du cou »), `yoga_yeux` (« Yoga des
-    yeux ») —, déclarées aussi en constantes nommées `DECLENCHEUR_20_20_20`,
-    `DECLENCHEUR_ETIREMENT` et `DECLENCHEUR_YOGA_YEUX`. ⚠️ N'ajoute **aucune**
+    `neck_stretching` (« Étirements du cou »), `eye_yoga` (« Yoga des
+    yeux ») —, déclarées aussi en constantes nommées `TRIGGER_20_20_20`,
+    `TRIGGER_STRETCHING` et `TRIGGER_EYE_YOGA`. ⚠️ N'ajoute **aucune**
     autre règle : une règle proposée mais jamais déclenchée rendrait invisibles
     ses contenus.
 - Getters d'affichage : `getTypeLabel()`, `getTypeEmoji()` (📄 par défaut),
-  `getDeclencheurLabel()` (`null` sans règle).
+  `getTriggerRuleLabel()` (`null` sans règle).
 - Validation sur `url` :
   `#[Assert\Url(message: 'Merci de saisir une URL valide.', requireTld: true, tldMessage: 'Merci de saisir une URL valide, par exemple https://exemple.fr.')]`.
   `requireTld: true` est obligatoire : l'omettre est déprécié depuis
@@ -220,7 +227,7 @@ Exigences :
 ### 8. Repositories
 
 `make:entity` crée un repository par entité : **laisse-les vides**. Chaque
-méthode de requête (`findByParent()`, `genererUsername()`, `findAujourdhui()`…)
+méthode de requête (`findByParent()`, `generateUsername()`, `findToday()`…)
 sera écrite dans la phase qui l'utilise.
 
 ### 9. Migrations
@@ -244,10 +251,10 @@ sera écrite dans la phase qui l'utilise.
 
 ```bash
 docker compose exec app php bin/console make:entity User
-docker compose exec app php bin/console make:entity Enfant
-docker compose exec app php bin/console make:entity JournalEntree
-docker compose exec app php bin/console make:entity DouleurZone
-docker compose exec app php bin/console make:entity ContenuBienEtre
+docker compose exec app php bin/console make:entity Child
+docker compose exec app php bin/console make:entity JournalEntry
+docker compose exec app php bin/console make:entity PainZone
+docker compose exec app php bin/console make:entity WellnessContent
 docker compose exec app php bin/console make:migration
 make migrate
 docker compose exec app php bin/console doctrine:schema:validate
@@ -267,8 +274,8 @@ docker compose exec app php bin/console doctrine:mapping:info
 
 1. Appliquer les migrations : `make migrate`.
 2. Ouvrir phpMyAdmin sur `http://localhost:8082`, puis la base `digisante_junior`.
-3. Vérifier la présence des 5 tables : `users`, `enfant`, `journal_entree`, `douleur_zone`, `contenu_bien_etre`.
-4. Dans l'onglet « Structure » de chaque table, vérifier les colonnes, les index uniques (`email`, `username`, `compte_id`, `(enfant_id, date)`) et, via « Vue relationnelle », les clés étrangères : `parent_id`, `enfant_id` et `journal_entree_id` en `ON DELETE CASCADE` ; `compte_id` sans (le compte est supprimé par la cascade Doctrine `Enfant::compte`).
+3. Vérifier la présence des 5 tables : `users`, `child`, `journal_entry`, `pain_zone`, `wellness_content`.
+4. Dans l'onglet « Structure » de chaque table, vérifier les colonnes, les index uniques (`email`, `username`, `account_id`, `(child_id, date)`) et, via « Vue relationnelle », les clés étrangères : `parent_id`, `child_id` et `journal_entry_id` en `ON DELETE CASCADE` ; `account_id` sans (le compte est supprimé par la cascade Doctrine `Child::compte`).
 5. **Résultat attendu** : les tables existent avec les bonnes colonnes et contraintes, `doctrine:schema:validate` affiche `[OK]` pour le mapping **et** pour la base, et `doctrine:mapping:info` liste 5 entités.
 
 ## Critères de validation
@@ -276,11 +283,11 @@ docker compose exec app php bin/console doctrine:mapping:info
 - [ ] `doctrine:schema:validate` : deux `[OK]`.
 - [ ] `doctrine:mapping:info` : 5 entités `[OK]`.
 - [ ] Les 5 tables sont visibles dans phpMyAdmin avec leurs index uniques et
-      leurs clés étrangères (`ON DELETE CASCADE` sur `parent_id`, `enfant_id`
-      et `journal_entree_id`, pas sur `compte_id`).
+      leurs clés étrangères (`ON DELETE CASCADE` sur `parent_id`, `child_id`
+      et `journal_entry_id`, pas sur `account_id`).
 - [ ] `User` implémente les deux interfaces de sécurité et expose ses rôles en
       constantes.
-- [ ] Les listes fixes (`AVATARS`, `ECRANS`, `ZONES`, `TYPES`, `DECLENCHEURS`)
+- [ ] Les listes fixes (`AVATARS`, `SCREENS`, `ZONES`, `TYPES`, `TRIGGERS`)
       sont des constantes, sans enum PHP, avec **exactement** les valeurs
       demandées.
 - [ ] Les repositories sont vides.

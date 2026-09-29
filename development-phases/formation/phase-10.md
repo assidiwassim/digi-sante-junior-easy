@@ -34,11 +34,11 @@ suffit plus pour « les journaux de cet enfant depuis 30 jours ».
 **propriétés**, pas de tables et de colonnes.
 
 ```php
-$journaux = $this->createQueryBuilder('j')      // « j » est l'alias de JournalEntree
-    ->where('j.enfant = :enfant')               // j.enfant : la PROPRIÉTÉ, pas enfant_id
-    ->andWhere('j.date >= :debut')
-    ->setParameter('enfant', $enfant)           // on passe l'OBJET, pas son id
-    ->setParameter('debut', $debut, 'date_immutable')
+$journals = $this->createQueryBuilder('j')      // "j" is the alias of JournalEntry
+    ->where('j.child = :child')                 // j.child: the PROPERTY, not child_id
+    ->andWhere('j.date >= :start')
+    ->setParameter('child', $child)           // the OBJECT is passed, not its id
+    ->setParameter('start', $start, 'date_immutable')
     ->getQuery()
     ->getResult();
 ```
@@ -47,11 +47,11 @@ Trois points importants :
 
 - **jamais** de concaténation : les valeurs passent par `setParameter()`, ce qui
   interdit l'injection SQL ;
-- on passe l'**objet** `$enfant` : Doctrine en extrait l'identifiant ;
+- on passe l'**objet** `$child` : Doctrine en extrait l'identifiant ;
 - le troisième argument de `setParameter()` précise le type quand c'est une date.
 
 **Dans ce projet.** Règle stricte : **aucun DQL dans un contrôleur**. Toute
-requête vit dans un repository, avec un nom explicite en français.
+requête vit dans un repository, avec un nom explicite (en anglais).
 
 ---
 
@@ -65,24 +65,24 @@ déformerait la courbe.
 boucle PHP pour remplir les trous.
 
 ```php
-public function getGraphiqueEcran(Enfant $enfant, int $nombreJours): array
+public function getScreenTimeChart(Child $child, int $numberOfDays): array
 {
-    $debut = new \DateTimeImmutable('today -'.($nombreJours - 1).' days');
+    $start = new \DateTimeImmutable('today -'.($numberOfDays - 1).' days');
 
-    $journaux = /* la requête ci-dessus */;
+    $journals = /* the query above */;
 
-    // On range les minutes par jour : ['2026-09-14' => 135, …]
-    $minutesParJour = [];
-    foreach ($journaux as $journal) {
-        $minutesParJour[$journal->getDate()->format('Y-m-d')] = $journal->getTotalEcran();
+    // Minutes are indexed by day: ['2026-09-14' => 135, …]
+    $minutesPerDay = [];
+    foreach ($journals as $journal) {
+        $minutesPerDay[$journal->getDate()->format('Y-m-d')] = $journal->getTotalScreenTime();
     }
 
     $labels = [];
     $minutes = [];
-    for ($i = 0; $i < $nombreJours; ++$i) {
-        $jour = $debut->modify('+'.$i.' days');
-        $labels[] = $jour->format('d/m');
-        $minutes[] = $minutesParJour[$jour->format('Y-m-d')] ?? 0;   // ← le trou vaut 0
+    for ($i = 0; $i < $numberOfDays; ++$i) {
+        $day = $start->modify('+'.$i.' days');
+        $labels[] = $day->format('d/m');
+        $minutes[] = $minutesPerDay[$day->format('Y-m-d')] ?? 0;   // ← a gap counts as 0
     }
 
     return ['labels' => $labels, 'minutes' => $minutes];
@@ -101,21 +101,21 @@ dates immuables.
 
 ### Concept 3 — Lire un paramètre d'URL
 
-**Pourquoi ?** `?enfant=3&periode=30` vient de l'utilisateur : il peut contenir
+**Pourquoi ?** `?child=3&period=30` vient de l'utilisateur : il peut contenir
 `abc`, `-1`, ou l'identifiant de l'enfant de quelqu'un d'autre.
 
 **Comment ça fonctionne ?** `$request->query` donne accès aux paramètres, avec
 des méthodes **typées** (`getString()`, `getInt()`…).
 
 ```php
-$periode = 30 === $request->query->getInt('periode') ? 30 : 7;
+$period = 30 === $request->query->getInt('period') ? 30 : 7;
 ```
 
 `getInt()` renvoie `0` si le paramètre est absent : on compare donc l'entier
 reçu à la seule valeur acceptée. Toute autre valeur numérique (`365`, `-1`,
 rien du tout) retombe sur 7. Une **liste blanche**, en une ligne.
 
-⚠️ **À savoir** : en Symfony 7, une valeur **non numérique** (`?periode=abc`)
+⚠️ **À savoir** : en Symfony 7, une valeur **non numérique** (`?period=abc`)
 lève une `BadRequestException` : la page répond **400** (« requête mal
 formée »). C'est le comportement attendu : seule une URL bricolée à la main
 produit cette valeur.
@@ -130,19 +130,19 @@ incohérence : c'est un choix.
 
 | Situation | Réaction | Pourquoi |
 |---|---|---|
-| `/parent/enfants/42/modifier` | **403** (voter, phase 05) | l'utilisateur a demandé une **action** précise sur un objet : le refus doit être explicite |
-| `/parent?enfant=42` | on affiche **son** premier enfant | c'est un **filtre d'affichage** ; une erreur ici serait déroutante alors qu'un tableau de bord valide existe |
+| `/parent/children/42/edit` | **403** (voter, phase 05) | l'utilisateur a demandé une **action** précise sur un objet : le refus doit être explicite |
+| `/parent?child=42` | on affiche **son** premier enfant | c'est un **filtre d'affichage** ; une erreur ici serait déroutante alors qu'un tableau de bord valide existe |
 
 **Comment ça fonctionne ?** Le second cas ne cherche l'identifiant que **parmi
 ses propres enfants** :
 
 ```php
-$enfants = $enfantRepository->findByParent($parent);   // uniquement les siens
+$children = $childRepository->findByParent($parent);   // only their own
 
-$enfant = $enfants[0];
-foreach ($enfants as $candidat) {
-    if ($candidat->getId() === $request->query->getInt('enfant')) {
-        $enfant = $candidat;
+$child = $children[0];
+foreach ($children as $candidate) {
+    if ($candidate->getId() === $request->query->getInt('child')) {
+        $child = $candidate;
     }
 }
 ```
@@ -162,9 +162,9 @@ valeurs. Ils sont calculés côté serveur.
 
 ```twig
 <script>
-    afficherGraphiqueEcran('graphiqueEcran', {{ graphique|json_encode|raw }}, {{ enfant.maxMinutesJour }}, {
-        ecran: "Temps d'écran (min)",
-        limite: 'Limite fixée (min)'
+    showScreenTimeChart('screenTimeChart', {{ chart|json_encode|raw }}, {{ child.dailyLimit }}, {
+        screen: "Temps d'écran (min)",
+        limit: 'Limite fixée (min)'
     });
 </script>
 ```
@@ -173,7 +173,7 @@ valeurs. Ils sont calculés côté serveur.
 d'échapper les guillemets (sinon le JSON serait cassé).
 
 ⚠️ **Règle du projet** : `|raw` uniquement pour des **tableaux de nombres ou des
-constantes**, jamais pour une saisie d'utilisateur. Ici, `graphique` contient des
+constantes**, jamais pour une saisie d'utilisateur. Ici, `chart` contient des
 dates formatées et des entiers produits par le serveur : aucun texte saisi.
 
 ---
@@ -188,14 +188,14 @@ c'est deux versions qui divergeront.
 avec des paramètres différents.
 
 ```js
-function afficherGraphiqueEcran(canvasId, donnees, limite, libelles) {
+function showScreenTimeChart(canvasId, data, limit, labels) {
     new Chart(document.getElementById(canvasId), {
         type: 'line',
         data: {
             labels: donnees.labels,
             datasets: [
-                { label: libelles.ecran, data: donnees.minutes, /* … */ },
-                { label: libelles.limite, data: donnees.labels.map(() => limite), borderDash: [6, 6] },
+                { label: labels.screen, data: data.minutes, /* … */ },
+                { label: labels.limit, data: data.labels.map(() => limit), borderDash: [6, 6] },
             ],
         },
     });
@@ -220,16 +220,16 @@ Twig**. Le calcul se fait dans le contrôleur, ou mieux, dans une méthode
 d'entité déjà existante.
 
 ```php
-// dans le contrôleur
-'pourcentage' => min(100, (int) round($totalEcran / $limite * 100)),
-'niveau' => JournalEntree::niveauPourMinutes($totalEcran),   // méthode d'entité, phase 02
+// in the controller
+'percentage' => min(100, (int) round($totalScreenTime / $limit * 100)),
+'level' => JournalEntry::levelForMinutes($totalScreenTime),   // entity method, phase 02
 ```
 
 ```twig
-<div class="jauge"><span class="niveau-{{ niveau }}" style="width: {{ pourcentage }}%"></span></div>
+<div class="gauge"><span class="level-{{ level }}" style="width: {{ percentage }}%"></span></div>
 ```
 
-Le gabarit ne fait qu'**afficher**. Bonus : `niveauPourMinutes()` est la même
+Le gabarit ne fait qu'**afficher**. Bonus : `levelForMinutes()` est la même
 méthode que celle utilisée par le journal — un seul barème dans tout le projet.
 
 ---
@@ -243,29 +243,29 @@ méthode que celle utilisée par le journal — un seul barème dans tout le pro
 public function index(
     #[CurrentUser] User $parent,
     Request $request,
-    EnfantRepository $enfantRepository,
-    JournalEntreeRepository $journalRepository,
-    ConseilService $conseilService,          // le service de la phase 09
+    ChildRepository $childRepository,
+    JournalEntryRepository $journalRepository,
+    AdviceService $adviceService,          // the service of phase 09
 ): Response {
-    $enfants = $enfantRepository->findByParent($parent);
+    $children = $childRepository->findByParent($parent);
 
-    if ([] === $enfants) {
-        return $this->render('parent/dashboard_vide.html.twig');   // écran dédié
+    if ([] === $children) {
+        return $this->render('parent/dashboard_empty.html.twig');   // dedicated screen
     }
 
-    // … sélection de l'enfant (voir Concept 4)
+    // … selection of the child (see Concept 4)
 
-    $periode = 30 === $request->query->getInt('periode') ? 30 : 7;
-    $journalDuJour = $journalRepository->findAujourdhui($enfant);
+    $period = 30 === $request->query->getInt('period') ? 30 : 7;
+    $todayJournal = $journalRepository->findToday($child);
 
     return $this->render('parent/dashboard.html.twig', [
-        'enfants' => $enfants,
-        'enfant' => $enfant,
-        'journalDuJour' => $journalDuJour,
-        // Les mêmes conseils que ceux reçus par l'enfant
-        'conseils' => $journalDuJour ? $conseilService->getConseils($journalDuJour) : [],
-        'periode' => $periode,
-        'graphique' => $journalRepository->getGraphiqueEcran($enfant, $periode),
+        'children' => $children,
+        'child' => $child,
+        'todayJournal' => $todayJournal,
+        // The same advice as the one received by the child
+        'advice' => $todayJournal ? $adviceService->getAdvice($todayJournal) : [],
+        'period' => $period,
+        'chart' => $journalRepository->getScreenTimeChart($child, $period),
     ]);
 }
 ```
@@ -273,10 +273,10 @@ public function index(
 Le contrôleur reste **simple** : il lit la requête, appelle des repositories et
 un service, rend un gabarit. Aucun calcul métier, aucune requête écrite ici.
 
-Ce `TableauDeBordController` **remplace** la page d'attente
-`Parent\DashboardController` de la phase 04 : il reprend le même nom de route,
-`parent_dashboard`. Supprimez l'ancien contrôleur (et son gabarit), sinon deux
-routes portent le même nom. L'accueil de l'enfant lit sa période de la même
+Ce `DashboardController` est **le même** que la page d'attente de la phase 04 :
+on réécrit son action `index()` et son gabarit, sans créer de second contrôleur.
+Deux contrôleurs qui déclareraient la route `parent_dashboard` entreraient en
+conflit (le dernier chargé l'emporterait). L'accueil de l'enfant lit sa période de la même
 façon, avec `getInt()`.
 
 Notez aussi l'écran dédié quand le parent n'a pas encore d'enfant : un tableau de
@@ -285,10 +285,10 @@ bord vide serait une impasse. Traiter le **cas zéro** fait partie du travail.
 ### L'état vide, en Twig
 
 ```twig
-{% for douleur in journalDuJour.douleurs %}
-    <span class="pastille">{{ douleur.zoneEmoji }} {{ douleur.zoneLabel }} · {{ douleur.intensite }}/5</span>
+{% for pain in todayJournal.pains %}
+    <span class="chip">{{ pain.zoneEmoji }} {{ pain.zoneLabel }} · {{ pain.intensity }}/5</span>
 {% else %}
-    <p class="fw-bold texte-vert mb-0">🌟 Aucune douleur signalée aujourd'hui.</p>
+    <p class="fw-bold text-green mb-0">🌟 Aucune douleur signalée aujourd'hui.</p>
 {% endfor %}
 ```
 
@@ -300,7 +300,7 @@ nouvelle**, pas comme un vide.
 
 ## 5. Commandes
 
-### `docker compose exec app php bin/console dbal:run-sql "SELECT date, ecran_tv FROM journal_entree ORDER BY date DESC LIMIT 5"`
+### `docker compose exec app php bin/console dbal:run-sql "SELECT date, screen_tv FROM journal_entry ORDER BY date DESC LIMIT 5"`
 
 - **Ce qu'elle fait** : montre les données brutes.
 - **Quand** : « le graphique est plat » — vérifiez d'abord qu'il y a des données.
@@ -334,7 +334,7 @@ nouvelle**, pas comme un vide.
 | **Doctrine (QueryBuilder)** | requêtes sur mesure dans les repositories |
 | **HttpFoundation** | `$request->query->getInt()` |
 | **Twig** | `json_encode`, `asset()`, bloc `javascripts` |
-| **DependencyInjection** | `ConseilService` injecté dans un second contrôleur |
+| **DependencyInjection** | `AdviceService` injecté dans un second contrôleur |
 
 ---
 
@@ -343,20 +343,19 @@ nouvelle**, pas comme un vide.
 ```text
 src/
 ├── Controller/Parent/
-│   ├── DashboardController.php        ❌ supprimé (page d'attente de la phase 04)
-│   └── TableauDeBordController.php    la page /parent (route parent_dashboard)
+│   └── DashboardController.php        réécrit : la page /parent (route parent_dashboard)
 └── Repository/
-    └── JournalEntreeRepository.php    + getGraphiqueEcran()
+    └── JournalEntryRepository.php    + getScreenTimeChart()
 
 templates/parent/
 ├── dashboard.html.twig                sélecteur, journal du jour, conseils, graphique
-└── dashboard_vide.html.twig           aucun enfant : invitation à en créer un
+└── dashboard_empty.html.twig           aucun enfant : invitation à en créer un
 
 public/js/
-└── graphique-ecran.js                 PARTAGÉ entre parent et enfant
+└── screen-time-chart.js                 PARTAGÉ entre parent et enfant
 ```
 
-Pourquoi `dashboard_vide.html.twig` séparé : deux situations très différentes,
+Pourquoi `dashboard_empty.html.twig` séparé : deux situations très différentes,
 deux gabarits. Un seul fichier truffé de `{% if %}` serait plus difficile à lire
 qu'un aiguillage explicite dans le contrôleur.
 
@@ -365,21 +364,21 @@ qu'un aiguillage explicite dans le contrôleur.
 ## 8. Flux de fonctionnement
 
 ```text
-Parent : GET /parent?enfant=3&periode=30
+Parent : GET /parent?child=3&period=30
     ↓
 access_control : ROLE_PARENT
     ↓
-EnfantRepository::findByParent()      ← uniquement SES enfants
+ChildRepository::findByParent()      ← uniquement SES enfants
     ↓  liste vide ? → écran dédié
 Sélection de l'enfant demandé parmi cette liste sûre
     ↓
-JournalEntreeRepository::findAujourdhui()   → le journal du jour
-ConseilService::getConseils()               → les mêmes conseils que l'enfant
-JournalEntreeRepository::getGraphiqueEcran() → labels + minutes (trous à 0)
+JournalEntryRepository::findToday()   → le journal du jour
+AdviceService::getAdvice()               → les mêmes conseils que l'enfant
+JournalEntryRepository::getScreenTimeChart() → labels + minutes (trous à 0)
     ↓
 dashboard.html.twig
-    ↓  {{ graphique|json_encode|raw }}
-graphique-ecran.js + Chart.js (CDN)
+    ↓  {{ chart|json_encode|raw }}
+screen-time-chart.js + Chart.js (CDN)
     ↓
 Courbe + ligne de limite en pointillés
 ```
@@ -418,7 +417,7 @@ possible.
 **Le graphique reste vide, mais la page s'affiche**
 → Regardez la console : `Chart is not defined` signifie que le script du CDN est
 chargé **après** votre appel.
-→ Solution : charger Chart.js, puis `graphique-ecran.js`, puis votre appel.
+→ Solution : charger Chart.js, puis `screen-time-chart.js`, puis votre appel.
 
 **`SyntaxError: Unexpected token &` en JavaScript**
 → Le `|raw` manque : Twig a échappé les guillemets du JSON.
@@ -433,18 +432,18 @@ envoyés.
 
 **`Invalid parameter type` sur la date**
 → Doctrine ne sait pas convertir l'objet date.
-→ Solution : `->setParameter('debut', $debut, 'date_immutable')`.
+→ Solution : `->setParameter('start', $start, 'date_immutable')`.
 
 **Le tableau de bord exécute 30 requêtes**
 → Les journaux sont chargés un par un.
 → Solution : une seule requête sur la période, remplissage en PHP.
 
-**`?periode=abc` ou `?enfant=abc` renvoie une erreur 400**
+**`?period=abc` ou `?child=abc` renvoie une erreur 400**
 → C'est normal : `getInt()` lève une `BadRequestException` sur une valeur non
 numérique (Concept 3). Seule une URL modifiée à la main produit ce cas ; une
 erreur **500**, en revanche, serait un bug.
 
-**`?enfant=999` provoque une erreur**
+**`?child=999` provoque une erreur**
 → L'identifiant est cherché en base au lieu d'être comparé à la liste des
 enfants du parent.
 → Solution : Concept 4.
@@ -473,15 +472,15 @@ enfants du parent.
    **identique** (la période ne change pas le nombre de requêtes).
 2. Supprimez le journal d'hier en SQL, rechargez le graphique : le point doit
    tomber à 0, pas disparaître. Quelle ligne produit ce comportement ?
-3. Essayez `?periode=365` : la période doit retomber à 7 jours. Expliquez
-   pourquoi. Essayez ensuite `?periode=abc` : observez la réponse 400 et
+3. Essayez `?period=365` : la période doit retomber à 7 jours. Expliquez
+   pourquoi. Essayez ensuite `?period=abc` : observez la réponse 400 et
    retrouvez dans le profiler l'exception levée par `getInt()`.
-4. Essayez `?enfant=999` : vous devez voir votre premier enfant, sans erreur.
-   Comparez avec `/parent/enfants/{id}/modifier` : un id inexistant → 404 ;
+4. Essayez `?child=999` : vous devez voir votre premier enfant, sans erreur.
+   Comparez avec `/parent/children/{id}/edit` : un id inexistant → 404 ;
    l'id d'un enfant d'un autre parent → 403 (voter).
    Expliquez la différence de traitement.
 5. Dans la console du navigateur, tapez `donnees` — il n'existe pas. Ajoutez
-   temporairement `console.log({{ graphique|json_encode|raw }})` dans le gabarit
+   temporairement `console.log({{ chart|json_encode|raw }})` dans le gabarit
    pour observer la structure exacte transmise, puis retirez-le.
 
 ---
@@ -491,7 +490,7 @@ enfants du parent.
 1. Se connecter en parent et ouvrir `/parent`.
 2. Vérifier le temps d'écran du jour, la jauge colorée, les douleurs signalées et les conseils reçus par l'enfant.
 3. Basculer sur « 30 derniers jours » et vérifier que la courbe change.
-4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas (`/parent?enfant=999`).
+4. Modifier l'URL avec l'identifiant d'un enfant qui ne vous appartient pas (`/parent?child=999`).
 5. Se connecter en enfant : la même courbe s'affiche sur l'accueil.
 6. **Résultat attendu** : les deux périodes s'affichent avec la ligne de limite en pointillés, l'identifiant étranger affiche simplement votre premier enfant, et l'enfant voit sa courbe.
 

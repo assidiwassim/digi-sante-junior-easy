@@ -18,15 +18,22 @@ administrateur, parent, enfant.
 
 Déjà en place : Docker (`app`, `database`, `phpmyadmin`), squelette Symfony 7.4
 avec **tous les paquets du projet** (phase 01), base MySQL et les cinq entités
-`User`, `Enfant`, `JournalEntree`, `DouleurZone`, `ContenuBienEtre` (phase 02).
+`User`, `Child`, `JournalEntry`, `PainZone`, `WellnessContent` (phase 02).
 `HomeController` renvoie encore une simple réponse texte.
 
 Stack : PHP 8.4, Symfony 7.4, Twig, **Bootstrap 5.3 par CDN**, MySQL 8, Docker.
 **Aucun bundler, aucun Node.js, aucun npm** : les fichiers de `public/` sont
 servis tels quels.
 
-Je débute avec Symfony : je veux du code simple, en français, lisible de haut
+Je débute avec Symfony : je veux du code simple, lisible de haut
 en bas.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -72,8 +79,8 @@ Remplacer le `templates/base.html.twig` créé par la recette par le gabarit don
 **toutes** les pages hériteront. Il doit exposer ces blocs, et seulement
 ceux-là :
 
-`title`, `body_class`, `navbar`, `logo`, `marque_suffixe`, `menu`,
-`menu_utilisateur`, `body`, `javascripts`.
+`title`, `body_class`, `navbar`, `logo`, `brand_suffix`, `menu`,
+`user_menu`, `body`, `javascripts`.
 
 Le gabarit contient :
 
@@ -96,10 +103,10 @@ projet, pas de recopie de Bootstrap :
   douces) ;
 - les polices : Baloo 2 pour `h1`-`h3`, Nunito pour le texte ;
 - des boutons **en pilule** et des cartes **arrondies à ombre douce** ;
-- les classes maison : `btn-marine`, `btn-or`, `btn-fantome`, `btn-supprimer`,
-  `card-enfant`, `carte-titre`, `encadre`, `pastille`, `stat-libelle`,
-  `stat-valeur`, `gros-chiffre`, `jauge` + `niveau-vert|orange|rouge`,
-  `profil-ligne`, `avatar-bulle`, `texte-doux` ;
+- les classes maison : `btn-navy`, `btn-gold`, `btn-ghost`, `btn-delete`,
+  `card-child`, `card-heading`, `callout`, `chip`, `stat-label`,
+  `stat-value`, `big-number`, `gauge` + `level-green|orange|red`,
+  `profile-row`, `avatar-bubble`, `text-soft` ;
 - le fond de page posé sur `body`.
 
 ⚠️ Piège à éviter : **ne redéfinis pas la variable Bootstrap `--bs-body-bg`**,
@@ -143,7 +150,7 @@ docker compose exec app php bin/console cache:clear
   depuis la phase 02.
 - Aucune installation de paquet (tout est installé depuis la phase 01).
 - Pas de connexion, pas d'inscription, pas de rôle (phase 04).
-- Pas de layout `parent/`, `enfant/` ou `admin/` : ils viendront avec leurs
+- Pas de layout `parent/`, `child/` ou `admin/` : ils viendront avec leurs
   espaces respectifs.
 
 ## Scénario de test manuel

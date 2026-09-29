@@ -38,17 +38,17 @@ automatiquement un service** utilisable ailleurs.
 ```php
 namespace App\Service;
 
-class ConseilService
+class AdviceService
 {
-    public function getConseils(JournalEntree $journal): array
+    public function getAdvice(JournalEntry $journal): array
     {
-        // …les règles
+        // …the rules
     }
 }
 ```
 
 **Dans ce projet.** Règle explicite : « un service n'est créé **que si** le code
-est partagé par plusieurs contrôleurs ». `ConseilService` est **le seul service
+est partagé par plusieurs contrôleurs ». `AdviceService` est **le seul service
 métier** du projet, parce que les conseils sont affichés :
 
 - à l'enfant, à la fin de son journal (phase 09) ;
@@ -60,7 +60,7 @@ S'il n'avait servi qu'à un endroit, le code serait resté dans le contrôleur.
 
 ### Concept 2 — L'injection de dépendances
 
-**Pourquoi ?** `ConseilService` a besoin du repository des contenus. Il pourrait
+**Pourquoi ?** `AdviceService` a besoin du repository des contenus. Il pourrait
 l'instancier lui-même… mais il devrait alors connaître la connexion à la base,
 la configuration Doctrine, etc. Chaque classe finirait par tout connaître.
 
@@ -68,9 +68,9 @@ la configuration Doctrine, etc. Chaque classe finirait par tout connaître.
 lui **donne**. C'est tout.
 
 ```php
-class ConseilService
+class AdviceService
 {
-    public function __construct(private ContenuBienEtreRepository $contenuRepository)
+    public function __construct(private WellnessContentRepository $contentRepository)
     {
     }
 }
@@ -94,16 +94,16 @@ construire chaque service et ses dépendances, dans le bon ordre, une seule fois
 par requête.
 
 ```text
-Contrôleur a besoin de  ConseilService
+Contrôleur a besoin de  AdviceService
                              ↓
-Conteneur : ConseilService a besoin de ContenuBienEtreRepository
+Conteneur : AdviceService a besoin de WellnessContentRepository
                              ↓
 Conteneur : ce repository a besoin de ManagerRegistry
                              ↓
 …et ainsi de suite, automatiquement
 ```
 
-Vous n'écrivez **jamais** `new ConseilService(new ContenuBienEtreRepository(...))`.
+Vous n'écrivez **jamais** `new AdviceService(new WellnessContentRepository(...))`.
 
 ---
 
@@ -119,8 +119,8 @@ quel service fournir. C'est l'autowiring, activé par défaut dans
 ```yaml
 services:
     _defaults:
-        autowire: true        # devine les dépendances d'après les types
-        autoconfigure: true   # reconnaît automatiquement voters, extensions Twig, commandes…
+        autowire: true        # guesses the dependencies from the types
+        autoconfigure: true   # automatically recognises voters, Twig extensions, commands…
 
     App\:
         resource: '../src/'   # tout src/ devient candidat
@@ -128,8 +128,8 @@ services:
 
 C'est aussi ce qui explique tout le reste du projet :
 
-- `EnfantVoter` (phase 05) a été reconnu comme voter **sans configuration** ;
-- `DureeExtension` (phase 05) a été reconnue comme extension Twig ;
+- `ChildVoter` (phase 05) a été reconnu comme voter **sans configuration** ;
+- `DurationExtension` (phase 05) a été reconnue comme extension Twig ;
 - `EntityManagerInterface $entityManager` en argument d'action est fourni
   automatiquement.
 
@@ -143,10 +143,10 @@ C'est aussi ce qui explique tout le reste du projet :
 La seconde est la convention du projet pour les contrôleurs :
 
 ```php
-public function conseils(
+public function advice(
     #[CurrentUser] User $user,
-    JournalEntreeRepository $journalRepository,
-    ConseilService $conseilService,          // injecté automatiquement
+    JournalEntryRepository $journalRepository,
+    AdviceService $adviceService,          // injected automatically
 ): Response
 ```
 
@@ -161,28 +161,28 @@ projet, un pédiatre, un enseignant). Elle doit se lire comme une phrase.
 commentaire pour le « pourquoi ».
 
 ```php
-class ConseilService
+class AdviceService
 {
     /**
-     * Seuil du conseil 20-20-20, atteint dès 2 h d'écran : c'est aussi le
-     * moment où la jauge passe à l'orange (JournalEntree::niveauPourMinutes).
+     * Threshold of the 20-20-20 advice, reached from 2 h of screen time: it is also
+     * when the gauge turns orange (JournalEntry::levelForMinutes).
      */
-    private const SEUIL_ECRAN_MINUTES = 120;
-    private const SEUIL_DOULEUR = 3;
+    private const SCREEN_THRESHOLD_MINUTES = 120;
+    private const PAIN_THRESHOLD = 3;
 ```
 
 Comparez :
 
 ```php
 if ($total >= 120) { … }                      // 120 quoi ? pourquoi 120 ?
-if ($total >= self::SEUIL_ECRAN_MINUTES) { … } // ✅ se lit tout seul
+if ($total >= self::SCREEN_THRESHOLD_MINUTES) { … } // ✅ se lit tout seul
 ```
 
 ---
 
 ### Concept 6 — Deux seuils qui doivent rester cohérents
 
-**Pourquoi ?** La jauge passe à l'orange à 2 h (`JournalEntree::niveauPourMinutes()`,
+**Pourquoi ?** La jauge passe à l'orange à 2 h (`JournalEntry::levelForMinutes()`,
 méthode d'entité écrite en phase 02, affichée dès la phase 07). Le conseil 20-20-20 utilise le même seuil. Si l'un teste `>` et
 l'autre `>=`, un journal de **2 h pile** affiche une jauge orange… sans aucun
 conseil. L'utilisateur voit une incohérence, sans comprendre pourquoi.
@@ -190,7 +190,7 @@ conseil. L'utilisateur voit une incohérence, sans comprendre pourquoi.
 **Comment ça fonctionne ?** On choisit une convention et on la documente :
 
 ```php
-} elseif ($total >= self::SEUIL_ECRAN_MINUTES) {   // >= et non >
+} elseif ($total >= self::SCREEN_THRESHOLD_MINUTES) {   // >= and not >
 ```
 
 **Dans ce projet.** C'est une correction réelle, notée dans l'historique du
@@ -208,19 +208,19 @@ getters, peut-être une interface…
 **Comment ça fonctionne ?** Ici, le service renvoie une liste de tableaux :
 
 ```php
-$conseils[] = [
-    'titre' => 'Repose tes yeux avec le 20-20-20',
-    'message' => sprintf('Tu as passé %s devant un écran. …', DureeExtension::formater($total)),
+$advice[] = [
+    'title' => 'Repose tes yeux avec le 20-20-20',
+    'message' => sprintf('Tu as passé %s devant un écran. …', DurationExtension::formater($total)),
     'emoji' => '👁️',
-    'couleur' => 'orange',
-    'contenu' => $this->contenuRepository->findPremierPourDeclencheur('20-20-20'),
+    'color' => 'orange',
+    'content' => $this->contentRepository->findFirstForTrigger('20-20-20'),
 ];
 ```
 
 ```twig
-{% for conseil in conseils %}
-    <h2>{{ conseil.emoji }} {{ conseil.titre }}</h2>
-    <p>{{ conseil.message }}</p>
+{% for item in advice %}
+    <h2>{{ item.emoji }} {{ item.title }}</h2>
+    <p>{{ item.message }}</p>
 {% endfor %}
 ```
 
@@ -240,41 +240,41 @@ devient préférable. Ici, ce n'est pas le cas.
 ### Les règles, dans l'ordre
 
 ```php
-public function getConseils(JournalEntree $journal): array
+public function getAdvice(JournalEntry $journal): array
 {
-    $conseils = [];
-    $total = $journal->getTotalEcran();
-    $limite = $journal->getEnfant()->getMaxMinutesJour();
+    $advice = [];
+    $total = $journal->getTotalScreenTime();
+    $limit = $journal->getChild()->getDailyLimit();
 
-    // Règles 1 et 2 : un seul conseil sur les écrans, jamais deux.
-    if ($total > $limite) {
-        $conseils[] = [ /* dépassement de la limite */ ];
-    } elseif ($total >= self::SEUIL_ECRAN_MINUTES) {
-        $conseils[] = [ /* règle du 20-20-20 */ ];
+    // Rules 1 and 2: a single piece of advice about screens, never two.
+    if ($total > $limit) {
+        $advice[] = [ /* limit exceeded */ ];
+    } elseif ($total >= self::SCREEN_THRESHOLD_MINUTES) {
+        $advice[] = [ /* 20-20-20 rule */ ];
     }
 
-    // Règles 3 et 4 : les douleurs
-    $douleurCouOuEpaule = false;
-    $douleurYeux = false;
+    // Rules 3 and 4: pains
+    $neckOrShoulderPain = false;
+    $eyePain = false;
 
-    foreach ($journal->getDouleurs() as $douleur) {
-        if (\in_array($douleur->getZone(), ['cou', 'epaule'], true) && $douleur->getIntensite() >= self::SEUIL_DOULEUR) {
-            $douleurCouOuEpaule = true;
+    foreach ($journal->getPains() as $pain) {
+        if (\in_array($pain->getZone(), ['neck', 'shoulder'], true) && $pain->getIntensity() >= self::PAIN_THRESHOLD) {
+            $neckOrShoulderPain = true;
         }
-        if ('yeux' === $douleur->getZone()) {
-            $douleurYeux = true;
+        if ('eyes' === $pain->getZone()) {
+            $eyePain = true;
         }
     }
 
-    if ($douleurCouOuEpaule) { $conseils[] = [ /* étirements */ ]; }
-    if ($douleurYeux)        { $conseils[] = [ /* yoga des yeux */ ]; }
+    if ($neckOrShoulderPain) { $advice[] = [ /* stretching */ ]; }
+    if ($eyePain)            { $advice[] = [ /* eye yoga */ ]; }
 
-    // Aucune règle déclenchée : on félicite l'enfant.
-    if ([] === $conseils) {
-        $conseils[] = [ /* Super journée ! */ ];
+    // No rule fired: the child is congratulated.
+    if ([] === $advice) {
+        $advice[] = [ /* "Super journée !" */ ];
     }
 
-    return $conseils;
+    return $advice;
 }
 ```
 
@@ -289,15 +289,15 @@ contradictoires.
 ### Le texte vient de la base
 
 ```php
-'contenu' => $this->contenuRepository->findPremierPourDeclencheur('yoga_yeux'),
+'content' => $this->contentRepository->findFirstForTrigger('eye_yoga'),
 ```
 
 ```php
-public function findPremierPourDeclencheur(string $declencheur): ?ContenuBienEtre
+public function findFirstForTrigger(string $triggerRule): ?WellnessContent
 {
     return $this->createQueryBuilder('c')
-        ->where('c.declencheur = :declencheur')
-        ->setParameter('declencheur', $declencheur)
+        ->where('c.triggerRule = :triggerRule')
+        ->setParameter('triggerRule', $triggerRule)
         ->orderBy('c.id')
         ->setMaxResults(1)
         ->getQuery()
@@ -305,13 +305,13 @@ public function findPremierPourDeclencheur(string $declencheur): ?ContenuBienEtr
 }
 ```
 
-Le type de retour est `?ContenuBienEtre` : **nullable**. Si l'administrateur n'a
+Le type de retour est `?WellnessContent` : **nullable**. Si l'administrateur n'a
 rattaché aucun contenu à cette règle, on renvoie `null` et le gabarit affiche le
 conseil **sans** contenu associé :
 
 ```twig
-{% if conseil.contenu %}
-    <h3>{{ conseil.contenu.titre }}</h3>
+{% if item.content %}
+    <h3>{{ item.content.title }}</h3>
 {% endif %}
 ```
 
@@ -322,10 +322,10 @@ appelle **dégrader proprement**.
 
 ```php
 // Espace enfant (phase 09)
-'conseils' => $conseilService->getConseils($journal),
+'advice' => $adviceService->getAdvice($journal),
 
-// Tableau de bord parent (phase 10)
-'conseils' => $journalDuJour ? $conseilService->getConseils($journalDuJour) : [],
+// Parent's dashboard (phase 10)
+'advice' => $todayJournal ? $adviceService->getAdvice($todayJournal) : [],
 ```
 
 Un seul endroit décide de ce qu'est un bon conseil. Le parent voit **exactement**
@@ -344,7 +344,7 @@ l'architecture et non par la discipline.
   `App\` n'apparaissent pas (et un `| grep -i conseil` ne trouve rien).
 - **Quand** : « Cannot autowire … ».
 
-### `docker compose exec app php bin/console debug:container ConseilService`
+### `docker compose exec app php bin/console debug:container AdviceService`
 
 - **Ce qu'elle fait** : affiche la définition du service : sa classe, ses
   arguments, s'il est public ou privé.
@@ -357,7 +357,7 @@ l'architecture et non par la discipline.
 - **Pourquoi** : détecte une erreur d'injection **sans** ouvrir une page.
 - **À observer** : c'est l'un des quatre contrôles de `make lint`.
 
-### `docker compose exec app php bin/console dbal:run-sql "SELECT id, titre, declencheur FROM contenu_bien_etre WHERE declencheur IS NOT NULL"`
+### `docker compose exec app php bin/console dbal:run-sql "SELECT id, titre, declencheur FROM wellness_content WHERE declencheur IS NOT NULL"`
 
 - **Quand** : « pourquoi ce conseil n'affiche-t-il aucun contenu ? ». Vérifiez
   qu'un contenu porte bien la clé attendue.
@@ -369,7 +369,7 @@ l'architecture et non par la discipline.
 | Composant | Rôle ici |
 |---|---|
 | **DependencyInjection** | conteneur, autowiring, autoconfigure |
-| **Doctrine** | `findPremierPourDeclencheur()` avec le QueryBuilder |
+| **Doctrine** | `findFirstForTrigger()` avec le QueryBuilder |
 | **Twig** | affichage de la liste de conseils |
 | **HttpKernel** | injection des services dans les arguments d'action |
 
@@ -380,14 +380,14 @@ l'architecture et non par la discipline.
 ```text
 src/
 ├── Service/
-│   └── ConseilService.php            LE seul service métier du projet
+│   └── AdviceService.php            LE seul service métier du projet
 ├── Repository/
-│   └── ContenuBienEtreRepository.php + findPremierPourDeclencheur()
-└── Controller/Enfant/
+│   └── WellnessContentRepository.php + findFirstForTrigger()
+└── Controller/Child/
     └── JournalController.php         action « conseils » complétée
 
-templates/enfant/journal/
-└── conseils.html.twig                récapitulatif + conseils + contenu associé
+templates/child/journal/
+└── advice.html.twig                  récapitulatif + conseils + contenu associé
 ```
 
 Où va quel code, dans ce projet :
@@ -405,18 +405,18 @@ Où va quel code, dans ce projet :
 ## 8. Flux de fonctionnement
 
 ```text
-Enfant : GET /enfant/journal/conseils
+Child : GET /child/journal/advice
     ↓
-JournalController::conseils()
-    ↓  Symfony injecte JournalEntreeRepository et ConseilService
-JournalEntreeRepository::findAujourdhui($enfant)
+JournalController::advice()
+    ↓  Symfony injecte JournalEntryRepository et AdviceService
+JournalEntryRepository::findToday($child)
     ↓  pas de journal ? → redirection vers le formulaire
-ConseilService::getConseils($journal)
+AdviceService::getAdvice($journal)
     ↓  applique les 5 règles
-    ↓  pour chaque conseil : ContenuBienEtreRepository::findPremierPourDeclencheur()
+    ↓  pour chaque conseil : WellnessContentRepository::findFirstForTrigger()
 tableau de conseils
     ↓
-conseils.html.twig
+advice.html.twig
     ↓
 Page : récapitulatif + conseils + contenus de la bibliothèque
 ```
@@ -431,8 +431,8 @@ précédentes ont collecté la donnée ; celle-ci lui donne du sens.
 
 **Composants utilisés** : injection de dépendances, Doctrine, Twig.
 
-**Fichiers créés** : `src/Service/ConseilService.php`, la méthode
-`findPremierPourDeclencheur()`, et le gabarit des conseils complété.
+**Fichiers créés** : `src/Service/AdviceService.php`, la méthode
+`findFirstForTrigger()`, et le gabarit des conseils complété.
 
 **Pourquoi cette architecture ?**
 
@@ -448,13 +448,13 @@ précédentes ont collecté la donnée ; celle-ci lui donne du sens.
 
 ## 10. Erreurs fréquentes
 
-**`Cannot autowire service "App\Service\ConseilService"`**
+**`Cannot autowire service "App\Service\AdviceService"`**
 → Le type d'un argument du constructeur est absent ou ambigu.
 → Solution : typer avec une classe ou une interface connue du conteneur.
 
-**`Call to a member function getTitre() on null`**
+**`Call to a member function getTitle() on null`**
 → Aucun contenu n'est rattaché à la règle, et le gabarit ne teste pas `null`.
-→ Solution : `{% if conseil.contenu %}`.
+→ Solution : `{% if item.content %}`.
 
 **Deux conseils sur les écrans s'affichent en même temps**
 → Deux `if` au lieu d'un `if / elseif`.
@@ -499,29 +499,29 @@ faut `>` (ou l'inverse).
 
 ## 12. Exercice pratique
 
-1. Ouvrez `ConseilService` et **listez les cinq règles** à voix haute, sans lire
+1. Ouvrez `AdviceService` et **listez les cinq règles** à voix haute, sans lire
    les commentaires. Si vous n'y arrivez pas, le code n'est pas assez lisible :
    dites-le.
 2. Remplacez temporairement `elseif` par `if` pour la règle du 20-20-20, remplissez
    un journal au-dessus de la limite : deux conseils contradictoires apparaissent.
    Remettez `elseif`.
-3. Supprimez (temporairement) le contenu rattaché à `yoga_yeux`, puis déclenchez
+3. Supprimez (temporairement) le contenu rattaché à `eye_yoga`, puis déclenchez
    la règle : le conseil doit s'afficher **sans** contenu associé, sans erreur.
    Recréez le contenu ensuite.
-4. Lancez `debug:container ConseilService` et retrouvez, dans la sortie, la
+4. Lancez `debug:container AdviceService` et retrouvez, dans la sortie, la
    dépendance déclarée dans votre constructeur.
-5. Ajoutez un `dump($conseils);` dans le contrôleur, ouvrez la page et observez
+5. Ajoutez un `dump($advice);` dans le contrôleur, ouvrez la page et observez
    la structure exacte du tableau dans la barre de debug. Retirez-le ensuite.
 
 ---
 
 ## 13. Scénario de test manuel
 
-0. Prérequis : dans l'admin (`/admin/contenus`), créer un contenu rattaché à la
+0. Prérequis : dans l'admin (`/admin/contents`), créer un contenu rattaché à la
    règle « Yoga des yeux » (et idéalement un par règle), sinon le conseil
    s'affiche sans contenu associé.
 1. Supprimer le journal du jour de l'enfant pour pouvoir recommencer :
-   `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entree WHERE date = CURDATE()"`.
+   `docker compose exec app php bin/console dbal:run-sql "DELETE FROM journal_entry WHERE date = CURDATE()"`.
 2. Remplir un journal avec **plus de temps d'écran que la limite** du profil et une douleur aux yeux.
 3. Lire la page de conseils affichée à la fin.
 4. Revenir à l'accueil et cliquer sur « Revoir mes conseils ».

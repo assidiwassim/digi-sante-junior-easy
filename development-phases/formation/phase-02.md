@@ -56,7 +56,7 @@ Vous manipulez des objets ; Doctrine génère le SQL.
 $user = new User();
 $user->setEmail('parent@digisante.local');
 $entityManager->persist($user);   // « je veux enregistrer cet objet »
-$entityManager->flush();          // exécute réellement le INSERT
+$entityManager->flush();          // actually runs the INSERT
 ```
 
 `persist()` **prépare**, `flush()` **exécute**. Oublier `flush()` est l'erreur
@@ -69,10 +69,10 @@ cette phase :
 | Entité | Table | Ce qu'elle représente | Utilisée à partir de |
 |---|---|---|---|
 | `User` | `users` | un compte de connexion (admin, parent ou enfant) | phase 04 |
-| `Enfant` | `enfant` | le profil d'un enfant, géré par son parent | phase 05 |
-| `JournalEntree` | `journal_entree` | le journal d'une journée : minutes par écran | phase 07 |
-| `DouleurZone` | `douleur_zone` | une douleur signalée sur le schéma du corps | phase 07 |
-| `ContenuBienEtre` | `contenu_bien_etre` | une fiche, vidéo, quiz… de la bibliothèque | phase 08 |
+| `Child` | `child` | le profil d'un enfant, géré par son parent | phase 05 |
+| `JournalEntry` | `journal_entry` | le journal d'une journée : minutes par écran | phase 07 |
+| `PainZone` | `pain_zone` | une douleur signalée sur le schéma du corps | phase 07 |
+| `WellnessContent` | `wellness_content` | une fiche, vidéo, quiz… de la bibliothèque | phase 08 |
 
 Pourquoi tout d'un coup ? Parce que le **modèle de données** se pense en entier :
 les relations entre ces cinq classes forment un tout. Les phases suivantes
@@ -92,17 +92,17 @@ classe et sur les propriétés.
 
 ```php
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'users')]          // « user » est un mot réservé en SQL
+#[ORM\Table(name: 'users')]          // "user" is a reserved word in SQL
 class User
 {
-    #[ORM\Id]                        // clé primaire
-    #[ORM\GeneratedValue]            // auto-incrémentée par MySQL
+    #[ORM\Id]                        // primary key
+    #[ORM\GeneratedValue]            // auto-incremented by MySQL
     #[ORM\Column]
-    private ?int $id = null;         // null tant que l'objet n'est pas enregistré
+    private ?int $id = null;         // null until the object is saved
 
     #[ORM\Column(length: 180, unique: true, nullable: true)]
     private ?string $email = null;
-    //    ^^^^^^^ 180 caractères, index unique, peut être NULL
+    //    ^^^^^^^ 180 characters, unique index, can be NULL
 }
 ```
 
@@ -122,33 +122,33 @@ la validation ait pu afficher un message propre.
 **Pourquoi ?** Les données du monde réel sont liées : un parent **a** des
 enfants, un enfant **appartient** à un parent, un journal **appartient** à un
 enfant. En base, ce lien est une clé étrangère ; côté PHP, on veut manipuler des
-objets (`$enfant->getParent()`).
+objets (`$child->getParent()`).
 
 **Comment ça fonctionne ?** Trois relations suffisent dans tout le projet :
 
 | Relation | Lecture | Dans le projet |
 |---|---|---|
 | `ManyToOne` | plusieurs X pour un Y | plusieurs enfants pour un parent, plusieurs journaux pour un enfant, plusieurs douleurs pour un journal |
-| `OneToMany` | l'inverse du précédent | `User::enfants`, `Enfant::journalEntrees`, `JournalEntree::douleurs` |
-| `OneToOne` | un pour un | un enfant ↔ son compte de connexion (`Enfant::compte` / `User::profilEnfant`) |
+| `OneToMany` | l'inverse du précédent | `User::children`, `Child::journalEntries`, `JournalEntry::pains` |
+| `OneToOne` | un pour un | un enfant ↔ son compte de connexion (`Child::compte` / `User::childProfile`) |
 
 **Exemple commenté.**
 
 ```php
-class Enfant
+class Child
 {
-    #[ORM\ManyToOne(inversedBy: 'enfants')]
+    #[ORM\ManyToOne(inversedBy: 'children')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?User $parent = null;
-    // Cette classe porte la clé étrangère parent_id : c'est le CÔTÉ PROPRIÉTAIRE.
+    // This class holds the parent_id foreign key: it is the OWNING SIDE.
 }
 
 class User
 {
-    /** @var Collection<int, Enfant> */
-    #[ORM\OneToMany(targetEntity: Enfant::class, mappedBy: 'parent', cascade: ['remove'])]
-    private Collection $enfants;
-    // Côté INVERSE : aucune colonne en base, c'est du confort de lecture.
+    /** @var Collection<int, Child> */
+    #[ORM\OneToMany(targetEntity: Child::class, mappedBy: 'parent', cascade: ['remove'])]
+    private Collection $children;
+    // INVERSE side: no column in the database, it only makes reading easier.
 }
 ```
 
@@ -161,7 +161,7 @@ class User
   `$this->enfants = new ArrayCollection();`.
 
 **Dans ce projet.** L'enfant a **deux** relations vers `User` : son `parent`
-(qui le gère, `ManyToOne`) et son `compte` (avec lequel il se connecte,
+(qui le gère, `ManyToOne`) et son `account` (avec lequel il se connecte,
 `OneToOne`). Deux rôles différents, donc deux relations. Le compte est **non
 nullable** : un profil sans compte n'existe pas dans ce projet, ce qui supprime
 tout cas particulier à gérer plus tard.
@@ -189,16 +189,16 @@ Parent ──► Enfants ──► Compte de connexion
                   └──► Journaux ──► Douleurs
 ```
 
-- `cascade: ['remove']` côté Doctrine sur chaque maillon (`User::enfants`,
-  `Enfant::compte`, `Enfant::journalEntrees`, `JournalEntree::douleurs`) :
+- `cascade: ['remove']` côté Doctrine sur chaque maillon (`User::children`,
+  `Child::compte`, `Child::journalEntries`, `JournalEntry::pains`) :
   c'est ce qui agit quand un contrôleur appelle `remove()` (phases 05 et 11) ;
-- `onDelete: 'CASCADE'` sur les clés étrangères (`parent_id`, `enfant_id`,
-  `journal_entree_id`) : un **filet de sécurité** si une ligne est supprimée
+- `onDelete: 'CASCADE'` sur les clés étrangères (`parent_id`, `child_id`,
+  `journal_entry_id`) : un **filet de sécurité** si une ligne est supprimée
   hors de Doctrine (SQL direct, phpMyAdmin).
 
 `cascade: ['persist']` existe aussi : enregistrer l'enfant enregistre son compte
-en même temps (`Enfant::compte`), et enregistrer un journal enregistre ses
-douleurs (`JournalEntree::douleurs`), sans `persist()` séparé.
+en même temps (`Child::compte`), et enregistrer un journal enregistre ses
+douleurs (`JournalEntry::pains`), sans `persist()` séparé.
 
 ⚠️ Règle du projet : **pas de classe « manager » de suppression**. On configure
 les cascades, on ne les réimplémente pas en PHP.
@@ -215,8 +215,8 @@ règles de conseil. Chaque valeur a en plus un libellé ou un emoji à afficher.
 
 ```php
 public const AVATARS = [
-    'renard' => ['emoji' => '🦊', 'nom' => 'Renard', 'couleur' => '#fde2c8'],
-    'panda'  => ['emoji' => '🐼', 'nom' => 'Panda',  'couleur' => '#e8ecef'],
+    'fox' => ['emoji' => '🦊', 'lastName' => 'Renard', 'color' => '#fde2c8'],
+    'panda'  => ['emoji' => '🐼', 'lastName' => 'Panda',  'color' => '#e8ecef'],
     // …
 ];
 
@@ -226,10 +226,10 @@ public function getAvatarEmoji(): string
 }
 ```
 
-La **clé** (`renard`) est enregistrée en base, dans une simple colonne texte ;
+La **clé** (`fox`) est enregistrée en base, dans une simple colonne texte ;
 l'emoji et le nom ne servent qu'à l'affichage. Le `?? '🙂'` évite une erreur si
 une ancienne valeur traîne en base. Dans un gabarit (Twig, vu en phase 03),
-`{{ enfant.avatarEmoji }}` appellera `getAvatarEmoji()`.
+`{{ child.avatarEmoji }}` appellera `getAvatarEmoji()`.
 
 **Dans ce projet.** Règle explicite : **pas d'enum PHP**. Les listes fixes sont
 des constantes dans l'entité concernée :
@@ -237,19 +237,19 @@ des constantes dans l'entité concernée :
 | Constante | Getters d'affichage |
 |---|---|
 | `User::ROLE_ADMIN`, `ROLE_PARENT`, `ROLE_CHILD` | `isParent()` |
-| `Enfant::AVATARS`, `LIMITE_MIN/MAX/PAS` | `getAvatarEmoji()`, `getAvatarNom()`, `getNomComplet()`, `getAge()` |
-| `JournalEntree::ECRANS` | `getTotalEcran()`, `niveauPourMinutes()`, `getNiveauEcran()` |
-| `DouleurZone::ZONES` (yeux, cou, epaule, dos, poignet, main) | `getZoneLabel()`, `getZoneEmoji()` |
-| `ContenuBienEtre::TYPES`, `DECLENCHEURS` | `getTypeLabel()`, `getTypeEmoji()`, `getDeclencheurLabel()` |
+| `Child::AVATARS`, `LIMIT_MIN/MAX/PAS` | `getAvatarEmoji()`, `getAvatarName()`, `getFullName()`, `getAge()` |
+| `JournalEntry::SCREENS` | `getTotalScreenTime()`, `levelForMinutes()`, `getScreenLevel()` |
+| `PainZone::ZONES` (yeux, cou, epaule, dos, poignet, main) | `getZoneLabel()`, `getZoneEmoji()` |
+| `WellnessContent::TYPES`, `TRIGGERS` | `getTypeLabel()`, `getTypeEmoji()`, `getTriggerRuleLabel()` |
 
 C'est plus simple à lire pour un débutant, et cela évite un type de colonne
 spécial. Ces getters sont de **l'affichage calculé**, pas de la logique métier :
 ils ont leur place dans l'entité, pas dans Twig.
 
-⚠️ **Leçon apprise sur ce projet** : `ContenuBienEtre::DECLENCHEURS` ne contient
+⚠️ **Leçon apprise sur ce projet** : `WellnessContent::TRIGGERS` ne contient
 que les **trois** règles réellement appliquées par le moteur de conseils
-(phase 09) : `20-20-20`, `etirement_cervical`, `yoga_yeux`, chacune avec sa
-constante nommée (`DECLENCHEUR_20_20_20`…). Ne proposez jamais une option qui ne
+(phase 09) : `20-20-20`, `neck_stretching`, `eye_yoga`, chacune avec sa
+constante nommée (`TRIGGER_20_20_20`…). Ne proposez jamais une option qui ne
 produit aucun effet.
 
 ---
@@ -274,16 +274,16 @@ class User
 ```
 
 ```php
-class Enfant
+class Child
 {
     #[ORM\Column]
     #[Assert\Range(
         notInRangeMessage: 'La limite doit être comprise entre {{ min }} et {{ max }} minutes.',
-        min: self::LIMITE_MIN,
-        max: self::LIMITE_MAX,
+        min: self::LIMIT_MIN,
+        max: self::LIMIT_MAX,
     )]
-    #[Assert\DivisibleBy(value: self::LIMITE_PAS, message: 'La limite se règle par tranches de 15 minutes.')]
-    private ?int $maxMinutesJour = 120;   // 2 h par défaut
+    #[Assert\DivisibleBy(value: self::LIMIT_STEP, message: 'La limite se règle par tranches de 15 minutes.')]
+    private ?int $dailyLimit = 120;   // 2 h by default
 }
 ```
 
@@ -292,7 +292,7 @@ bloque aucun `INSERT` : c'est le **validateur** qui lit ces attributs, et il est
 appelé par `$form->isValid()`. Les contraintes posées aujourd'hui **prendront
 vie en phase 04**, avec les formulaires. On les déclare maintenant parce que ces
 règles appartiennent à la **donnée**, pas à un formulaire particulier : le même
-`Enfant` sera validé à la création et à la modification.
+`Child` sera validé à la création et à la modification.
 
 `UniqueEntity` et `unique: true` sont complémentaires : le premier affiche un
 message propre dans le formulaire, le second garantit l'unicité en base.
@@ -313,17 +313,17 @@ deux.
 classe :
 
 ```php
-#[ORM\Entity(repositoryClass: JournalEntreeRepository::class)]
-#[ORM\UniqueConstraint(name: 'journal_unique_par_jour', columns: ['enfant_id', 'date'])]
-class JournalEntree
+#[ORM\Entity(repositoryClass: JournalEntryRepository::class)]
+#[ORM\UniqueConstraint(name: 'journal_unique_par_jour', columns: ['child_id', 'date'])]
+class JournalEntry
 ```
 
 MySQL refusera physiquement le doublon. En phase 07, le contrôleur vérifiera
 **en plus** et redirigera proprement : le confort côté PHP, la garantie côté base.
 
 **Dans ce projet.** Quatre index uniques au total : `users.email`,
-`users.username`, `enfant.compte_id` (créé par la relation `OneToOne`) et
-`journal_entree (enfant_id, date)`.
+`users.username`, `child.account_id` (créé par la relation `OneToOne`) et
+`journal_entry (child_id, date)`.
 
 ---
 
@@ -337,8 +337,8 @@ d'aujourd'hui » à 14 h 32 n'est pas égal à « aujourd'hui »).
 
 | Type Doctrine | Colonne MySQL | Objet PHP | Dans le projet |
 |---|---|---|---|
-| `date_immutable` (`Types::DATE_IMMUTABLE`) | `DATE` | `\DateTimeImmutable` à minuit | `Enfant::dateNaissance`, `JournalEntree::date` |
-| `datetime_immutable` (`Types::DATETIME_IMMUTABLE`) | `DATETIME` | `\DateTimeImmutable` | `User::createdAt`, `ContenuBienEtre::createdAt` |
+| `date_immutable` (`Types::DATE_IMMUTABLE`) | `DATE` | `\DateTimeImmutable` à minuit | `Child::birthDate`, `JournalEntry::date` |
+| `datetime_immutable` (`Types::DATETIME_IMMUTABLE`) | `DATETIME` | `\DateTimeImmutable` | `User::createdAt`, `WellnessContent::createdAt` |
 
 Les objets **immuables** ne peuvent pas être modifiés par accident :
 `$date->modify('+1 day')` renvoie une **nouvelle** date au lieu de changer
@@ -347,8 +347,8 @@ l'ancienne.
 ```php
 public function __construct()
 {
-    $this->date = new \DateTimeImmutable('today');   // aujourd'hui, à minuit
-    $this->douleurs = new ArrayCollection();
+    $this->date = new \DateTimeImmutable('today');   // today, at midnight
+    $this->pains = new ArrayCollection();
 }
 ```
 
@@ -368,9 +368,9 @@ variantes subtiles.
 `make:entity`. Il hérite de méthodes toutes faites, et vous y ajoutez les vôtres.
 
 ```php
-$userRepository->find(12);                               // par identifiant
-$userRepository->findOneBy(['email' => 'a@b.fr']);        // un seul résultat
-$userRepository->findBy(['ville' => 'Lyon']);            // une liste
+$userRepository->find(12);                               // by id
+$userRepository->findOneBy(['email' => 'a@b.fr']);        // a single result
+$userRepository->findBy(['city' => 'Lyon']);            // a list
 $userRepository->findAll();                               // tout
 ```
 
@@ -383,8 +383,8 @@ en phase 10) :
 
 **Dans ce projet.** Règle stricte : **aucune requête dans un contrôleur**. Les
 cinq repositories restent **vides** dans cette phase : chaque méthode
-(`findByParent()`, `findAujourdhui()`, `findParents()`…) sera écrite **dans la
-phase qui l'utilise**, avec un nom explicite en français. On n'écrit pas une
+(`findByParent()`, `findToday()`, `findParents()`…) sera écrite **dans la
+phase qui l'utilise**, avec un nom explicite en anglais. On n'écrit pas une
 requête dont personne n'a encore besoin.
 
 ---
@@ -439,7 +439,7 @@ chaque fichier.
 ```dotenv
 DATABASE_URL="mysql://digisante:digisante@database:3306/digisante_junior?serverVersion=8.0.36&charset=utf8mb4"
 #              ^^^^^  ^^^^^^^^^ ^^^^^^^^^ ^^^^^^^^ ^^^^ ^^^^^^^^^^^^^^^^
-#              type   user      password  hôte     port  base
+#              type   user      password  host     port  database
 ```
 
 ⚠️ L'hôte est `database` — le **nom du service Docker** — et le port `3306`,
@@ -474,15 +474,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::JSON)]
     private array $roles = [];
 
-    // Côté parent : ses enfants, supprimés avec lui.
-    #[ORM\OneToMany(targetEntity: Enfant::class, mappedBy: 'parent', cascade: ['remove'])]
-    private Collection $enfants;
+    // Parent side: their children, deleted with them.
+    #[ORM\OneToMany(targetEntity: Child::class, mappedBy: 'parent', cascade: ['remove'])]
+    private Collection $children;
 
-    // Côté enfant : le profil rattaché à ce compte (côté inverse du OneToOne).
-    #[ORM\OneToOne(mappedBy: 'compte')]
-    private ?Enfant $profilEnfant = null;
+    // Child side: the profile linked to this account (inverse side of the OneToOne).
+    #[ORM\OneToOne(mappedBy: 'account')]
+    private ?Child $childProfile = null;
 
-    /** Identifiant utilisé par Symfony Security : l'email, sinon le username. */
+    /** Identifier used by Symfony Security: the email, otherwise the username. */
     public function getUserIdentifier(): string
     {
         return (string) ($this->email ?? $this->username);
@@ -491,11 +491,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
         $roles = $this->roles;
-        $roles[] = 'ROLE_USER';                    // tout le monde a au moins ce rôle
+        $roles[] = 'ROLE_USER';                    // everyone has at least this role
         return array_values(array_unique($roles));
     }
 
-    /** Méthode imposée par UserInterface : rien à effacer ici. */
+    /** Required by UserInterface: nothing to erase here. */
     #[\Deprecated]
     public function eraseCredentials(): void
     {
@@ -523,7 +523,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 ```php
 public function setEmail(?string $email): static
 {
-    // On enregistre toujours l'email en minuscules, sans espaces autour.
+    // Emails are always stored in lower case, without surrounding spaces.
     $this->email = $email ? mb_strtolower(trim($email)) : null;
 
     return $this;
@@ -534,22 +534,22 @@ Pourquoi ? Sans cela, `Parent@Digisante.local` et `parent@digisante.local`
 seraient deux comptes différents, et l'index unique ne servirait à rien. Même
 traitement pour `setUsername()`.
 
-### L'entité `Enfant` : deux relations vers `User`, des contraintes métier
+### L'entité `Child` : deux relations vers `User`, des contraintes métier
 
 ```php
-#[ORM\Entity(repositoryClass: EnfantRepository::class)]
-class Enfant
+#[ORM\Entity(repositoryClass: ChildRepository::class)]
+class Child
 {
-    #[ORM\ManyToOne(inversedBy: 'enfants')]
+    #[ORM\ManyToOne(inversedBy: 'children')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?User $parent = null;
 
-    // Le compte part avec le profil : supprimer l'enfant supprime son compte.
-    #[ORM\OneToOne(inversedBy: 'profilEnfant', cascade: ['persist', 'remove'])]
+    // The account goes with the profile: deleting the child deletes their account.
+    #[ORM\OneToOne(inversedBy: 'childProfile', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
-    private ?User $compte = null;
+    private ?User $account = null;
 
-    // Entre 8 ans révolus (aujourd'hui) et 14 ans révolus (veille des 15 ans).
+    // Between 8 full years (today) and 14 full years (the day before turning 15).
     #[ORM\Column(type: Types::DATE_IMMUTABLE)]
     #[Assert\NotNull(message: 'Merci de saisir la date de naissance.')]
     #[Assert\Range(
@@ -557,60 +557,60 @@ class Enfant
         min: 'today -15 years +1 day',
         max: 'today -8 years',
     )]
-    private ?\DateTimeImmutable $dateNaissance = null;
+    private ?\DateTimeImmutable $birthDate = null;
 
-    /** @var Collection<int, JournalEntree> */
-    #[ORM\OneToMany(targetEntity: JournalEntree::class, mappedBy: 'enfant', cascade: ['remove'])]
-    private Collection $journalEntrees;
+    /** @var Collection<int, JournalEntry> */
+    #[ORM\OneToMany(targetEntity: JournalEntry::class, mappedBy: 'child', cascade: ['remove'])]
+    private Collection $journalEntries;
 
-    /** Âge en années révolues. */
+    /** Age in completed years. */
     public function getAge(): ?int
     {
-        return $this->dateNaissance?->diff(new \DateTimeImmutable('today'))->y;
+        return $this->birthDate?->diff(new \DateTimeImmutable('today'))->y;
     }
 }
 ```
 
-Autres propriétés : `prenom` et `nom` (80 caractères, `NotBlank`), `avatar`
-(clé de `AVATARS`, `Assert\Choice`), `maxMinutesJour` (15 à 480, par pas de 15,
+Autres propriétés : `firstName` et `lastName` (80 caractères, `NotBlank`), `avatar`
+(clé de `AVATARS`, `Assert\Choice`), `dailyLimit` (15 à 480, par pas de 15,
 120 par défaut).
 
 ### Les entités du journal et de la bibliothèque
 
 ```php
-class JournalEntree
+class JournalEntry
 {
-    /** Propriété => libellé : sert au formulaire et à l'affichage. */
-    public const ECRANS = [
-        'ecranTv' => '📺 Télévision',
-        'ecranOrdinateur' => '💻 Ordinateur',
+    /** Property => label: used by the form and for display. */
+    public const SCREENS = [
+        'screenTv' => '📺 Télévision',
+        'screenComputer' => '💻 Ordinateur',
         // … smartphone, tablette, console, autre
     ];
 
     #[ORM\Column]
-    private int $ecranTv = 0;          // six colonnes int, 0 par défaut
+    private int $screenTv = 0;          // six int columns, 0 by default
 
-    public function getTotalEcran(): int { /* somme des six écrans */ }
+    public function getTotalScreenTime(): int { /* sum of the six screens */ }
 
-    public static function niveauPourMinutes(int $minutes): string
+    public static function levelForMinutes(int $minutes): string
     {
-        if ($minutes < 120) { return 'vert'; }     // moins de 2 h
-        if ($minutes <= 240) { return 'orange'; }  // jusqu'à 4 h
-        return 'rouge';
+        if ($minutes < 120) { return 'green'; }     // under 2 h
+        if ($minutes <= 240) { return 'orange'; }  // up to 4 h
+        return 'red';
     }
 }
 ```
 
-- `niveauPourMinutes()` est **statique** : elle classe n'importe quel nombre de
-  minutes (vert, orange, rouge), même sans objet `JournalEntree` sous la main ;
-  `getNiveauEcran()` l'appelle avec le total du journal.
-- `DouleurZone` : relation `ManyToOne` vers son journal (`onDelete: 'CASCADE'`),
-  une `zone` (clé de `ZONES`) et une `intensite` de 1 à 5, passées au
-  **constructeur** `new DouleurZone('cou', 3)` : une douleur n'existe jamais sans
+- `levelForMinutes()` est **statique** : elle classe n'importe quel nombre de
+  minutes (vert, orange, rouge), même sans objet `JournalEntry` sous la main ;
+  `getScreenLevel()` l'appelle avec le total du journal.
+- `PainZone` : relation `ManyToOne` vers son journal (`onDelete: 'CASCADE'`),
+  une `zone` (clé de `ZONES`) et une `intensity` de 1 à 5, passées au
+  **constructeur** `new PainZone('neck', 3)` : une douleur n'existe jamais sans
   ces deux valeurs.
-- `ContenuBienEtre` : `type` (clé de `TYPES`, `fiche` par défaut), `titre`
-  (160 caractères, obligatoire), `contenu` (type `text`), `url` facultative,
-  `declencheur` facultatif (clé de `DECLENCHEURS`), `createdAt`. L'URL est
+- `WellnessContent` : `type` (clé de `TYPES`, `sheet` par défaut), `title`
+  (160 caractères, obligatoire), `body` (type `text`), `url` facultative,
+  `triggerRule` facultatif (clé de `TRIGGERS`), `createdAt`. L'URL est
   validée ainsi :
 
 ```php
@@ -643,16 +643,16 @@ Symfony 7.1, et sans lui le `tldMessage` n'est jamais utilisé.
   d'une relation avec des méthodes `addEnfant()` / `removeEnfant()`. Le code
   généré est à relire et à compléter (constantes, getters d'affichage,
   contraintes, cascades, normalisation, commentaires).
-- **Ordre conseillé** : `User`, puis `Enfant`, `JournalEntree`, `DouleurZone`
+- **Ordre conseillé** : `User`, puis `Child`, `JournalEntry`, `PainZone`
   (une relation ne peut viser qu'une entité qui existe déjà), et enfin
-  `ContenuBienEtre`, qui ne dépend d'aucune autre.
+  `WellnessContent`, qui ne dépend d'aucune autre.
 
 ### `docker compose exec app php bin/console make:migration`
 
 - **Ce qu'elle fait** : compare vos entités à la base et génère le SQL de l'écart.
 - **À observer** : **ouvrez le fichier généré**. Vous devez y lire les cinq
   `CREATE TABLE`, les `FOREIGN KEY … ON DELETE CASCADE` sur `parent_id`,
-  `enfant_id` et `journal_entree_id`, et les index uniques. Une table inattendue
+  `child_id` et `journal_entry_id`, et les index uniques. Une table inattendue
   signale un problème de mapping.
 
 ### `docker compose exec app php bin/console doctrine:migrations:migrate`
@@ -697,11 +697,11 @@ Symfony 7.1, et sans lui le `tldMessage` n'est jamais utilisé.
 ```text
 src/
 ├── Entity/
-│   ├── User.php                  comptes (3 rôles), enfants, profilEnfant
-│   ├── Enfant.php                profil, AVATARS, LIMITE_*, contraintes d'âge et de limite
-│   ├── JournalEntree.php         6 écrans, ECRANS, seuils, index unique (enfant, date)
-│   ├── DouleurZone.php           ZONES, intensité 1-5
-│   └── ContenuBienEtre.php       TYPES, DECLENCHEURS, URL validée
+│   ├── User.php                  comptes (3 rôles), enfants, childProfile
+│   ├── Child.php                profil, AVATARS, LIMIT_*, contraintes d'âge et de limite
+│   ├── JournalEntry.php         6 écrans, SCREENS, seuils, index unique (enfant, date)
+│   ├── PainZone.php           ZONES, intensité 1-5
+│   └── WellnessContent.php       TYPES, TRIGGERS, URL validée
 └── Repository/
     └── *Repository.php           un par entité, VIDES pour l'instant
 
@@ -723,16 +723,16 @@ Trois responsabilités, trois fichiers.
 ### Le modèle de données complet
 
 ```text
-users ◄──────── parent_id (N:1, ON DELETE CASCADE) ──── enfant
+users ◄──────── parent_id (N:1, ON DELETE CASCADE) ──── child
   ▲                                                       │
-  └──────────── compte_id (1:1, unique) ──────────────────┘
+  └──────────── account_id (1:1, unique) ──────────────────┘
                                                           ▲
-journal_entree ── enfant_id (N:1, ON DELETE CASCADE) ─────┘
-  ▲   index unique (enfant_id, date)
+journal_entry ── child_id (N:1, ON DELETE CASCADE) ─────┘
+  ▲   index unique (child_id, date)
   │
-douleur_zone ── journal_entree_id (N:1, ON DELETE CASCADE)
+pain_zone ── journal_entry_id (N:1, ON DELETE CASCADE)
 
-contenu_bien_etre                 (aucune relation)
+wellness_content                 (aucune relation)
 ```
 
 ---
@@ -762,7 +762,7 @@ Doctrine ORM  (construit le SQL, avec des paramètres liés)
     ↓
 Doctrine DBAL → PDO / pdo_mysql → MySQL (conteneur database)
     ↓
-lignes → objets User hydratés ; $user->getEnfants() chargera les enfants à la demande
+lignes → objets User hydratés ; $user->getChildren() chargera les enfants à la demande
 ```
 
 Les valeurs passent toujours en **paramètres liés**, jamais concaténées : c'est
@@ -787,7 +787,7 @@ SecurityBundle (pour ses interfaces).
 
 - **Cascades Doctrine + `ON DELETE CASCADE`** : supprimer un parent efface toute
   sa famille, par Doctrine comme par la base.
-- **Compte enfant obligatoire** (`compte` non nullable) : jamais de « profil sans
+- **Compte enfant obligatoire** (`account` non nullable) : jamais de « profil sans
   compte ».
 - **Constantes plutôt qu'enums** : une seule convention, lisible, pour toutes les
   listes fixes.
@@ -819,18 +819,18 @@ formulaire, aucune donnée. Les tables existent, vides — c'est tout.
 → Vous avez modifié une entité sans générer ou appliquer la migration.
 → Solution : `make:migration` puis `doctrine:migrations:migrate`.
 
-**`The association App\Entity\Enfant#parent refers to the inverse side field App\Entity\User#enfant which does not exist`**
+**`The association App\Entity\Child#parent refers to the inverse side field App\Entity\User#enfant which does not exist`**
 → `inversedBy` et `mappedBy` ne se répondent pas (faute de frappe, singulier au
 lieu du pluriel).
-→ Solution : `inversedBy: 'enfants'` d'un côté, propriété `$enfants` avec
+→ Solution : `inversedBy: 'children'` d'un côté, propriété `$children` avec
 `mappedBy: 'parent'` de l'autre, puis `doctrine:schema:validate`.
 
-**`Target entity "App\Entity\JournalEntree" not found`**
+**`Target entity "App\Entity\JournalEntry" not found`**
 → Une relation vise une entité qui n'existe pas encore.
-→ Solution : créer les entités dans l'ordre (`User`, `Enfant`, `JournalEntree`,
-`DouleurZone`).
+→ Solution : créer les entités dans l'ordre (`User`, `Child`, `JournalEntry`,
+`PainZone`).
 
-**`Typed property … $enfants must not be accessed before initialization`**
+**`Typed property … $children must not be accessed before initialization`**
 → La collection n'est pas initialisée.
 → Solution : `$this->enfants = new ArrayCollection();` dans le constructeur.
 
@@ -880,12 +880,12 @@ l'appelle (phase 04).
 
 ## 12. Exercice pratique
 
-1. Ouvrez phpMyAdmin (`http://localhost:8082`), table `enfant`, onglet
+1. Ouvrez phpMyAdmin (`http://localhost:8082`), table `child`, onglet
    « Structure » puis « Vue relationnelle » : repérez les colonnes `parent_id`
-   (en `ON DELETE CASCADE`) et `compte_id` (sans cascade en base : le compte est
-   supprimé par la cascade Doctrine `Enfant::compte`). Expliquez pourquoi
-   `compte_id` porte un index **unique** alors que `parent_id` n'en a pas.
-2. Ajoutez temporairement une propriété à `ContenuBienEtre` :
+   (en `ON DELETE CASCADE`) et `account_id` (sans cascade en base : le compte est
+   supprimé par la cascade Doctrine `Child::compte`). Expliquez pourquoi
+   `account_id` porte un index **unique** alors que `parent_id` n'en a pas.
+2. Ajoutez temporairement une propriété à `WellnessContent` :
 
 ```php
 #[ORM\Column(length: 20, nullable: true)]
@@ -893,7 +893,7 @@ private ?string $auteur = null;
 ```
 
 3. Lancez `make:migration` et **ouvrez le fichier généré** : vous devez y lire un
-   `ALTER TABLE contenu_bien_etre ADD auteur …`.
+   `ALTER TABLE wellness_content ADD auteur …`.
 4. Appliquez la migration, vérifiez la colonne dans phpMyAdmin.
 5. Supprimez la propriété, regénérez une migration (elle contiendra un `DROP`)
    et appliquez-la.
@@ -917,8 +917,8 @@ partagée** avec d'autres développeurs.
 
 1. Lancer `make migrate` (ou `doctrine:migrations:migrate`).
 2. Ouvrir phpMyAdmin sur `http://localhost:8082` et sélectionner la base `digisante_junior`.
-3. Vérifier la présence des cinq tables `users`, `enfant`, `journal_entree`, `douleur_zone`, `contenu_bien_etre` (plus `doctrine_migration_versions`).
-4. Dans la vue relationnelle de `enfant`, `journal_entree` et `douleur_zone`, vérifier que `parent_id`, `enfant_id` et `journal_entree_id` sont en `ON DELETE CASCADE` (pas `compte_id`, supprimé par la cascade Doctrine) ; dans les index, vérifier les index uniques sur `users.email`, `users.username`, `enfant.compte_id` et `journal_entree (enfant_id, date)`.
+3. Vérifier la présence des cinq tables `users`, `child`, `journal_entry`, `pain_zone`, `wellness_content` (plus `doctrine_migration_versions`).
+4. Dans la vue relationnelle de `child`, `journal_entry` et `pain_zone`, vérifier que `parent_id`, `child_id` et `journal_entry_id` sont en `ON DELETE CASCADE` (pas `account_id`, supprimé par la cascade Doctrine) ; dans les index, vérifier les index uniques sur `users.email`, `users.username`, `child.account_id` et `journal_entry (child_id, date)`.
 5. Lancer `doctrine:schema:validate` puis `doctrine:mapping:info`.
 6. **Résultat attendu** : les cinq tables existent avec leurs clés et index, `doctrine:schema:validate` affiche deux `[OK]` et `doctrine:mapping:info` liste cinq entités.
 

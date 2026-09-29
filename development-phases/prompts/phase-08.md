@@ -15,13 +15,20 @@
 enfants de 8 à 14 ans. Trois rôles sans hiérarchie : `ROLE_ADMIN`,
 `ROLE_PARENT`, `ROLE_CHILD`.
 
-Déjà en place : les cinq entités depuis la phase 02 (dont `ContenuBienEtre`),
+Déjà en place : les cinq entités depuis la phase 02 (dont `WellnessContent`),
 comptes et connexion, espace parent (profils enfants), espace
 enfant (accueil, profil, journal quotidien en 2 étapes avec temps d'écran et
 douleurs).
 
 Stack : PHP 8.4, Symfony 7.4, Doctrine ORM 3, Twig, Bootstrap 5.3 par CDN,
-MySQL 8, Docker. Code simple, en français.
+MySQL 8, Docker. Code simple.
+
+**Langue du projet** : tout le **code est en anglais** — classes, méthodes,
+propriétés, variables, routes et URLs, tables et colonnes, classes CSS,
+fonctions JavaScript et **commentaires** (ex. `Child`, `JournalEntry`,
+`getTotalScreenTime()`, `/parent/children`, `child_home`). Tout ce que voit
+l'utilisateur reste en **français** : libellés, boutons, messages flash,
+messages de validation, titres de pages, contenus.
 
 ## Objectif de la phase
 
@@ -35,8 +42,8 @@ développeur.
 
 ## Avant de coder
 
-1. Lis `src/Entity/ContenuBienEtre.php`, `config/packages/security.yaml` (l'`access_control` sur `/admin` existe
-   déjà), `templates/base.html.twig`, `templates/enfant/layout.html.twig` et
+1. Lis `src/Entity/WellnessContent.php`, `config/packages/security.yaml` (l'`access_control` sur `/admin` existe
+   déjà), `templates/base.html.twig`, `templates/child/layout.html.twig` et
    `public/css/app.css`.
 2. Regarde comment l'espace parent est structuré (layout, liste, formulaire,
    suppression) : l'espace admin doit suivre **les mêmes conventions**.
@@ -61,21 +68,21 @@ L'entrée de menu « 👨‍👩‍👧 Parents » visible dans l'administration
 
 ## À implémenter
 
-### 1. Entité `ContenuBienEtre` (déjà en place)
+### 1. Entité `WellnessContent` (déjà en place)
 
 L'entité existe depuis la phase 02 : lis-la, ne la recrée pas et ne génère
 **aucune migration** dans cette phase. Rappels utiles pour la suite :
 
-- Propriétés : `type` (défaut `fiche`), `titre` (160), `contenu` (`text`,
+- Propriétés : `type` (défaut `sheet`), `title` (160), `body` (`text`,
   retours à la ligne à conserver à l'affichage), `url` (facultative, 500),
-  `declencheur` (facultatif, 40), `createdAt` (rempli dans le constructeur).
-- Constantes : `TYPES` (`fiche` 📄, `video` 🎬, `quiz` ❓, `glossaire` 📚,
-  `exercice` 🤸) et `DECLENCHEURS`, limité aux **trois** règles que le moteur de
+  `triggerRule` (facultatif, 40), `createdAt` (rempli dans le constructeur).
+- Constantes : `TYPES` (`sheet` 📄, `video` 🎬, `quiz` ❓, `glossary` 📚,
+  `exercise` 🤸) et `TRIGGERS`, limité aux **trois** règles que le moteur de
   conseils de la phase 09 appliquera réellement — `20-20-20`,
-  `etirement_cervical`, `yoga_yeux` (aussi déclarées en constantes nommées).
+  `neck_stretching`, `eye_yoga` (aussi déclarées en constantes nommées).
   ⚠️ N'en ajoute **aucune** autre : une règle proposée mais jamais déclenchée
   rendrait invisibles les contenus qui lui sont rattachés.
-- Getters d'affichage : `getTypeLabel()`, `getTypeEmoji()`, `getDeclencheurLabel()`.
+- Getters d'affichage : `getTypeLabel()`, `getTypeEmoji()`, `getTriggerRuleLabel()`.
 - Les contraintes sont déjà sur l'entité : « Le titre est obligatoire. »,
   « Merci de saisir une URL valide. », et sur `url`
   `#[Assert\Url(message: …, requireTld: true, tldMessage: …)]`
@@ -91,37 +98,37 @@ Si une propriété ou une constante citée ici manque, signale-le avant de coder
 - `templates/admin/layout.html.twig` (étend `base.html.twig`) : même charte que
   l'espace parent, logo 🛠️, suffixe de marque « Admin », menu **📚 Contenus**,
   et le menu utilisateur (initiale de l'email, déconnexion).
-- `Admin\ContenuController`, préfixe `/admin` :
-  - `admin_accueil` : `/admin` redirige vers la liste des contenus. Cette
+- `Admin\ContentController`, préfixe `/admin` :
+  - `admin_home` : `/admin` redirige vers la liste des contenus. Cette
     action **remplace** la page d'attente de la phase 04 : supprime
-    `Admin\AccueilController` et son gabarit (sinon deux routes portent le
+    `Admin\HomeController` et son gabarit (sinon deux routes portent le
     même nom) ;
-  - `admin_contenus` : tableau (type, titre avec 🔗 si un lien est renseigné,
+  - `admin_contents` : tableau (type, titre avec 🔗 si un lien est renseigné,
     règle déclenchée, date d'ajout, actions), nombre total, tri par type puis
     par titre ;
-  - `admin_contenu_nouveau` et `admin_contenu_modifier` : le **même** gabarit de
+  - `admin_content_new` et `admin_content_edit` : le **même** gabarit de
     formulaire, avec un titre et un libellé de bouton passés en variables ;
-  - `admin_contenu_supprimer` : **POST**, jeton CSRF vérifié, confirmation
-    navigateur via le partiel `_partials/bouton_supprimer.html.twig`.
+  - `admin_content_delete` : **POST**, jeton CSRF vérifié, confirmation
+    navigateur via le partiel `_partials/delete_button.html.twig`.
 - `requirements: ['id' => '\d+']` sur les paramètres `{id}`.
 - Messages flash après chaque action : « Le contenu « [titre] » a été ajouté. »,
   « Le contenu « [titre] » a été mis à jour. », « Le contenu « [titre] » a été
   supprimé. »
 
-### 3. Formulaire `ContenuBienEtreType`
+### 3. Formulaire `WellnessContentType`
 
-- `type` : `ChoiceType` construit à partir de `ContenuBienEtre::TYPES`
+- `type` : `ChoiceType` construit à partir de `WellnessContent::TYPES`
   (« 📄 Fiche », « 🎬 Vidéo »…).
-- `declencheur` : `ChoiceType` non requis, construit depuis `DECLENCHEURS`, avec
+- `triggerRule` : `ChoiceType` non requis, construit depuis `TRIGGERS`, avec
   un `placeholder` « Aucune — visible seulement dans la bibliothèque » et une
   aide expliquant que **le premier contenu d'une règle** est celui proposé à
   l'enfant quand elle se déclenche.
-- `titre` (`TextType`), `contenu` (`TextareaType`, 8 lignes),
+- `title` (`TextType`), `body` (`TextareaType`, 8 lignes),
   `url` (`UrlType`, `default_protocol: 'https'`, facultatif, avec une aide).
 
 ### 4. Page « Découvrir » côté enfant
 
-- Route `/enfant/bibliotheque` (nom `enfant_bibliotheque`) dans le contrôleur
+- Route `/child/library` (nom `child_library`) dans le contrôleur
   d'accueil enfant existant.
 - Contenus **groupés par type**, dans l'ordre de la constante `TYPES`, chaque
   groupe affichant son emoji, son libellé (suivi d'un « s » s'il contient plusieurs contenus) et le nombre de
@@ -134,9 +141,11 @@ Si une propriété ou une constante citée ici manque, signale-le avant de coder
 
 ### 5. Repository
 
-Dans `ContenuBienEtreRepository` : `findTousTries()` (type puis titre) et
-`findGroupesParType()` (tableau `type => contenus`, triés par titre).
-⚠️ Le tri se fait avec `->orderBy('c.titre')` ou `\SortDirection::Ascending` :
+Dans `WellnessContentRepository` : `findAllSorted()` (par type, dans l'ordre
+alphabétique de son **libellé affiché** — Exercice, Fiche, Glossaire, Quiz,
+Vidéo —, puis par titre ; le code anglais du type ne donnerait pas cet ordre) et
+`findGroupedByType()` (tableau `type => contenus`, triés par titre).
+⚠️ Le tri se fait avec `->orderBy('c.title')` ou `\SortDirection::Ascending` :
 passer `'ASC'`/`'DESC'` en chaîne est **déprécié**.
 
 ## Contraintes techniques et architecturales
@@ -164,7 +173,7 @@ docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '
 ## Ce qui n'est PAS dans cette phase
 
 - Pas de création d'entité ni de migration (tout le schéma date de la phase 02).
-- Pas de moteur de conseils : le champ `declencheur` est seulement **enregistré**
+- Pas de moteur de conseils : le champ `triggerRule` est seulement **enregistré**
   (phase 09).
 - Pas d'administration des comptes parents (phase 11).
 - Pas de gestion des profils enfants par l'admin : ils relèvent de leur parent.
@@ -172,7 +181,7 @@ docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '
 
 ## Scénario de test manuel
 
-1. Se connecter avec le compte administrateur et ouvrir `/admin/contenus`.
+1. Se connecter avec le compte administrateur et ouvrir `/admin/contents`.
 2. Créer un contenu de type « Fiche », avec un titre, un texte sur plusieurs lignes et un lien `https://exemple.fr`.
 3. Dans une **fenêtre de navigation privée** (pour garder la session admin ouverte à côté), se connecter en enfant, ouvrir « 📚 Découvrir » et vérifier que le contenu apparaît dans le groupe « 📄 Fiche » (un seul contenu, donc au singulier), avec son bouton de lien.
 4. Dans la fenêtre administrateur, modifier le titre, puis rafraîchir la page enfant de la fenêtre privée.
@@ -184,7 +193,7 @@ docker compose exec app php bin/console dbal:run-sql "UPDATE users SET roles = '
 - [ ] Une URL invalide est refusée avec un message écrit pour l'utilisateur.
 - [ ] La liste des règles proposées ne contient que les **trois** déclencheurs.
 - [ ] La suppression sans jeton CSRF est refusée (403).
-- [ ] Un parent ou un enfant qui ouvre `/admin/contenus` reçoit **403**.
+- [ ] Un parent ou un enfant qui ouvre `/admin/contents` reçoit **403**.
 - [ ] Aucune nouvelle migration : `doctrine:schema:validate` reste au vert
       (schéma synchronisé), comme `lint:twig templates`.
 
