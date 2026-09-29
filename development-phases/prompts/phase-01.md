@@ -1,6 +1,8 @@
 # Prompt Claude Code — Phase 01 : Environnement Docker, squelette Symfony et paquets du projet
 
 > Copiez tout ce qui suit dans Claude Code, à la racine de votre dossier de projet (vide).
+>
+> 📸 Cette phase n'a pas d'écran à reproduire : aucune capture à joindre.
 
 ---
 

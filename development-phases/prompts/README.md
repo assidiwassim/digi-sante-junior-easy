@@ -7,10 +7,16 @@ scénario de test manuel et les critères de validation.
 ## Comment s'en servir
 
 1. Terminez la phase précédente et vérifiez son scénario de test.
-2. Ouvrez le fichier de la phase, copiez **tout son contenu**.
-3. Collez-le dans Claude Code, à la racine de votre projet.
-4. Relisez le code produit avant de valider : c'est vous le développeur.
-5. Jouez le scénario de test manuel dans le navigateur.
+2. Ouvrez le fichier de la phase et repérez sa section « Captures d'écran de
+   référence ».
+3. Dans Claude Code, joignez ces captures (dossier [`../captures/`](../captures/)) :
+   glissez les fichiers dans la fenêtre ou collez les images avec Ctrl+V.
+   Joignez **seulement** celles que le prompt liste.
+4. Copiez **tout le contenu** du prompt, collez-le à la suite et envoyez, à la
+   racine de votre projet.
+5. Relisez le code produit avant de valider : c'est vous le développeur.
+6. Jouez le scénario de test manuel dans le navigateur et comparez vos pages
+   aux captures.
 
 > Les prompts demandent explicitement à Claude Code d'**analyser l'existant
 > avant de modifier quoi que ce soit**, de respecter l'architecture en place, et

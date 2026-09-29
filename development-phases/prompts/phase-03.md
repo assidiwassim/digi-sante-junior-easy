@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 03 : Gabarit de base, charte graphique et page d'accueil
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 3 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -37,6 +42,23 @@ présente le service.
    aucun paquet ; s'il en manque un, signale-le moi.
 3. Ne modifie pas la configuration Docker de la phase 01 ni les entités de la
    phase 02.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `03-accueil.png`
+- `03-accueil-mobile.png`
+- `03-accueil-mobile-menu-ouvert.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+Les boutons « Je suis un enfant » / « Je suis un parent » et les liens du menu
+pointent vers des pages créées aux phases 04 et 06 : garde-les avec les liens
+prévus par ce prompt.
 
 ## À implémenter
 

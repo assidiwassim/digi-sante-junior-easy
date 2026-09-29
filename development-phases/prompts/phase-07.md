@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 07 : Espace enfant : journal quotidien en 2 étapes
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 7 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -31,6 +36,30 @@ son temps d'écran (étape 1) puis les endroits où il a mal sur un schéma du c
 2. Vérifie le fuseau horaire : PHP et MySQL doivent tous deux être en
    `Europe/Paris` (variable `TZ` du service `database`).
 3. Présente-moi le découpage des fichiers avant de les créer.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `07-journal-etape1-depart.png`
+- `07-journal-etape1-rempli.png`
+- `07-journal-etape2-vide.png`
+- `07-journal-etape2-modale-intensite.png`
+- `07-journal-etape2-douleurs.png`
+- `06-enfant-accueil.png`
+- `07-enfant-accueil-journal-rempli.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+`06-enfant-accueil` montre l'accueil **avant** le journal (jauge à 0,
+« Raconte-moi ta journée ! »), `07-enfant-accueil-journal-rempli` l'accueil
+**après**. Le graphique en bas de ces pages arrive en phase 10 ; le bouton
+« 💡 Revoir mes conseils » mène à l'écran de fin de cette phase. L'écran de fin
+n'a pas de capture ici : les vrais conseils (phase 09) remplaceront le
+récapitulatif.
 
 ## À implémenter
 

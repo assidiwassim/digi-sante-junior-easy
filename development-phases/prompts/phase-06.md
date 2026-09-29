@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 06 : Espace enfant : connexion et accueil
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 4 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -35,6 +40,24 @@ personnalisé et une page de profil où il peut changer son mot de passe.
 2. Vérifie comment le provider de sécurité charge actuellement l'utilisateur.
 3. Dis-moi ce que tu vas modifier dans la sécurité existante **sans casser** la
    connexion des parents.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `06-connexion-enfant.png`
+- `06-connexion-enfant-erreur.png`
+- `06-enfant-accueil.png`
+- `06-enfant-profil.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+Sur `06-enfant-accueil`, seuls l'en-tête (avatar, « Salut [prénom] ! 👋 », date
+du jour) et le menu relèvent de cette phase : la jauge et la carte « Raconte-moi
+ta journée ! » arrivent en phase 07, le graphique en phase 10.
 
 ## À implémenter
 

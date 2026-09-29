@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 08 : Bibliothèque de contenus (admin + enfant)
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 4 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -36,6 +41,23 @@ développeur.
 2. Regarde comment l'espace parent est structuré (layout, liste, formulaire,
    suppression) : l'espace admin doit suivre **les mêmes conventions**.
 3. Annonce-moi les fichiers que tu vas créer avant de les créer.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `08-admin-contenus-liste.png`
+- `08-admin-contenu-nouveau.png`
+- `08-admin-contenu-nouveau-erreurs.png`
+- `08-enfant-bibliotheque.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+L'entrée de menu « 👨‍👩‍👧 Parents » visible dans l'administration arrive en phase
+11 : ne l'ajoute pas maintenant.
 
 ## À implémenter
 

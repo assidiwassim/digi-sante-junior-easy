@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 10 : Tableau de bord parent et enfant
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 6 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -32,6 +37,26 @@ choisi, les conseils qu'il a reçus, et la courbe de son temps d'écran sur 7 ou
    (`Parent\DashboardController`, route `parent_dashboard`) : c'est elle que tu
    remplaces — supprime-la, le nouveau contrôleur reprend le même nom de route.
 3. Annonce-moi le plan avant de coder.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `10-parent-tableau-de-bord.png`
+- `10-parent-tableau-de-bord-30-jours.png`
+- `10-parent-tableau-de-bord-mobile.png`
+- `10-parent-tableau-de-bord-sans-enfant.png`
+- `07-enfant-accueil-journal-rempli.png`
+- `10-enfant-accueil-mobile.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+Les courbes des captures viennent des données de démonstration (phase 12) : chez
+toi, elles reflètent les journaux saisis pendant tes essais. Sur l'accueil
+enfant, seul le graphique « 📊 Mon temps d'écran » est nouveau.
 
 ## À implémenter
 

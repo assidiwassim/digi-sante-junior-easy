@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 05 : Espace parent : profils enfants
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 7 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -32,6 +37,27 @@ parent choisit le mot de passe.
 2. Repère les conventions déjà utilisées (noms de routes, injection dans
    l'action, messages flash) et suis-les.
 3. Annonce-moi le plan avant de créer les fichiers.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `05-parent-enfants-liste.png`
+- `05-parent-menu-utilisateur-ouvert.png`
+- `05-parent-enfant-nouveau.png`
+- `05-parent-enfant-nouveau-erreurs.png`
+- `05-parent-enfant-cree.png`
+- `05-parent-enfant-modifier.png`
+- `05-parent-profil.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+Les captures montrent des enfants qui ont déjà des journaux (données de
+démonstration de la phase 12) : chez toi, le compteur « 📔 journée(s) » affichera
+0 pour l'instant.
 
 ## À implémenter
 
@@ -68,7 +94,10 @@ Dans `UserRepository`, une méthode `genererUsername(string $prenom): string` :
 ### 3. Contrôleur `Parent\EnfantController` (préfixe `/parent/enfants`)
 
 - `parent_enfants` : la liste des enfants **du parent connecté**, sous forme de
-  cartes (avatar, nom complet, âge, identifiant, limite, actions).
+  cartes : avatar, nom complet, âge, identifiant, limite, nombre de journaux
+  (« 📔 [n] journée(s) », via `enfant.journalEntrees|length`) et actions
+  **📊 Suivi** (lien vers `parent_dashboard` avec `?enfant=[id]`, que le tableau
+  de bord exploitera en phase 10), **Modifier**, **Supprimer**.
 - `parent_enfant_nouveau` : crée le profil **et** son compte `User`
   (`ROLE_CHILD`, username généré, mot de passe choisi par le parent et haché),
   puis flash `success` « Le compte de [prénom] est créé. Son identifiant de

@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 09 : Moteur de conseils
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 2 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -32,6 +37,22 @@ jamais culpabiliser.
 2. Repère l'écran de fin provisoire créé en phase 07 : tu vas le compléter, pas
    le réécrire entièrement.
 3. Explique-moi pourquoi ce code mérite un **service** avant de le créer.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `09-enfant-conseils.png`
+- `09-enfant-conseils-super-journee.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+`09-enfant-conseils` correspond à Tom : 2 h 30 d'écran pour une limite de 1 h
+30, cou à 4/5 et yeux à 2/5 ; `09-enfant-conseils-super-journee`, à une journée
+où aucune règle ne se déclenche.
 
 ## À implémenter
 

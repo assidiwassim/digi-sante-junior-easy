@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 11 : Administration des comptes parents
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 2 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -33,6 +38,18 @@ fiche d'un parent, et supprimer un compte avec **toutes** ses données.
    Dis-moi si une cascade manque **avant** d'écrire le code de suppression.
 3. Suis les conventions de l'admin des contenus : même layout, même partiel de
    suppression, mêmes noms de routes (`admin_…`).
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `11-admin-parents-liste.png`
+- `11-admin-parent-fiche.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
 
 ## À implémenter
 

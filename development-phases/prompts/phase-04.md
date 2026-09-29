@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 04 : Authentification, rôles, inscription et connexion parent
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 5 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -41,6 +46,24 @@ espace.
    Validator, Translation) : n'en installe aucun ; s'il en manque un,
    signale-le moi. Ne recrée pas l'entité `User`.
 3. Dis-moi ce que tu comptes modifier dans l'existant avant de le faire.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `04-inscription.png`
+- `04-inscription-erreurs.png`
+- `04-inscription-reussie.png`
+- `04-connexion-parent.png`
+- `04-connexion-parent-erreur.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+Les pages d'attente de cette phase (espaces « bientôt disponibles ») n'ont pas
+de capture : garde-les minimales.
 
 ## À implémenter
 

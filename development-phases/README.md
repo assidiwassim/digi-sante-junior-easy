@@ -43,17 +43,20 @@ Trois rôles **sans hiérarchie** : un administrateur n'est ni parent ni enfant.
    [`formation/`](./formation/)) : elle explique les concepts Symfony dont vous
    avez besoin, avec des exemples commentés et un exercice.
 4. Ouvrez le **prompt Claude Code** de la phase (dossier
-   [`prompts/`](./prompts/)), copiez-le dans Claude Code et laissez-le
-   implémenter la phase.
-5. Relisez le code produit, puis **jouez le scénario de test manuel**.
+   [`prompts/`](./prompts/)). Joignez les **captures d'écran** qu'il liste
+   (dossier [`captures/`](./captures/)), puis collez le prompt dans Claude Code
+   et laissez-le implémenter la phase.
+5. Relisez le code produit, puis **jouez le scénario de test manuel** en
+   comparant vos pages aux captures.
 6. Ne passez à la phase suivante que si le résultat attendu est atteint.
 
-Trois documents, trois questions :
+Quatre ressources, quatre questions :
 
 ```text
 ce README            →  QUOI développer dans cette phase ?
 formation/phase-XX   →  QUELS concepts comprendre ? COMMENT ça marche ?
 prompts/phase-XX     →  COMMENT demander l'implémentation à Claude Code ?
+captures/            →  À QUOI le résultat doit-il ressembler ?
 ```
 
 > ⚠️ **Si le dépôt de référence (ou un autre projet utilisant le nom

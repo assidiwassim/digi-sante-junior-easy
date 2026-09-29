@@ -1,6 +1,11 @@
 # Prompt Claude Code — Phase 12 : Données de démonstration et qualité
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 **Joignez aussi les 4 captures** listées dans la section « Captures
+> d'écran de référence » : elles sont dans le dossier [`captures/`](../captures/).
+> Glissez chaque fichier dans la fenêtre de Claude Code (ou copiez l'image puis
+> collez-la avec Ctrl+V) avant d'envoyer le prompt.
 
 ---
 
@@ -32,6 +37,25 @@ sans aide. C'est la **dernière phase** du parcours.
 2. Tous les paquets sont installés depuis la phase 01, dont
    `doctrine/doctrine-fixtures-bundle` ; s'il en manque un, signale-le.
 3. Propose-moi la liste des fixtures **avant** de les écrire.
+
+## Captures d'écran de référence
+
+Je joins à ce prompt des captures de l'application terminée, qui montrent le
+rendu attendu pour cette phase :
+
+- `05-parent-enfants-liste.png`
+- `10-parent-tableau-de-bord.png`
+- `08-admin-contenus-liste.png`
+- `11-admin-parents-liste.png`
+
+Reproduis la mise en page, les textes, les emojis et les couleurs visibles, avec
+les classes Bootstrap et la charte de `public/css/app.css`. Les captures ne
+remplacent pas ce prompt : en cas de doute, le texte du prompt fait foi.
+
+Ces captures ont été prises sur les données de démonstration décrites
+ci-dessous : après `make reset-db`, tes pages doivent afficher les mêmes
+enfants, âges, limites, nombres de journées, contenus et comptes. Les minutes et
+les dates dépendent du jour.
 
 ## À implémenter
 

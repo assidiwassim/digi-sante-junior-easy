@@ -1,6 +1,8 @@
 # Prompt Claude Code — Phase 02 : Base de données et entités
 
 > Copiez tout ce qui suit dans Claude Code, à la racine du projet.
+>
+> 📸 Cette phase n'a pas d'écran à reproduire : aucune capture à joindre.
 
 ---
 
