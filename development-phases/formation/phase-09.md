@@ -164,11 +164,10 @@ commentaire pour le « pourquoi ».
 class ConseilService
 {
     /**
-     * Seuil du conseil 20-20-20, atteint dès 2 h d'écran : on reprend la
-     * constante de la jauge (JournalEntree::SEUIL_ORANGE, 120 min) pour que
-     * conseil et couleur changent au même moment.
+     * Seuil du conseil 20-20-20, atteint dès 2 h d'écran : c'est aussi le
+     * moment où la jauge passe à l'orange (JournalEntree::niveauPourMinutes).
      */
-    private const SEUIL_ECRAN_MINUTES = JournalEntree::SEUIL_ORANGE;
+    private const SEUIL_ECRAN_MINUTES = 120;
     private const SEUIL_DOULEUR = 3;
 ```
 

@@ -749,8 +749,8 @@ docker compose exec app php bin/console dbal:run-sql "SELECT * FROM journal_entr
 ### Modules à développer
 
 - `JournalEntreeRepository::findAujourdhui()`.
-- `Enfant\JournalController` : `/enfant/journal`, `/enfant/journal/etape-1`,
-  `/enfant/journal/etape-2`, `/enfant/journal/conseils`.
+- `Enfant\JournalController` : `/enfant/journal`, `/enfant/journal/etape/1`,
+  `/enfant/journal/etape/2`, `/enfant/journal/conseils`.
 - `JournalEcransType` (6 curseurs, total plafonné à 16 h, valeurs à zéro au
   départ) et `JournalDouleursType` (champ caché + CSRF).
 - Schéma corporel SVG avec ses 6 zones et la fenêtre de choix d'intensité.
@@ -948,10 +948,10 @@ Phase 09 terminée (journaux et conseils disponibles).
 - Écrire des **requêtes dans le repository** avec le QueryBuilder, jamais dans
   le contrôleur.
 - Lire des paramètres d'URL (`?enfant=…&periode=…`) avec `$request->query`,
-  via `getString()` et **pas** `getInt()` : en Symfony 7, `?periode=abc` avec
-  `getInt()` lève une `BadRequestException` (**400**). Par exemple
-  `$request->query->getString('periode') === '30' ? 30 : 7`, et l'identifiant
-  demandé comparé à `(string) $enfant->getId()`. Même chose sur l'accueil enfant.
+  via `getInt()` et une liste blanche :
+  `30 === $request->query->getInt('periode') ? 30 : 7`, et l'identifiant
+  demandé comparé à `$enfant->getId()`. Même chose sur l'accueil enfant. En
+  Symfony 7, une valeur non numérique (`?periode=abc`) répond **400**.
 - Passer des données PHP au JavaScript : `{{ donnees|json_encode|raw }}`.
 - Réutiliser un fichier JS dans `public/js/` quand il sert à plusieurs pages.
 

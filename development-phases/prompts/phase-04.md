@@ -111,12 +111,20 @@ faite par `form_login`.
 | `conditions` | `CheckboxType` non mappé | doit être cochée (`Assert\IsTrue`) |
 
 Le contrôleur hache le mot de passe avec `UserPasswordHasherInterface`, attribue
-`ROLE_PARENT`, enregistre, ajoute un **message flash** de succès et redirige
-vers `/login`.
+`ROLE_PARENT`, enregistre, ajoute le **message flash** `success` « Votre compte
+est créé ! Connectez-vous pour ajouter vos enfants. » et redirige vers `/login`.
 
-Messages de validation **en français, écrits pour l'utilisateur** :
-« Merci de saisir votre email. », « Les deux mots de passe ne correspondent
-pas. », « Vous devez accepter les conditions pour créer un compte. »
+Messages de validation **exactement** comme ci-dessous :
+
+- `email` : `NotBlank` « Merci de saisir votre email. » (l'entité ajoute
+  « Cette adresse email n'est pas valide. » et « Cette adresse email est déjà
+  utilisée. ») ;
+- `plainPassword` : `invalid_message` « Les deux mots de passe ne correspondent
+  pas. », `NotBlank` « Merci de choisir un mot de passe. »,
+  `Length(min: 6, max: 4096)` « Le mot de passe doit contenir au moins
+  {{ limit }} caractères. » ;
+- `conditions` : `IsTrue` « Vous devez accepter les conditions pour créer un
+  compte. »
 
 ### 4. Redirection par rôle
 

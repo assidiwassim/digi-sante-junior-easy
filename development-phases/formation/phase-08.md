@@ -288,8 +288,8 @@ un seul endroit, trois espaces.
 
 ### L'affichage groupé, côté enfant
 
-Le contrôleur passe les groupes **et** la constante des types, pour disposer du
-pluriel défini en phase 02 (« Quiz » ne prend pas de « s ») :
+Le contrôleur passe les groupes **et** la constante des types (emoji et
+libellé définis en phase 02) :
 
 ```php
 return $this->render('enfant/bibliotheque.html.twig', [
@@ -303,7 +303,7 @@ return $this->render('enfant/bibliotheque.html.twig', [
     <section>
         <h2>
             <span>{{ types[type].emoji }}</span>
-            {{ contenus|length > 1 ? types[type].pluriel : types[type].label }}
+            {{ types[type].label }}{{ contenus|length > 1 ? 's' }}
             <span class="pastille">{{ contenus|length }}</span>
         </h2>
 

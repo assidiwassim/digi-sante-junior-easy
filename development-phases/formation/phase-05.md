@@ -236,7 +236,8 @@ $resolver->setDefaults([
 
 ```php
 if ($options['creation']) {
-    $builder->add('motDePasse', PasswordType::class, ['mapped' => false, /* … */]);
+    // TextType (visible) : le parent relit le mot de passe avant de le noter.
+    $builder->add('motDePasse', TextType::class, ['mapped' => false, /* … */]);
 }
 ```
 

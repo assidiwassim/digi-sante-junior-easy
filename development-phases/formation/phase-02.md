@@ -237,8 +237,8 @@ des constantes dans l'entité concernée :
 | Constante | Getters d'affichage |
 |---|---|
 | `User::ROLE_ADMIN`, `ROLE_PARENT`, `ROLE_CHILD` | `isParent()` |
-| `Enfant::AVATARS`, `LIMITE_MIN/MAX/PAS/DEFAUT`, `AGE_MIN/MAX` | `getAvatarEmoji()`, `getAvatarNom()`, `getNomComplet()`, `getAge()` |
-| `JournalEntree::ECRANS`, `SEUIL_ORANGE` (120), `SEUIL_ROUGE` (240) | `getTotalEcran()`, `niveauPourMinutes()`, `getNiveauEcran()` |
+| `Enfant::AVATARS`, `LIMITE_MIN/MAX/PAS` | `getAvatarEmoji()`, `getAvatarNom()`, `getNomComplet()`, `getAge()` |
+| `JournalEntree::ECRANS` | `getTotalEcran()`, `niveauPourMinutes()`, `getNiveauEcran()` |
 | `DouleurZone::ZONES` (yeux, cou, epaule, dos, poignet, main) | `getZoneLabel()`, `getZoneEmoji()` |
 | `ContenuBienEtre::TYPES`, `DECLENCHEURS` | `getTypeLabel()`, `getTypeEmoji()`, `getDeclencheurLabel()` |
 
@@ -278,12 +278,12 @@ class Enfant
 {
     #[ORM\Column]
     #[Assert\Range(
-        notInRangeMessage: 'La limite doit être comprise entre 15 minutes et 8 heures.',
+        notInRangeMessage: 'La limite doit être comprise entre {{ min }} et {{ max }} minutes.',
         min: self::LIMITE_MIN,
         max: self::LIMITE_MAX,
     )]
-    #[Assert\DivisibleBy(self::LIMITE_PAS, message: 'La limite se règle par tranches de 15 minutes.')]
-    private ?int $maxMinutesJour = self::LIMITE_DEFAUT;
+    #[Assert\DivisibleBy(value: self::LIMITE_PAS, message: 'La limite se règle par tranches de 15 minutes.')]
+    private ?int $maxMinutesJour = 120;   // 2 h par défaut
 }
 ```
 
@@ -594,8 +594,8 @@ class JournalEntree
 
     public static function niveauPourMinutes(int $minutes): string
     {
-        if ($minutes < self::SEUIL_ORANGE) { return 'vert'; }
-        if ($minutes <= self::SEUIL_ROUGE) { return 'orange'; }
+        if ($minutes < 120) { return 'vert'; }     // moins de 2 h
+        if ($minutes <= 240) { return 'orange'; }  // jusqu'à 4 h
         return 'rouge';
     }
 }

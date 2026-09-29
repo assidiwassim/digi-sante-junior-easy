@@ -82,7 +82,9 @@ Si une propriété ou une constante citée ici manque, signale-le avant de coder
   - `admin_contenu_supprimer` : **POST**, jeton CSRF vérifié, confirmation
     navigateur via le partiel `_partials/bouton_supprimer.html.twig`.
 - `requirements: ['id' => '\d+']` sur les paramètres `{id}`.
-- Messages flash après chaque action : « Le contenu « … » a été ajouté. »
+- Messages flash après chaque action : « Le contenu « [titre] » a été ajouté. »,
+  « Le contenu « [titre] » a été mis à jour. », « Le contenu « [titre] » a été
+  supprimé. »
 
 ### 3. Formulaire `ContenuBienEtreType`
 
@@ -100,7 +102,7 @@ Si une propriété ou une constante citée ici manque, signale-le avant de coder
 - Route `/enfant/bibliotheque` (nom `enfant_bibliotheque`) dans le contrôleur
   d'accueil enfant existant.
 - Contenus **groupés par type**, dans l'ordre de la constante `TYPES`, chaque
-  groupe affichant son emoji, son libellé (au pluriel si besoin) et le nombre de
+  groupe affichant son emoji, son libellé (suivi d'un « s » s'il contient plusieurs contenus) et le nombre de
   contenus. Seuls les types non vides apparaissent.
 - Pour chaque contenu : titre, pastille de la règle associée s'il y en a une,
   texte (retours à la ligne conservés) et bouton « ▶️ Ouvrir le lien » quand une

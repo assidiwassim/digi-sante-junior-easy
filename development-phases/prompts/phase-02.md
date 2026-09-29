@@ -80,14 +80,14 @@ Un seul type de compte pour les trois rôles :
 | Propriété | Type | Règles |
 |---|---|---|
 | `id` | `int` | clé primaire auto |
-| `email` | `?string(180)` | **unique**, nullable (les enfants n'en ont pas), validé par `#[Assert\Email]` |
+| `email` | `?string(180)` | **unique**, nullable (les enfants n'en ont pas), `#[Assert\Email(message: "Cette adresse email n'est pas valide.")]` |
 | `username` | `?string(60)` | **unique**, nullable (réservé aux enfants) |
 | `roles` | `json` | liste de rôles |
 | `password` | `string` | mot de passe **haché**, jamais en clair |
 | `pays` | `?string(80)` | facultatif |
 | `ville` | `?string(80)` | facultatif |
 | `createdAt` | `datetime_immutable` | rempli dans le constructeur |
-| `enfants` | `OneToMany` vers `Enfant` | côté parent, `mappedBy: 'parent'`, `cascade: ['remove']`, trié par prénom |
+| `enfants` | `OneToMany` vers `Enfant` | côté parent, `mappedBy: 'parent'`, `cascade: ['remove']`, **sans tri** (les listes triées passent par le repository) |
 | `profilEnfant` | `OneToOne` inverse vers `Enfant` | côté enfant, `mappedBy: 'compte'` |
 
 Exigences :
@@ -100,16 +100,13 @@ Exigences :
   `ROLE_CHILD`) : pas d'enum PHP ;
 - `setEmail()` et `setUsername()` enregistrent en **minuscules**, sans espaces
   autour ;
-- `#[UniqueEntity]` sur `email` et sur `username`, avec des messages en français
-  (« Cette adresse email est déjà utilisée. », « Cet identifiant est déjà
-  utilisé. ») ;
+- `#[UniqueEntity]` sur `email` (« Cette adresse email est déjà utilisée. ») et
+  sur `username` (« Cet identifiant est déjà pris. ») ;
 - une méthode `isParent()` pratique pour la suite ;
 - `eraseCredentials()` reste vide et porte l'attribut `#[\Deprecated]` : depuis
   Symfony 7.3 cette méthode est dépréciée, et sans cet attribut Symfony
   signale une dépréciation (visible dans la barre de debug à partir de la
   phase 03).
-- ⚠️ Tri de `enfants` : `#[ORM\OrderBy(['prenom' => \SortDirection::Ascending])]`.
-  Passer `'ASC'` en chaîne est **déprécié**.
 
 ### 4. Entité `Enfant`
 
@@ -117,27 +114,43 @@ Exigences :
 |---|---|---|
 | `parent` | `ManyToOne` vers `User` | non nullable, `onDelete: 'CASCADE'` |
 | `compte` | `OneToOne` vers `User` | **non nullable**, `cascade: ['persist', 'remove']` (le compte part avec le profil) |
-| `prenom`, `nom` | `string(80)` | obligatoires |
-| `dateNaissance` | `date_immutable` | l'enfant doit avoir **entre 8 et 14 ans** |
-| `avatar` | `string(20)` | choisi dans `AVATARS`, défaut `renard` |
-| `maxMinutesJour` | `int` | limite quotidienne, **15 à 480 min par pas de 15**, défaut 120 |
+| `prenom`, `nom` | `string(80)` | obligatoires : « Le prénom est obligatoire. », « Le nom est obligatoire. » |
+| `dateNaissance` | `date_immutable` | obligatoire (« La date de naissance est obligatoire. »), l'enfant doit avoir **entre 8 et 14 ans** |
+| `avatar` | `string(20)` | clé de `AVATARS`, défaut `renard`, obligatoire (« Choisissez un avatar. ») |
+| `maxMinutesJour` | `int` | limite quotidienne, **15 à 480 min par pas de 15**, défaut **120** |
 | `journalEntrees` | `OneToMany` vers `JournalEntree` | `mappedBy: 'enfant'`, `cascade: ['remove']` |
 
-- Constantes : `AVATARS` (12 avatars, chacun avec `emoji`, `nom` et `couleur` :
-  renard, panda, lion, chat, chien, lapin, grenouille, pieuvre, licorne,
-  dauphin, hibou, fusée), `LIMITE_MIN`, `LIMITE_MAX`, `LIMITE_PAS`,
-  `LIMITE_DEFAUT`, `AGE_MIN`, `AGE_MAX`.
-- Getters d'affichage : `getNomComplet()`, `getAge()` (années révolues),
-  `getAvatarEmoji()`, `getAvatarNom()`, `getAvatarCouleur()`.
+- Constante `AVATARS` — **exactement** ces 12 avatars (clé → emoji, nom,
+  couleur), dans cet ordre. Les clés sont enregistrées en base : elles doivent
+  être identiques d'un projet à l'autre.
+
+  | Clé | Emoji | Nom | Couleur |
+  |---|---|---|---|
+  | `renard` | 🦊 | Renard malin | `#F59E0B` |
+  | `panda` | 🐼 | Panda calme | `#64748B` |
+  | `chat` | 🐱 | Chat curieux | `#F472B6` |
+  | `chien` | 🐶 | Chien fidèle | `#C99A2E` |
+  | `lapin` | 🐰 | Lapin rapide | `#A78BFA` |
+  | `lion` | 🦁 | Lion courageux | `#EA580C` |
+  | `grenouille` | 🐸 | Grenouille sportive | `#16A34A` |
+  | `poulpe` | 🐙 | Poulpe créatif | `#0E7C7B` |
+  | `licorne` | 🦄 | Licorne magique | `#DB2777` |
+  | `dragon` | 🐲 | Dragon rigolo | `#059669` |
+  | `pingouin` | 🐧 | Pingouin cool | `#1F3864` |
+  | `astronaute` | 🧑‍🚀 | Astronaute | `#3B82F6` |
+
+- Constantes `LIMITE_MIN = 15`, `LIMITE_MAX = 480`, `LIMITE_PAS = 15`.
+- Getters d'affichage : `getNomComplet()` (« prénom nom »), `getAge()` (années
+  révolues), `getAvatarEmoji()` (🙂 si la clé est inconnue), `getAvatarNom()`
+  (« Avatar » si la clé est inconnue).
 - Validation :
   - date de naissance : `Assert\Range` entre `'today -15 years +1 day'` et
     `'today -8 years'`, message « L'application est réservée aux enfants de 8 à
     14 ans. » ;
-  - limite : `Assert\Range` (15 à 480, « La limite doit être comprise entre
-    15 minutes et 8 heures. ») et `Assert\DivisibleBy(15)`, « La limite se règle
-    par tranches de 15 minutes. » ;
-  - avatar : `Assert\Choice` sur les clés de `AVATARS` ;
-  - prénom, nom, date : obligatoires (« Merci de saisir le prénom. »…).
+  - limite : `Assert\NotNull` (« Choisissez une limite. »), `Assert\Range`
+    (15 à 480, « La limite doit être comprise entre {{ min }} et {{ max }}
+    minutes. ») et `Assert\DivisibleBy(15)` (« La limite se règle par tranches
+    de 15 minutes. »).
 
 ### 5. Entité `JournalEntree`
 
@@ -148,53 +161,57 @@ Exigences :
 | `ecranTv`, `ecranOrdinateur`, `ecranSmartphone`, `ecranTablette`, `ecranConsole`, `ecranAutre` | `int` | minutes, défaut 0 |
 | `douleurs` | `OneToMany` vers `DouleurZone` | `mappedBy: 'journalEntree'`, `cascade: ['persist', 'remove']` |
 
-- **Index unique sur `(enfant_id, date)`** (`#[ORM\UniqueConstraint]`) : un seul
-  journal par enfant et par jour, garanti **en base**.
-- Constante `ECRANS` : nom de propriété → libellé affiché
-  (`'ecranTv' => '📺 Télévision'`, `'ecranOrdinateur' => '💻 Ordinateur'`…),
-  qui servira au formulaire.
+- **Index unique `un_journal_par_jour` sur `(enfant_id, date)`**
+  (`#[ORM\UniqueConstraint]`) : un seul journal par enfant et par jour, garanti
+  **en base**.
+- Constante `ECRANS` (nom de propriété → libellé affiché), **exactement** :
+  `ecranTv` → « 📺 Télévision », `ecranOrdinateur` → « 💻 Ordinateur »,
+  `ecranSmartphone` → « 📱 Téléphone », `ecranTablette` → « 📲 Tablette »,
+  `ecranConsole` → « 🎮 Console de jeux », `ecranAutre` → « 🖥️ Autre écran ».
+  Elle servira au formulaire du journal.
 - `addDouleur()`, qui rattache aussi la douleur au journal.
 - `getTotalEcran()` : somme des six durées.
-- `niveauPourMinutes(int $minutes): string` (statique) : `vert` sous 2 h,
-  `orange` de 2 h à 4 h, `rouge` au-delà, avec les seuils en constantes
-  `SEUIL_ORANGE = 120` et `SEUIL_ROUGE = 240` — plus `getNiveauEcran()`.
+- `niveauPourMinutes(int $minutes): string` (statique) : `vert` sous 120 min,
+  `orange` jusqu'à 240 min inclus, `rouge` au-delà — plus `getNiveauEcran()`.
 
 ### 6. Entité `DouleurZone`
 
 - `journalEntree` (`ManyToOne`, non nullable, `onDelete: 'CASCADE'`), `zone`
-  (`string(20)`), `intensite` (`int`, 1 à 5 : constantes `INTENSITE_MIN` et
-  `INTENSITE_MAX`).
+  (`string(20)`), `intensite` (`int`, 1 à 5).
 - Constructeur `__construct(string $zone, int $intensite)`.
-- Constante `ZONES` : 6 zones avec leur libellé et leur emoji — `yeux`, `cou`,
-  `epaule`, `dos`, `poignet`, `main`. Les clés correspondront à l'attribut
-  `data-zone` du schéma du corps (phase 07).
-- Getters d'affichage `getZoneLabel()` et `getZoneEmoji()`.
+- Constante `ZONES` (clé → libellé et emoji), **exactement** : `yeux` → Yeux 👀,
+  `cou` → Cou / nuque 🦴, `epaule` → Épaules 💪, `dos` → Dos 🔙,
+  `poignet` → Poignets 🤚, `main` → Doigts / main ✋. Les clés correspondront à
+  l'attribut `data-zone` du schéma du corps (phase 07).
+- Getters d'affichage `getZoneLabel()` (la clé si elle est inconnue) et
+  `getZoneEmoji()` (📍 si elle est inconnue).
 
 ### 7. Entité `ContenuBienEtre`
 
 | Propriété | Type | Règles |
 |---|---|---|
-| `type` | `string(20)` | obligatoire, choisi dans `TYPES`, défaut `fiche` |
-| `titre` | `string(160)` | obligatoire |
-| `contenu` | `text` | obligatoire |
+| `type` | `string(20)` | obligatoire (« Choisissez un type de contenu. »), défaut `fiche` |
+| `titre` | `string(160)` | obligatoire (« Le titre est obligatoire. ») |
+| `contenu` | `text` | obligatoire (« Le contenu est obligatoire. ») |
 | `url` | `?string(500)` | facultatif, URL valide |
-| `declencheur` | `?string(40)` | facultatif, choisi dans `DECLENCHEURS` |
+| `declencheur` | `?string(40)` | facultatif |
 | `createdAt` | `datetime_immutable` | rempli dans le constructeur |
 
 - Constantes :
-  - `TYPES` : `fiche` 📄, `video` 🎬, `quiz` ❓, `glossaire` 📚, `exercice` 🤸,
-    chacun avec son libellé, son pluriel et son emoji (l'ordre du tableau sera
-    celui des groupes de la page « Découvrir ») ;
+  - `TYPES` (clé → libellé et emoji), dans cet ordre, qui sera celui des groupes
+    de la page « Découvrir » : `fiche` → Fiche 📄, `video` → Vidéo 🎬,
+    `quiz` → Quiz ❓, `glossaire` → Glossaire 📚, `exercice` → Exercice 🤸 ;
   - `DECLENCHEURS` : **uniquement** les trois règles qu'appliquera le moteur de
     conseils (phase 09) — `20-20-20` (« Règle du 20-20-20 »),
     `etirement_cervical` (« Étirements du cou »), `yoga_yeux` (« Yoga des
-    yeux ») —, déclarées aussi en constantes nommées
-    (`DECLENCHEUR_20_20_20`…). ⚠️ N'ajoute **aucune** autre règle : une règle
-    proposée mais jamais déclenchée rendrait invisibles ses contenus.
-- Getters d'affichage : `getTypeLabel()`, `getTypeEmoji()`, `getDeclencheurLabel()`.
-- Validation : « Le titre est obligatoire. », « Le contenu est obligatoire. »,
-  `Assert\Choice` sur `type` et `declencheur`, et sur `url` :
-  `#[Assert\Url(message: 'Merci de saisir une URL valide.', requireTld: true, tldMessage: …)]`.
+    yeux ») —, déclarées aussi en constantes nommées `DECLENCHEUR_20_20_20`,
+    `DECLENCHEUR_ETIREMENT` et `DECLENCHEUR_YOGA_YEUX`. ⚠️ N'ajoute **aucune**
+    autre règle : une règle proposée mais jamais déclenchée rendrait invisibles
+    ses contenus.
+- Getters d'affichage : `getTypeLabel()`, `getTypeEmoji()` (📄 par défaut),
+  `getDeclencheurLabel()` (`null` sans règle).
+- Validation sur `url` :
+  `#[Assert\Url(message: 'Merci de saisir une URL valide.', requireTld: true, tldMessage: 'Merci de saisir une URL valide, par exemple https://exemple.fr.')]`.
   `requireTld: true` est obligatoire : l'omettre est déprécié depuis
   Symfony 7.1, et sans lui `tldMessage` n'est jamais utilisé.
 
@@ -262,7 +279,8 @@ docker compose exec app php bin/console doctrine:mapping:info
 - [ ] `User` implémente les deux interfaces de sécurité et expose ses rôles en
       constantes.
 - [ ] Les listes fixes (`AVATARS`, `ECRANS`, `ZONES`, `TYPES`, `DECLENCHEURS`)
-      sont des constantes, sans enum PHP.
+      sont des constantes, sans enum PHP, avec **exactement** les valeurs
+      demandées.
 - [ ] Les repositories sont vides.
 - [ ] Les fichiers de migration sont lisibles et ne contiennent que ce schéma.
 - [ ] `.env` ne contient aucun mot de passe réel autre que celui du Docker local.

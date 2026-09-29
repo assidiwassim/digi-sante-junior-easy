@@ -63,9 +63,9 @@ Si une propriété ou une constante citée ici manque, signale-le avant de coder
 
 - `enfant_journal` (`/enfant/journal`) : point d'entrée. Si le journal du jour existe déjà →
   rediriger vers l'écran de fin ; sinon vider la session et aller à l'étape 1.
-- `enfant_journal_etape1` (`/enfant/journal/etape-1`, GET + POST) : formulaire des écrans. À la validation,
+- `enfant_journal_etape1` (`/enfant/journal/etape/1`, GET + POST) : formulaire des écrans. À la validation,
   ranger les valeurs **en session** et rediriger vers l'étape 2.
-- `enfant_journal_etape2` (`/enfant/journal/etape-2`, GET + POST) : schéma corporel. Sans données d'étape 1
+- `enfant_journal_etape2` (`/enfant/journal/etape/2`, GET + POST) : schéma corporel. Sans données d'étape 1
   en session → rediriger vers l'étape 1. À la validation, créer le
   `JournalEntree` complet, ajouter les douleurs, enregistrer, vider la session.
 - Un écran de fin `enfant_journal_conseils` (`/enfant/journal/conseils`, GET) : pour l'instant, un récapitulatif
@@ -80,15 +80,21 @@ abandonne, aucun journal à moitié rempli ne reste enregistré.
 **`JournalEcransType`** — un `RangeType` par écran, **non lié à une entité** (il
 renvoie un simple tableau `['ecranTv' => '30', …]`) :
 
-- plage 0 à 360 minutes, pas de 15, avec une contrainte `Assert\Range` par champ ;
+- libellés tirés de `JournalEntree::ECRANS` ; plage 0 à 360 minutes, pas de 15,
+  avec une contrainte `Assert\Range(min: 0, max: 360)` par champ (messages
+  « Indique une durée entre {{ min }} et {{ max }} minutes. » et « Indique une
+  durée avec le curseur. ») ;
 - ⚠️ **valeurs de départ à zéro** : sans valeur, le navigateur place un curseur
   **au milieu** de sa plage. Fixe-les via l'option `data` du formulaire, en
   veillant à ce que les valeurs de la session restent prioritaires au retour de
   l'étape 2 ;
-- un plafond sur le **total de la journée** (16 h, tous écrans confondus) : sans
-  lui, six curseurs à 6 h donneraient 36 h. Utilise `Assert\Callback` dans
-  l'option `constraints` du formulaire (règle portant sur plusieurs champs) ;
-  message écrit pour l'enfant, affiché par `{{ form_errors(form) }}`.
+- un plafond sur le **total de la journée** (constante publique
+  `TOTAL_MAX = 960`, soit 16 h, tous écrans confondus) : sans lui, six curseurs
+  à 6 h donneraient 36 h. Utilise `Assert\Callback` dans l'option `constraints`
+  du formulaire (règle portant sur plusieurs champs), avec le message « En tout,
+  cela fait {{ total }} d'écran : c'est impossible en une journée. Reprends tes
+  curseurs (maximum {{ maximum }}). », les deux durées formatées comme le
+  filtre `duree` (« 18 h », « 16 h »), affiché par `{{ form_errors(form) }}`.
 
 **`JournalDouleursType`** — un seul champ caché `douleurs`, rempli en JSON par
 le JavaScript (`{"cou": 3, "yeux": 2}`). Passer par un formulaire Symfony

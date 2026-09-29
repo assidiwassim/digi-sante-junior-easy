@@ -108,17 +108,17 @@ dates immuables.
 des méthodes **typées** (`getString()`, `getInt()`…).
 
 ```php
-$periode = $request->query->getString('periode') === '30' ? 30 : 7;
+$periode = 30 === $request->query->getInt('periode') ? 30 : 7;
 ```
 
-`getString()` renvoie `''` si le paramètre est absent : on compare donc la
-**chaîne** reçue à la seule valeur acceptée. Toute autre valeur (`abc`, `365`,
+`getInt()` renvoie `0` si le paramètre est absent : on compare donc l'entier
+reçu à la seule valeur acceptée. Toute autre valeur numérique (`365`, `-1`,
 rien du tout) retombe sur 7. Une **liste blanche**, en une ligne.
 
-⚠️ **Piège** : `getInt()` semble plus naturel, mais en Symfony 7 une valeur non
-numérique (`?periode=abc`) lève une `BadRequestException` : la page répond
-**400** au lieu de retomber sur 7. Pour un simple filtre d'affichage, on
-préfère `getString()` et une comparaison de chaînes.
+⚠️ **À savoir** : en Symfony 7, une valeur **non numérique** (`?periode=abc`)
+lève une `BadRequestException` : la page répond **400** (« requête mal
+formée »). C'est le comportement attendu : seule une URL bricolée à la main
+produit cette valeur.
 
 ---
 
@@ -138,18 +138,14 @@ ses propres enfants** :
 
 ```php
 $enfants = $enfantRepository->findByParent($parent);   // uniquement les siens
-$idDemande = $request->query->getString('enfant');
 
 $enfant = $enfants[0];
 foreach ($enfants as $candidat) {
-    if ((string) $candidat->getId() === $idDemande) {
+    if ($candidat->getId() === $request->query->getInt('enfant')) {
         $enfant = $candidat;
     }
 }
 ```
-
-L'identifiant est comparé **en chaîne** (`(string) $candidat->getId()`), pour la
-même raison qu'au Concept 3 : `?enfant=abc` ne doit pas provoquer une 400.
 
 Aucune donnée étrangère ne peut être chargée : l'identifiant demandé n'est
 comparé qu'à une liste sûre. **La sécurité vient de la construction de la
@@ -259,7 +255,7 @@ public function index(
 
     // … sélection de l'enfant (voir Concept 4)
 
-    $periode = $request->query->getString('periode') === '30' ? 30 : 7;
+    $periode = 30 === $request->query->getInt('periode') ? 30 : 7;
     $journalDuJour = $journalRepository->findAujourdhui($enfant);
 
     return $this->render('parent/dashboard.html.twig', [
@@ -281,7 +277,7 @@ Ce `TableauDeBordController` **remplace** la page d'attente
 `Parent\DashboardController` de la phase 04 : il reprend le même nom de route,
 `parent_dashboard`. Supprimez l'ancien contrôleur (et son gabarit), sinon deux
 routes portent le même nom. L'accueil de l'enfant lit sa période de la même
-façon, avec `getString()`.
+façon, avec `getInt()`.
 
 Notez aussi l'écran dédié quand le parent n'a pas encore d'enfant : un tableau de
 bord vide serait une impasse. Traiter le **cas zéro** fait partie du travail.
@@ -336,7 +332,7 @@ nouvelle**, pas comme un vide.
 | Composant | Rôle ici |
 |---|---|
 | **Doctrine (QueryBuilder)** | requêtes sur mesure dans les repositories |
-| **HttpFoundation** | `$request->query->getString()` |
+| **HttpFoundation** | `$request->query->getInt()` |
 | **Twig** | `json_encode`, `asset()`, bloc `javascripts` |
 | **DependencyInjection** | `ConseilService` injecté dans un second contrôleur |
 
@@ -444,9 +440,9 @@ envoyés.
 → Solution : une seule requête sur la période, remplissage en PHP.
 
 **`?periode=abc` ou `?enfant=abc` renvoie une erreur 400**
-→ Le paramètre est lu avec `getInt()`, qui lève une `BadRequestException` sur
-une valeur non numérique.
-→ Solution : `getString()` et une comparaison de chaînes (Concepts 3 et 4).
+→ C'est normal : `getInt()` lève une `BadRequestException` sur une valeur non
+numérique (Concept 3). Seule une URL modifiée à la main produit ce cas ; une
+erreur **500**, en revanche, serait un bug.
 
 **`?enfant=999` provoque une erreur**
 → L'identifiant est cherché en base au lieu d'être comparé à la liste des
@@ -460,7 +456,7 @@ enfants du parent.
 - **Aucune requête dans un contrôleur** : tout dans un repository, avec un nom
   explicite.
 - **Toujours `setParameter()`**, jamais de concaténation dans une requête.
-- **Ne faites jamais confiance à un paramètre d'URL** : `getString()` + liste
+- **Ne faites jamais confiance à un paramètre d'URL** : `getInt()` + liste
   blanche, et ne cherchez que dans des données déjà filtrées.
 - **Traitez le cas zéro** (aucun enfant, aucun journal, aucune douleur) : c'est
   souvent le premier état que verra un vrai utilisateur.
@@ -477,11 +473,10 @@ enfants du parent.
    **identique** (la période ne change pas le nombre de requêtes).
 2. Supprimez le journal d'hier en SQL, rechargez le graphique : le point doit
    tomber à 0, pas disparaître. Quelle ligne produit ce comportement ?
-3. Essayez `?periode=abc`, puis `?periode=365` : dans les deux cas, la période
-   doit retomber à 7 jours. Expliquez pourquoi. Remplacez temporairement
-   `getString()` par `getInt()` et réessayez `?periode=abc` : observez la
-   400, puis remettez `getString()`.
-4. Essayez `?enfant=999` puis `?enfant=abc` : vous devez voir votre premier enfant, sans erreur.
+3. Essayez `?periode=365` : la période doit retomber à 7 jours. Expliquez
+   pourquoi. Essayez ensuite `?periode=abc` : observez la réponse 400 et
+   retrouvez dans le profiler l'exception levée par `getInt()`.
+4. Essayez `?enfant=999` : vous devez voir votre premier enfant, sans erreur.
    Comparez avec `/parent/enfants/{id}/modifier` : un id inexistant → 404 ;
    l'id d'un enfant d'un autre parent → 403 (voter).
    Expliquez la différence de traitement.

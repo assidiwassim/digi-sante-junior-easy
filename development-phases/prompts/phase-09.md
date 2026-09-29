@@ -52,13 +52,15 @@ d'interface, pas de classe de valeur :
 
 **Les règles**, dans cet ordre :
 
-| # | Condition | Conseil | Contenu associé |
-|---|---|---|---|
-| 1 | temps d'écran total **≥ 2 h** (et limite non dépassée) | « Repose tes yeux avec le 20-20-20 » | déclencheur `20-20-20` |
-| 2 | temps d'écran total **> limite du parent** | « Tu as dépassé ta limite d'écran », en rappelant le temps et la limite | déclencheur `20-20-20` |
-| 3 | douleur au **cou** ou aux **épaules** d'intensité **≥ 3** | « Détends ton cou et tes épaules » | `etirement_cervical` |
-| 4 | douleur aux **yeux**, quelle que soit l'intensité | « Un peu de yoga des yeux » | `yoga_yeux` |
-| 5 | aucune règle déclenchée | « Super journée ! », couleur `vert` | aucun |
+| # | Condition | `titre` | `message` (exact) | `emoji` | Contenu associé |
+|---|---|---|---|---|---|
+| 1 | temps d'écran total **≥ 2 h** (et limite non dépassée) | « Repose tes yeux avec le 20-20-20 » | « Tu as passé [total] devant un écran. Toutes les 20 minutes, regarde quelque chose à 20 pieds (environ 6 mètres) pendant 20 secondes. » | 👁️ | déclencheur `20-20-20` |
+| 2 | temps d'écran total **> limite du parent** | « Tu as dépassé ta limite d'écran » | « Aujourd'hui : [total] d'écran pour une limite de [limite]. Ce n'est pas grave, mais demain essaie de faire une pause plus tôt ! 💪 » | 📵 | déclencheur `20-20-20` |
+| 3 | douleur au **cou** ou aux **épaules** d'intensité **≥ 3** | « Détends ton cou et tes épaules » | « Tu as signalé une douleur au niveau du haut du corps. Voici une vidéo d'étirements tout doux à faire assis ou debout. » | 🧘 | `etirement_cervical` |
+| 4 | douleur aux **yeux**, quelle que soit l'intensité | « Un peu de yoga des yeux » | « Tes yeux sont fatigués. Fais-les bouger doucement de haut en bas, de gauche à droite, puis frotte tes mains et pose-les sur tes paupières fermées. » | 👀 | `yoga_yeux` |
+| 5 | aucune règle déclenchée | « Super journée ! » | « Tes écrans sont bien maîtrisés et ton corps va bien. Continue comme ça ! 🌈 » | 🎉 | aucun (`null`) |
+
+Couleur : `orange` pour les règles 1 à 4, `vert` pour la règle 5.
 
 - Les règles 1 et 2 sont **exclusives** : un seul conseil sur les écrans, jamais
   deux ; la règle 2 est prioritaire.

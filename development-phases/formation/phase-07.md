@@ -387,7 +387,7 @@ d'écran.
 ```text
 src/
 ├── Controller/Enfant/
-│   └── JournalController.php        /enfant/journal, /etape-1, /etape-2, /conseils
+│   └── JournalController.php        /enfant/journal, /etape/1, /etape/2, /conseils
 ├── Form/
 │   ├── JournalEcransType.php        6 curseurs, total plafonné
 │   └── JournalDouleursType.php      un champ caché + CSRF
@@ -416,13 +416,13 @@ s'il sert à plusieurs pages (ce sera le cas en phase 10).
 /enfant/journal
     ↓  journal du jour déjà là ?  ── oui ──► /enfant/journal/conseils
     ↓ non
-/enfant/journal/etape-1   (GET)  curseurs à zéro
+/enfant/journal/etape/1   (GET)  curseurs à zéro
     ↓  POST
 Validation : chaque curseur 0-360, total ≤ 16 h
     ↓  valide
 Session ← { ecranTv: 60, … }
     ↓
-/enfant/journal/etape-2   (GET)  SVG + modale
+/enfant/journal/etape/2   (GET)  SVG + modale
     ↓  POST  (champ caché JSON + jeton CSRF)
 Contrôleur : revalide chaque zone et chaque intensité
     ↓

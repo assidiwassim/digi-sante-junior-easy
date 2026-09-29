@@ -57,7 +57,8 @@ utilise `\SortDirection::Descending` (passer `'DESC'` en chaîne est déprécié
   parent. Ces lignes ne sont donc **pas cliquables** et n'offrent aucune action.
 - `admin_parent_supprimer` : **POST uniquement**, jeton CSRF vérifié, puis
   suppression du compte. Le message flash indique **combien de profils enfants**
-  ont été supprimés avec lui.
+  ont été supprimés avec lui, exactement : « Le compte [email] a été supprimé,
+  avec [n] profil(s) enfant. » ([n] compté **avant** la suppression).
 
 Dans les deux dernières actions, l'identifiant d'URL peut désigner n'importe
 quel compte : si ce n'est **pas** un parent, lève une **404** explicite

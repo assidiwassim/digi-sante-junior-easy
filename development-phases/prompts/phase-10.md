@@ -96,14 +96,15 @@ jours** (`?periode=`), sous la jauge du jour existante.
 
 - Contrôleurs simples : lire la requête, appeler le repository ou le service,
   rendre le gabarit. Aucune requête Doctrine dans le contrôleur.
-- Lire les paramètres d'URL **sans** `getInt()` : en Symfony 7, une valeur non
-  numérique (`?periode=abc`) lève une `BadRequestException` → erreur **400**, elle
-  ne renvoie pas 0. Compare plutôt des chaînes :
+- Lire les paramètres d'URL avec `getInt()`, en liste blanche :
   ```php
-  $periode = $request->query->getString('periode') === '30' ? 30 : 7;
-  $idDemande = $request->query->getString('enfant'); // comparé à (string) $enfant->getId()
+  $periode = 30 === $request->query->getInt('periode') ? 30 : 7;
+  // l'enfant demandé : $candidat->getId() === $request->query->getInt('enfant')
   ```
-  Ainsi toute valeur inattendue retombe sur le comportement par défaut.
+  Toute valeur **numérique** inattendue (`365`, l'identifiant d'un autre foyer)
+  retombe sur le comportement par défaut. Une valeur **non numérique**
+  (`?periode=abc`) lève une `BadRequestException` en Symfony 7 : réponse **400**,
+  c'est voulu (URL mal formée).
 - Pas de logique métier dans Twig : le pourcentage de la jauge et le niveau de
   couleur sont calculés côté PHP (ou par une méthode d'entité existante).
 - Réutilise les classes maison (`jauge`, `niveau-*`, `stat-valeur`, `pastille`,
@@ -146,8 +147,9 @@ journaux de jours passés en SQL, ou attends la phase 12 (fixtures).
       fichier JS.
 - [ ] Les conseils affichés au parent sont identiques à ceux vus par l'enfant.
 - [ ] La courbe compte bien 7 (ou 30) points, zéros inclus.
-- [ ] `/parent?periode=abc` et `/parent?enfant=abc` s'affichent normalement
-      (7 jours, premier enfant), sans erreur 400.
+- [ ] `/parent?periode=365` et `/parent?enfant=[id d'un autre foyer]`
+      s'affichent normalement (7 jours, premier enfant) ; `?periode=abc`
+      répond 400 (URL mal formée), jamais 500.
 - [ ] `lint:twig templates` est au vert et aucune erreur n'apparaît dans la
       console du navigateur.
 

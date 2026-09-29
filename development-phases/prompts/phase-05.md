@@ -46,9 +46,8 @@ L'entité existe depuis la phase 02 : lis-la, ne la recrée pas et ne génère
   `journalEntrees` (`cascade: ['remove']`), ses journaux.
 - Côté `User` : `enfants` (`cascade: ['remove']`) et `profilEnfant`.
 - Constantes : `Enfant::AVATARS` (12 avatars : `emoji`, `nom`, `couleur`),
-  `LIMITE_MIN`, `LIMITE_MAX`, `LIMITE_PAS`, `LIMITE_DEFAUT`, `AGE_MIN`,
-  `AGE_MAX` ; getters `getNomComplet()`, `getAge()`, `getAvatarEmoji()`,
-  `getAvatarNom()`, `getAvatarCouleur()`.
+  `LIMITE_MIN`, `LIMITE_MAX`, `LIMITE_PAS` ; getters `getNomComplet()`,
+  `getAge()`, `getAvatarEmoji()`, `getAvatarNom()`.
 - Les contraintes (8-14 ans, limite 15-480 min par pas de 15) et leurs messages
   (« L'application est réservée aux enfants de 8 à 14 ans. », « La limite se
   règle par tranches de 15 minutes. ») sont déjà sur l'entité : les formulaires
@@ -60,8 +59,9 @@ Si une propriété ou une constante citée ici manque, signale-le avant de coder
 
 Dans `UserRepository`, une méthode `genererUsername(string $prenom): string` :
 
-- le prénom en minuscules, sans accents ni caractères spéciaux (`Léa` → `lea`),
-  40 caractères maximum ;
+- le prénom en minuscules, sans accents ni caractères spéciaux (`Léa` → `lea`,
+  `Élodie-Marie` → `elodiemarie`), 40 caractères maximum (le `AsciiSlugger` du
+  composant String, avec un séparateur vide, fait le travail) ;
 - si l'identifiant est pris, ajouter un numéro : `lea2`, `lea3`… ;
 - si le prénom ne donne rien d'exploitable : `enfant`.
 
@@ -70,13 +70,18 @@ Dans `UserRepository`, une méthode `genererUsername(string $prenom): string` :
 - `parent_enfants` : la liste des enfants **du parent connecté**, sous forme de
   cartes (avatar, nom complet, âge, identifiant, limite, actions).
 - `parent_enfant_nouveau` : crée le profil **et** son compte `User`
-  (`ROLE_CHILD`, username généré, mot de passe choisi par le parent et haché).
-  Le message flash affiche l'identifiant attribué — il ne sera plus montré
-  ensuite.
+  (`ROLE_CHILD`, username généré, mot de passe choisi par le parent et haché),
+  puis flash `success` « Le compte de [prénom] est créé. Son identifiant de
+  connexion est « [identifiant] ». » et retour à la liste.
 - `parent_enfant_modifier` : deux formulaires distincts sur la même page, le
-  profil (avec la limite) et le changement de mot de passe de l'enfant.
+  profil (avec la limite) et le changement de mot de passe de l'enfant :
+  - profil enregistré → flash « Le profil de [prénom] a été mis à jour. » et
+    retour à la liste ;
+  - mot de passe changé → flash « Le mot de passe de [prénom] a été modifié. »
+    et retour sur la **même page de modification**.
 - `parent_enfant_supprimer` : **POST uniquement**, jeton CSRF vérifié, puis
-  suppression (le compte et les journaux partent en cascade).
+  suppression (le compte et les journaux partent en cascade) et flash « Le
+  profil de [prénom] et son compte ont été supprimés. ».
   Jeton invalide ou absent → **403** avec
   `throw $this->createAccessDeniedException('Jeton CSRF invalide.')` (même règle
   pour toutes les suppressions du projet).
@@ -97,12 +102,18 @@ appelle `$this->denyAccessUnlessGranted(EnfantVoter::GERER, $enfant)` →
 - `EnfantType` : prénom, nom, date de naissance (`DateType` `single_text` avec
   `min`/`max` calculés pour les 8-14 ans), avatar (`ChoiceType` `expanded`),
   limite (`RangeType`), et — **option `creation` uniquement** — le mot de passe
-  du compte (champ non mappé, 6 caractères minimum).
+  du compte `motDePasse` : un `TextType` (visible, pour que le parent le relise
+  avant de le noter), non mappé, avec `NotBlank` « Choisissez un mot de passe
+  pour votre enfant. » et `Length(min: 6, max: 4096)` « Le mot de passe doit
+  contenir au moins {{ limit }} caractères. ».
   ⚠️ Un `RangeType` envoie une **chaîne** : ajoute un `CallbackTransformer` pour
   le champ entier `maxMinutesJour`.
-- `MotDePasseType` : un champ `plainPassword` (`RepeatedType`, non mappé,
-  même nom que dans `InscriptionType`), 6 caractères minimum, réutilisable
-  ailleurs (espace enfant, phase 06).
+- `MotDePasseType` : un champ `plainPassword` (`RepeatedType` de
+  `PasswordType`, même nom que dans `InscriptionType`), `invalid_message`
+  « Les deux mots de passe ne sont pas identiques. », `NotBlank` « Merci de
+  saisir un mot de passe. », `Length(min: 6, max: 4096)` « Le mot de passe doit
+  contenir au moins {{ limit }} caractères. » ; réutilisable ailleurs (espace
+  enfant, phase 06).
 - Un partiel `templates/form/avatars.html.twig` pour la galerie.
   ⚠️ Le thème Bootstrap entoure chaque radio d'un `div.form-check` : écris les
   `<input>` toi-même dans le partiel, puis appelle `setRendered`.
@@ -130,8 +141,12 @@ route inexistante (erreur 500 sur toutes les pages parent).
 
 - `Parent\ProfilController`, route `/parent/profil` (GET + POST), nom
   `parent_profil`.
-- Deux formulaires sur la page : `ProfilParentType` (email **obligatoire**,
-  pays, ville) et `MotDePasseType` pour changer son mot de passe (haché).
+- Deux formulaires sur la page : `ProfilParentType` (email **obligatoire** :
+  « Merci de saisir votre email. », pays, ville) et `MotDePasseType` pour
+  changer son mot de passe (haché).
+- Profil enregistré → flash « Votre profil a été mis à jour. » ; mot de passe
+  changé → flash « Votre mot de passe a été modifié. » ; dans les deux cas,
+  retour sur `/parent/profil`.
 - ⚠️ Ce formulaire modifie **l'utilisateur connecté** : après une saisie
   invalide (email vide ou déjà pris), appelle `$entityManager->refresh($user)`,
   sinon Symfony compare un utilisateur modifié à celui de la session et le
